@@ -1,0 +1,6 @@
+{
+  "name": "THE SANGSAN",
+  "description": "상산고등학교 체육대회 및 축제 실시간 통합 운영 플랫폼 (SMARTLAB)",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
