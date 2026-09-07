@@ -1,8 +1,13 @@
 import React from 'react';
-import { LiveMatchBoard } from './components/LiveMatchBoard';
-import { Shield, Activity, Radio } from 'lucide-react';
+import { LiveMatchBoard } from '@/components/LiveMatchBoard';
+import { Shield, Radio, Activity, Cpu, Database, CheckCircle2 } from 'lucide-react';
 
-export default function App() {
+export const metadata = {
+  title: 'THE SANGSAN | 실시간 스포츠 경기 중계 시스템',
+  description: '1,000 CCU 고부하 대응 제로 비용(Zero-Cost) 실시간 경기 중계 플랫폼'
+};
+
+export default function Page() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between selection:bg-red-900 selection:text-white">
       {/* Top Header */}
