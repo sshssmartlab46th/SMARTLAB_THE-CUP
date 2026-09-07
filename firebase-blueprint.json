@@ -1,0 +1,100 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Sangsan High School authenticated user profile",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "studentId": { "type": "string", "maxLength": 10 },
+        "name": { "type": "string", "maxLength": 50 },
+        "role": { "type": "string", "enum": ["student", "teacher", "student_council", "class_president", "health_officer", "admin"] },
+        "grade": { "type": "string", "maxLength": 5 },
+        "classNum": { "type": "string", "maxLength": 5 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["uid", "name", "role"]
+    },
+    "Notice": {
+      "title": "Notice",
+      "description": "School festival and athletic competition announcements",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string", "maxLength": 150 },
+        "content": { "type": "string", "maxLength": 2000 },
+        "authorName": { "type": "string", "maxLength": 50 },
+        "authorRole": { "type": "string" },
+        "targetClass": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["title", "content", "authorName"]
+    },
+    "Match": {
+      "title": "Match",
+      "description": "Tournament and race match states with scores and timers",
+      "type": "object",
+      "properties": {
+        "sport": { "type": "string" },
+        "title": { "type": "string", "maxLength": 100 },
+        "teamA": { "type": "string", "maxLength": 50 },
+        "teamB": { "type": "string", "maxLength": 50 },
+        "scoreA": { "type": "number" },
+        "scoreB": { "type": "number" },
+        "status": { "type": "string", "enum": ["scheduled", "live", "finished"] },
+        "elapsedSeconds": { "type": "number" },
+        "timerRunning": { "type": "boolean" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["sport", "title", "teamA", "teamB", "status"]
+    },
+    "Lineup": {
+      "title": "Lineup",
+      "description": "Class match lineups with 5-minute pre-game lock",
+      "type": "object",
+      "properties": {
+        "classId": { "type": "string", "maxLength": 20 },
+        "sport": { "type": "string", "maxLength": 30 },
+        "players": { "type": "string", "maxLength": 500 },
+        "updatedBy": { "type": "string", "maxLength": 50 },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["classId", "sport", "players"]
+    },
+    "WorkspaceIntegration": {
+      "title": "WorkspaceIntegration",
+      "description": "Connected Google Workspace assets for festival operations",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "driveFolder": { "type": "string" },
+        "sheetsDoc": { "type": "string" },
+        "calendarEvent": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["userId"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/notices/{noticeId}": {
+      "schema": "Notice",
+      "description": "Official announcements"
+    },
+    "/matches/{matchId}": {
+      "schema": "Match",
+      "description": "Competition matches and real-time scores"
+    },
+    "/lineups/{lineupId}": {
+      "schema": "Lineup",
+      "description": "Sport lineups submitted by class leaders"
+    },
+    "/workspace/{workspaceId}": {
+      "schema": "WorkspaceIntegration",
+      "description": "Workspace sync records"
+    }
+  }
+}
