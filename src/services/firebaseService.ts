@@ -9,7 +9,8 @@ import {
   query, 
   orderBy, 
   limit,
-  serverTimestamp 
+  serverTimestamp,
+  getDocFromServer 
 } from 'firebase/firestore';
 import { signInAnonymously, onAuthStateChanged, User } from 'firebase/auth';
 import { auth, db } from '../lib/firebase';
@@ -24,13 +25,6 @@ import {
   CheerCount, 
   UserProfile 
 } from '../types';
-import { 
-  INITIAL_MATCHES, 
-  INITIAL_NOTICES, 
-  INITIAL_INJURIES, 
-  INITIAL_SUGGESTIONS, 
-  INITIAL_AUDIT_LOGS 
-} from './mockSeedData';
 
 // Ensure Firebase Anonymous Auth for Firestore security rules
 let currentUser: User | null = null;
@@ -61,65 +55,24 @@ export function ensureFirebaseAuth(): Promise<User | null> {
   return authReadyPromise;
 }
 
+// Test Connection to Firestore
+export async function testFirestoreConnection() {
+  try {
+    await getDocFromServer(doc(db, 'test', 'connection'));
+    console.log('[Firebase] Successfully connected to Firestore server.');
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('the client is offline')) {
+      console.warn('[Firebase] Client is offline or database initializing.');
+    }
+  }
+}
+testFirestoreConnection();
+
 // -------------------------------------------------------------
-// Seed Initial Data into Firestore if collection is empty
+// Seed Initial Data into Firestore if collection is empty (No-op)
 // -------------------------------------------------------------
 export async function seedInitialDataIfEmpty() {
-  try {
-    await ensureFirebaseAuth();
-
-    // Check matches
-    const matchesColl = collection(db, 'matches');
-    const matchSnap = await getDocs(query(matchesColl, limit(1)));
-    if (matchSnap.empty) {
-      console.log('[Firebase] Seeding initial matches...');
-      for (const m of INITIAL_MATCHES) {
-        await setDoc(doc(db, 'matches', m.id), m);
-      }
-    }
-
-    // Check notices
-    const noticesColl = collection(db, 'notices');
-    const noticeSnap = await getDocs(query(noticesColl, limit(1)));
-    if (noticeSnap.empty) {
-      console.log('[Firebase] Seeding initial notices...');
-      for (const n of INITIAL_NOTICES) {
-        await setDoc(doc(db, 'notices', n.id), n);
-      }
-    }
-
-    // Check injuries
-    const injuriesColl = collection(db, 'injuries');
-    const injurySnap = await getDocs(query(injuriesColl, limit(1)));
-    if (injurySnap.empty) {
-      console.log('[Firebase] Seeding initial injury wiki...');
-      for (const inj of INITIAL_INJURIES) {
-        await setDoc(doc(db, 'injuries', inj.id), inj);
-      }
-    }
-
-    // Check suggestions
-    const suggestionsColl = collection(db, 'suggestions');
-    const sugSnap = await getDocs(query(suggestionsColl, limit(1)));
-    if (sugSnap.empty) {
-      console.log('[Firebase] Seeding initial suggestions...');
-      for (const s of INITIAL_SUGGESTIONS) {
-        await setDoc(doc(db, 'suggestions', s.id), s);
-      }
-    }
-
-    // Check audit logs
-    const auditColl = collection(db, 'audit_logs');
-    const auditSnap = await getDocs(query(auditColl, limit(1)));
-    if (auditSnap.empty) {
-      console.log('[Firebase] Seeding initial audit logs...');
-      for (const a of INITIAL_AUDIT_LOGS) {
-        await setDoc(doc(db, 'audit_logs', a.id), a);
-      }
-    }
-  } catch (e) {
-    console.warn('[Firebase Seed] Seeding deferred or offline fallback used:', e);
-  }
+  // Cleared - waiting for explicit instruction
 }
 
 // -------------------------------------------------------------
@@ -154,16 +107,15 @@ export function listenMatches(callback: (matches: MatchItem[]) => void): () => v
         });
         callback(list);
       } else {
-        // Fallback to initial seeds
-        callback(INITIAL_MATCHES);
+        callback([]);
       }
     }, (error) => {
-      console.warn('[Firebase] listenMatches fallback to initial:', error);
-      callback(INITIAL_MATCHES);
+      console.warn('[Firebase] listenMatches error:', error);
+      callback([]);
     });
     return unsubscribe;
   } catch (e) {
-    callback(INITIAL_MATCHES);
+    callback([]);
     return () => {};
   }
 }
@@ -250,12 +202,12 @@ export function listenNotices(callback: (notices: NoticeItem[]) => void): () => 
         list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         callback(list);
       } else {
-        callback(INITIAL_NOTICES);
+        callback([]);
       }
-    }, () => callback(INITIAL_NOTICES));
+    }, () => callback([]));
     return unsubscribe;
   } catch (e) {
-    callback(INITIAL_NOTICES);
+    callback([]);
     return () => {};
   }
 }
@@ -375,12 +327,12 @@ export function listenInjuries(callback: (injuries: InjuryEntry[]) => void): () 
         snapshot.forEach((d) => list.push(d.data() as InjuryEntry));
         callback(list);
       } else {
-        callback(INITIAL_INJURIES);
+        callback([]);
       }
-    }, () => callback(INITIAL_INJURIES));
+    }, () => callback([]));
     return unsubscribe;
   } catch (e) {
-    callback(INITIAL_INJURIES);
+    callback([]);
     return () => {};
   }
 }
@@ -403,12 +355,12 @@ export function listenSuggestions(callback: (items: SuggestionItem[]) => void): 
         list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         callback(list);
       } else {
-        callback(INITIAL_SUGGESTIONS);
+        callback([]);
       }
-    }, () => callback(INITIAL_SUGGESTIONS));
+    }, () => callback([]));
     return unsubscribe;
   } catch (e) {
-    callback(INITIAL_SUGGESTIONS);
+    callback([]);
     return () => {};
   }
 }
@@ -442,12 +394,12 @@ export function listenAuditLogs(callback: (logs: AuditLogEntry[]) => void): () =
         list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
         callback(list);
       } else {
-        callback(INITIAL_AUDIT_LOGS);
+        callback([]);
       }
-    }, () => callback(INITIAL_AUDIT_LOGS));
+    }, () => callback([]));
     return unsubscribe;
   } catch (e) {
-    callback(INITIAL_AUDIT_LOGS);
+    callback([]);
     return () => {};
   }
 }
