@@ -277,7 +277,7 @@ flowchart LR
 
 ### 🏛️ 주관 및 협력
 * **기획 및 운영 주관**: 상산고등학교 학생회 체육부
-* **시스템 엔지니어링**: **SMARTLAB** (Autonomous School Operations Laboratory)
+* **시스템 엔지니어링**: **SMARTLAB** SSHS 46th Members
 
 ---
 
