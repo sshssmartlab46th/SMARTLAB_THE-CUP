@@ -261,6 +261,11 @@ flowchart LR
 시스템 무결성을 위해 클라이언트에서는 임의 변경이 잠겨 있습니다. 대회 본부석의 학생회 운영진에게 학번 수정을 요청하면 관리자 콘솔을 통해 즉시 정상화할 수 있습니다.
 </details>
 
+<details>
+<summary><b>Q5. 개발은 언제 진행되나요? 개발은 누가 맡나요??</b></summary>
+<br>
+동아리 스마트랩이 개발의 총괄을 맡아 9월 27일부터 본격 진행됩니다.
+</details>
 ---
 
 <a id="credits"></a>
@@ -268,7 +273,7 @@ flowchart LR
 
 > **상산고등학교 체육대회·축제 실시간 통합 관제 시스템 개발팀**
 
-| 역할 (Role) | 담당자 (Name) | 직책 및 소속 (Affiliation & Division) |
+| 역할 | 담당자 ( | 직책 및 소속 |
 | :--- | :--- | :--- |
 | **💡 IDEA & DOMAIN SPECIFICATION** | **장은우** | 싸울아비(SSAURABI) 부장 · 체육부 차장 |
 | **🚀 LEAD DEVELOPER & ARCHITECT** | **김태호** | SMARTLAB 46th Lead |
