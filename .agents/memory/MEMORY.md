@@ -1,0 +1,1 @@
+- [Runtime targets](runtime-targets.md) — the project must work in Vercel and Google AI Studio before any Replit-specific setup.
