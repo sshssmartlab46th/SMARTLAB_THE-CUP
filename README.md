@@ -273,7 +273,7 @@ flowchart LR
 
 > **상산고등학교 체육대회·축제 실시간 통합 관제 시스템 개발팀**
 
-| 역할 | 담당자 ( | 직책 및 소속 |
+| 역할 | 담당자 | 직책 및 소속 |
 | :--- | :--- | :--- |
 | **💡 IDEA & DOMAIN SPECIFICATION** | **장은우** | 싸울아비(SSAURABI) 부장 · 체육부 차장 |
 | **🚀 LEAD DEVELOPER & ARCHITECT** | **김태호** | SMARTLAB 46th Lead |
