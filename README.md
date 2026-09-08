@@ -22,7 +22,6 @@
     <a href="#telemetry"><img src="https://img.shields.io/badge/System-Active%20Online-2ea44f?style=for-the-badge&logo=statuspage&logoColor=white" alt="System Status" /></a>
     <a href="#architecture"><img src="https://img.shields.io/badge/Capacity-Max%201%2C000%20CCU-0366d6?style=for-the-badge&logo=speedtest&logoColor=white" alt="CCU Capacity" /></a>
     <a href="#architecture"><img src="https://img.shields.io/badge/Infrastructure-Zero--Cost%20Free%20Tier-success?style=for-the-badge&logo=cloud&logoColor=white" alt="Zero Cost" /></a>
-    <a href="#credits"><img src="https://img.shields.io/badge/Developed%20By-SMARTLAB%20김태호-red?style=for-the-badge" alt="Lead Developer" /></a>
   </p>
 
   <p align="center">
