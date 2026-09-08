@@ -273,17 +273,17 @@ flowchart LR
 | :--- | :--- | :--- |
 | **💡 IDEA & DOMAIN SPECIFICATION** | **장은우 (Jang Eun-woo)** | 싸울아비(SSAURABI) 부장 · 체육부 차장 |
 | **🚀 LEAD DEVELOPER & ARCHITECT** | **김태호 (Kim Tae-ho)** | SMARTLAB 46th Lead |
-| **👥 ALL CORE DEVELOPERS** | **김태호, 김이현, 박민수, 임규리, 주이환, 차민혁, 최지우** | SMARTLAB Core engineers |
+| **👥 ALL CORE DEVELOPERS** | **김태호, 김이현, 박민수, 임규리, 주이환, 차민혁, 최지우** | SMARTLAB Core Engineers |
 
 ### 🏛️ 주관 및 협력
-* **기획 및 운영 주관**: 상산고등학교 학생회 체육부 (SSAURABI)
+* **기획 및 운영 주관**: 상산고등학교 학생회 체육부
 * **시스템 엔지니어링**: **SMARTLAB** (Autonomous School Operations Laboratory)
 
 ---
 
 <div align="center">
-  <p><b>THE SANGSAN</b> — Sangsan High School Athletic & Cultural Festival Management Platform</p>
-  <p><sub>made by SMARTLAB 김태호</sub></p>
-  <p><sub>© 2026 Sangsan High School & SMARTLAB. All rights reserved.</sub></p>
+  <p><b>UnnamedN</b> — Sangsan High School Competition Administration Program</p>
+  <p><sub>made by SMARTLAB</sub></p>
+  <p><sub>© 2026 Sangsan High School Athletic ministry& SMARTLAB. All rights reserved.</sub></p>
 </div>
 
