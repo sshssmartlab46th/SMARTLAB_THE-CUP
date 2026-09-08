@@ -271,9 +271,9 @@ flowchart LR
 
 | 역할 (Role) | 담당자 (Name) | 직책 및 소속 (Affiliation & Division) |
 | :--- | :--- | :--- |
-| **💡 IDEA & DOMAIN SPECIFICATION** | **장은우 (Jang Eun-woo)** | 싸우라비(SSAURABI) 부장 · 체육부 차장 |
-| **🚀 LEAD DEVELOPER & ARCHITECT** | **김태호 (Kim Tae-ho)** | SMARTLAB Lead Architect · Full-Stack & Systems Engineering |
-| **👥 ALL CORE DEVELOPERS** | **김태호, 김이현, 박민수, 임규리, 주이환, 차민혁, 최지우** | SMARTLAB High-Concurrency Engineering Group |
+| **💡 IDEA & DOMAIN SPECIFICATION** | **장은우 (Jang Eun-woo)** | 싸울아비(SSAURABI) 부장 · 체육부 차장 |
+| **🚀 LEAD DEVELOPER & ARCHITECT** | **김태호 (Kim Tae-ho)** | SMARTLAB 46th Lead |
+| **👥 ALL CORE DEVELOPERS** | **김태호, 김이현, 박민수, 임규리, 주이환, 차민혁, 최지우** | SMARTLAB Core engineers |
 
 ### 🏛️ 주관 및 협력
 * **기획 및 운영 주관**: 상산고등학교 학생회 체육부 (SSAURABI)
