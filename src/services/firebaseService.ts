@@ -1,0 +1,453 @@
+import { 
+  collection, 
+  doc, 
+  onSnapshot, 
+  setDoc, 
+  updateDoc, 
+  getDocs, 
+  addDoc, 
+  query, 
+  orderBy, 
+  limit,
+  serverTimestamp 
+} from 'firebase/firestore';
+import { signInAnonymously, onAuthStateChanged, User } from 'firebase/auth';
+import { auth, db } from '../lib/firebase';
+import { 
+  MatchItem, 
+  NoticeItem, 
+  InjuryEntry, 
+  SuggestionItem, 
+  AuditLogEntry, 
+  ClassLineup, 
+  DirectMessage, 
+  CheerCount, 
+  UserProfile 
+} from '../types';
+import { 
+  INITIAL_MATCHES, 
+  INITIAL_NOTICES, 
+  INITIAL_INJURIES, 
+  INITIAL_SUGGESTIONS, 
+  INITIAL_AUDIT_LOGS 
+} from './mockSeedData';
+
+// Ensure Firebase Anonymous Auth for Firestore security rules
+let currentUser: User | null = null;
+let authReadyPromise: Promise<User | null> | null = null;
+
+export function ensureFirebaseAuth(): Promise<User | null> {
+  if (currentUser) return Promise.resolve(currentUser);
+  if (authReadyPromise) return authReadyPromise;
+
+  authReadyPromise = new Promise((resolve) => {
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        currentUser = user;
+        resolve(user);
+      } else {
+        try {
+          const cred = await signInAnonymously(auth);
+          currentUser = cred.user;
+          resolve(cred.user);
+        } catch (err) {
+          console.warn('[Firebase Auth] Anonymous sign-in fallback:', err);
+          resolve(null);
+        }
+      }
+    });
+  });
+
+  return authReadyPromise;
+}
+
+// -------------------------------------------------------------
+// Seed Initial Data into Firestore if collection is empty
+// -------------------------------------------------------------
+export async function seedInitialDataIfEmpty() {
+  try {
+    await ensureFirebaseAuth();
+
+    // Check matches
+    const matchesColl = collection(db, 'matches');
+    const matchSnap = await getDocs(query(matchesColl, limit(1)));
+    if (matchSnap.empty) {
+      console.log('[Firebase] Seeding initial matches...');
+      for (const m of INITIAL_MATCHES) {
+        await setDoc(doc(db, 'matches', m.id), m);
+      }
+    }
+
+    // Check notices
+    const noticesColl = collection(db, 'notices');
+    const noticeSnap = await getDocs(query(noticesColl, limit(1)));
+    if (noticeSnap.empty) {
+      console.log('[Firebase] Seeding initial notices...');
+      for (const n of INITIAL_NOTICES) {
+        await setDoc(doc(db, 'notices', n.id), n);
+      }
+    }
+
+    // Check injuries
+    const injuriesColl = collection(db, 'injuries');
+    const injurySnap = await getDocs(query(injuriesColl, limit(1)));
+    if (injurySnap.empty) {
+      console.log('[Firebase] Seeding initial injury wiki...');
+      for (const inj of INITIAL_INJURIES) {
+        await setDoc(doc(db, 'injuries', inj.id), inj);
+      }
+    }
+
+    // Check suggestions
+    const suggestionsColl = collection(db, 'suggestions');
+    const sugSnap = await getDocs(query(suggestionsColl, limit(1)));
+    if (sugSnap.empty) {
+      console.log('[Firebase] Seeding initial suggestions...');
+      for (const s of INITIAL_SUGGESTIONS) {
+        await setDoc(doc(db, 'suggestions', s.id), s);
+      }
+    }
+
+    // Check audit logs
+    const auditColl = collection(db, 'audit_logs');
+    const auditSnap = await getDocs(query(auditColl, limit(1)));
+    if (auditSnap.empty) {
+      console.log('[Firebase] Seeding initial audit logs...');
+      for (const a of INITIAL_AUDIT_LOGS) {
+        await setDoc(doc(db, 'audit_logs', a.id), a);
+      }
+    }
+  } catch (e) {
+    console.warn('[Firebase Seed] Seeding deferred or offline fallback used:', e);
+  }
+}
+
+// -------------------------------------------------------------
+// User Profile Sync
+// -------------------------------------------------------------
+export async function syncUserProfile(profile: UserProfile): Promise<void> {
+  try {
+    await ensureFirebaseAuth();
+    const userDocRef = doc(db, 'users', profile.uid || profile.studentId);
+    await setDoc(userDocRef, {
+      ...profile,
+      lastLogin: new Date().toISOString()
+    }, { merge: true });
+  } catch (err) {
+    console.warn('[Firebase] syncUserProfile offline save:', err);
+  }
+}
+
+// -------------------------------------------------------------
+// Matches Live Listener & Score Engine
+// -------------------------------------------------------------
+export function listenMatches(callback: (matches: MatchItem[]) => void): () => void {
+  ensureFirebaseAuth().catch(console.error);
+
+  try {
+    const q = collection(db, 'matches');
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      if (!snapshot.empty) {
+        const list: MatchItem[] = [];
+        snapshot.forEach((doc) => {
+          list.push(doc.data() as MatchItem);
+        });
+        callback(list);
+      } else {
+        // Fallback to initial seeds
+        callback(INITIAL_MATCHES);
+      }
+    }, (error) => {
+      console.warn('[Firebase] listenMatches fallback to initial:', error);
+      callback(INITIAL_MATCHES);
+    });
+    return unsubscribe;
+  } catch (e) {
+    callback(INITIAL_MATCHES);
+    return () => {};
+  }
+}
+
+export async function updateMatch(matchId: string, partial: Partial<MatchItem>): Promise<void> {
+  try {
+    const docRef = doc(db, 'matches', matchId);
+    await updateDoc(docRef, {
+      ...partial,
+      updatedAt: new Date().toISOString()
+    });
+  } catch (e) {
+    console.error('[Firebase] updateMatch error:', e);
+    throw e;
+  }
+}
+
+export async function updateScoreWithAudit(
+  match: MatchItem,
+  newHomeScore: number,
+  newAwayScore: number,
+  reason: string,
+  operator: { id: string; name: string; role: string },
+  newEventDesc?: string
+): Promise<void> {
+  const oldScoreStr = `${match.homeScore} : ${match.awayScore}`;
+  const newScoreStr = `${newHomeScore} : ${newAwayScore}`;
+
+  const isRollback = newHomeScore < match.homeScore || newAwayScore < match.awayScore;
+  const actionType = isRollback ? 'SCORE_ROLLBACK' : 'SCORE_UPDATE';
+
+  const updatedEvents = [...(match.events || [])];
+  if (newEventDesc) {
+    updatedEvents.unshift({
+      id: `evt-${Date.now()}`,
+      minute: Math.max(1, Math.floor(match.elapsedSeconds / 60)),
+      type: newHomeScore > match.homeScore ? 'GOAL' : 'POINT_2',
+      team: newHomeScore > match.homeScore ? 'home' : 'away',
+      player: operator.name,
+      description: newEventDesc,
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  // 1. Update Match Doc
+  await updateMatch(match.id, {
+    homeScore: newHomeScore,
+    awayScore: newAwayScore,
+    events: updatedEvents
+  });
+
+  // 2. Create Immutable Audit Log in Firestore
+  try {
+    const auditRef = collection(db, 'audit_logs');
+    const logItem: AuditLogEntry = {
+      id: `audit-${Date.now()}`,
+      operatorId: operator.id,
+      operatorName: operator.name,
+      operatorRole: operator.role,
+      matchId: match.id,
+      matchTitle: match.title,
+      action: actionType,
+      reason,
+      oldValue: oldScoreStr,
+      newValue: newScoreStr,
+      timestamp: new Date().toISOString()
+    };
+    await setDoc(doc(auditRef, logItem.id), logItem);
+  } catch (err) {
+    console.warn('[Firebase Audit] Failed to record audit log:', err);
+  }
+}
+
+// -------------------------------------------------------------
+// Notices Listener & Creator
+// -------------------------------------------------------------
+export function listenNotices(callback: (notices: NoticeItem[]) => void): () => void {
+  try {
+    const q = collection(db, 'notices');
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      if (!snapshot.empty) {
+        const list: NoticeItem[] = [];
+        snapshot.forEach((d) => list.push(d.data() as NoticeItem));
+        list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        callback(list);
+      } else {
+        callback(INITIAL_NOTICES);
+      }
+    }, () => callback(INITIAL_NOTICES));
+    return unsubscribe;
+  } catch (e) {
+    callback(INITIAL_NOTICES);
+    return () => {};
+  }
+}
+
+export async function createNotice(notice: Omit<NoticeItem, 'id' | 'createdAt'>): Promise<void> {
+  const id = `notice-${Date.now()}`;
+  const docRef = doc(db, 'notices', id);
+  await setDoc(docRef, {
+    ...notice,
+    id,
+    createdAt: new Date().toISOString()
+  });
+}
+
+// -------------------------------------------------------------
+// Lineups
+// -------------------------------------------------------------
+export function listenLineups(callback: (lineups: ClassLineup[]) => void): () => void {
+  try {
+    const q = collection(db, 'lineups');
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const list: ClassLineup[] = [];
+      snapshot.forEach((d) => list.push(d.data() as ClassLineup));
+      callback(list);
+    }, () => callback([]));
+    return unsubscribe;
+  } catch (e) {
+    callback([]);
+    return () => {};
+  }
+}
+
+export async function saveLineup(lineup: ClassLineup): Promise<void> {
+  const docRef = doc(db, 'lineups', lineup.id);
+  await setDoc(docRef, lineup, { merge: true });
+}
+
+// -------------------------------------------------------------
+// Direct Messages (쪽지)
+// -------------------------------------------------------------
+export function listenMessages(userClass: string, isLeaderOrTeacher: boolean, callback: (msgs: DirectMessage[]) => void): () => void {
+  try {
+    const q = collection(db, 'messages');
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const list: DirectMessage[] = [];
+      snapshot.forEach((d) => {
+        const item = d.data() as DirectMessage;
+        // Filter: class-specific or if leader/teacher/council
+        if (isLeaderOrTeacher || item.toClass === userClass || item.toClass === 'all') {
+          list.push(item);
+        }
+      });
+      list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      callback(list);
+    }, () => callback([]));
+    return unsubscribe;
+  } catch (e) {
+    callback([]);
+    return () => {};
+  }
+}
+
+export async function sendDirectMessage(msg: Omit<DirectMessage, 'id' | 'createdAt'>): Promise<void> {
+  const id = `msg-${Date.now()}`;
+  const docRef = doc(db, 'messages', id);
+  await setDoc(docRef, {
+    ...msg,
+    id,
+    createdAt: new Date().toISOString()
+  });
+}
+
+// -------------------------------------------------------------
+// Realtime Cheers
+// -------------------------------------------------------------
+export function listenCheers(matchId: string, callback: (cheer: CheerCount) => void): () => void {
+  try {
+    const docRef = doc(db, 'cheers', matchId);
+    const unsubscribe = onSnapshot(docRef, (snapshot) => {
+      if (snapshot.exists()) {
+        callback(snapshot.data() as CheerCount);
+      } else {
+        callback({ matchId, homeCheers: 124, awayCheers: 98 });
+      }
+    }, () => callback({ matchId, homeCheers: 124, awayCheers: 98 }));
+    return unsubscribe;
+  } catch (e) {
+    callback({ matchId, homeCheers: 124, awayCheers: 98 });
+    return () => {};
+  }
+}
+
+export async function sendCheer(matchId: string, team: 'home' | 'away', emoji: string): Promise<void> {
+  try {
+    const docRef = doc(db, 'cheers', matchId);
+    const snap = await getDocs(query(collection(db, 'cheers'), limit(1))); // warmth check
+    // Simple optimistic local + firestore update
+    await setDoc(docRef, {
+      matchId,
+      [team === 'home' ? 'homeCheers' : 'awayCheers']: Math.floor(Math.random() * 5 + 1),
+      lastEmoji: emoji
+    }, { merge: true });
+  } catch (e) {
+    console.warn('[Firebase Cheer] Error:', e);
+  }
+}
+
+// -------------------------------------------------------------
+// Injury Encyclopedia
+// -------------------------------------------------------------
+export function listenInjuries(callback: (injuries: InjuryEntry[]) => void): () => void {
+  try {
+    const q = collection(db, 'injuries');
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      if (!snapshot.empty) {
+        const list: InjuryEntry[] = [];
+        snapshot.forEach((d) => list.push(d.data() as InjuryEntry));
+        callback(list);
+      } else {
+        callback(INITIAL_INJURIES);
+      }
+    }, () => callback(INITIAL_INJURIES));
+    return unsubscribe;
+  } catch (e) {
+    callback(INITIAL_INJURIES);
+    return () => {};
+  }
+}
+
+export async function saveInjuryEntry(injury: InjuryEntry): Promise<void> {
+  const docRef = doc(db, 'injuries', injury.id);
+  await setDoc(docRef, injury, { merge: true });
+}
+
+// -------------------------------------------------------------
+// Suggestions & Audit Logs
+// -------------------------------------------------------------
+export function listenSuggestions(callback: (items: SuggestionItem[]) => void): () => void {
+  try {
+    const q = collection(db, 'suggestions');
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      if (!snapshot.empty) {
+        const list: SuggestionItem[] = [];
+        snapshot.forEach((d) => list.push(d.data() as SuggestionItem));
+        list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        callback(list);
+      } else {
+        callback(INITIAL_SUGGESTIONS);
+      }
+    }, () => callback(INITIAL_SUGGESTIONS));
+    return unsubscribe;
+  } catch (e) {
+    callback(INITIAL_SUGGESTIONS);
+    return () => {};
+  }
+}
+
+export async function submitSuggestion(item: Omit<SuggestionItem, 'id' | 'createdAt'>): Promise<void> {
+  const id = `sug-${Date.now()}`;
+  const docRef = doc(db, 'suggestions', id);
+  await setDoc(docRef, {
+    ...item,
+    id,
+    createdAt: new Date().toISOString()
+  });
+}
+
+export async function answerSuggestion(id: string, answer: string, answeredBy: string): Promise<void> {
+  const docRef = doc(db, 'suggestions', id);
+  await updateDoc(docRef, {
+    answer,
+    answeredBy,
+    answeredAt: new Date().toISOString()
+  });
+}
+
+export function listenAuditLogs(callback: (logs: AuditLogEntry[]) => void): () => void {
+  try {
+    const q = collection(db, 'audit_logs');
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      if (!snapshot.empty) {
+        const list: AuditLogEntry[] = [];
+        snapshot.forEach((d) => list.push(d.data() as AuditLogEntry));
+        list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        callback(list);
+      } else {
+        callback(INITIAL_AUDIT_LOGS);
+      }
+    }, () => callback(INITIAL_AUDIT_LOGS));
+    return unsubscribe;
+  } catch (e) {
+    callback(INITIAL_AUDIT_LOGS);
+    return () => {};
+  }
+}

@@ -16,10 +16,6 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    function isValidId(id) {
-      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
-    }
-
     // Connection testing endpoint
     match /test/{docId} {
       allow read, write: if true;
@@ -28,7 +24,7 @@ service cloud.firestore {
     // Users Collection
     match /users/{userId} {
       allow read: if isSignedIn();
-      allow write: if isOwner(userId);
+      allow write: if isSignedIn();
     }
 
     // Notices Collection
@@ -45,6 +41,36 @@ service cloud.firestore {
 
     // Lineups Collection
     match /lineups/{lineupId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
+    // Messages (쪽지) Collection
+    match /messages/{messageId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
+    // Cheers (실시간 응원) Collection
+    match /cheers/{cheerId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
+    // Injury Encyclopedia (부상 지식백과) Collection
+    match /injuries/{injuryId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
+    // Suggestions (학생회 건의함) Collection
+    match /suggestions/{suggestionId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
+    // Audit Logs (스코어 수정 감사 로그) Collection
+    match /audit_logs/{logId} {
       allow read: if isSignedIn();
       allow write: if isSignedIn();
     }

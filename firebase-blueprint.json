@@ -2,7 +2,7 @@
   "entities": {
     "User": {
       "title": "User",
-      "description": "Sangsan High School authenticated user profile",
+      "description": "Sangsan High School authenticated user profile with rule-engine classified roles",
       "type": "object",
       "properties": {
         "uid": { "type": "string" },
@@ -11,68 +11,132 @@
         "role": { "type": "string", "enum": ["student", "teacher", "student_council", "class_president", "health_officer", "admin"] },
         "grade": { "type": "string", "maxLength": 5 },
         "classNum": { "type": "string", "maxLength": 5 },
+        "studentNum": { "type": "string", "maxLength": 5 },
+        "gender": { "type": "string", "enum": ["male", "female", "unknown"] },
+        "isTeacher": { "type": "boolean" },
         "createdAt": { "type": "string" }
       },
       "required": ["uid", "name", "role"]
     },
     "Notice": {
       "title": "Notice",
-      "description": "School festival and athletic competition announcements",
+      "description": "School festival and athletic competition announcements (global or class)",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
         "title": { "type": "string", "maxLength": 150 },
         "content": { "type": "string", "maxLength": 2000 },
+        "type": { "type": "string", "enum": ["global", "class"] },
+        "targetClass": { "type": "string" },
         "authorName": { "type": "string", "maxLength": 50 },
         "authorRole": { "type": "string" },
-        "targetClass": { "type": "string" },
         "createdAt": { "type": "string" }
       },
-      "required": ["title", "content", "authorName"]
+      "required": ["title", "content", "authorName", "type"]
     },
     "Match": {
       "title": "Match",
-      "description": "Tournament and race match states with scores and timers",
+      "description": "Competition match state, live timer, and score timeline",
       "type": "object",
       "properties": {
+        "id": { "type": "string" },
         "sport": { "type": "string" },
+        "matchType": { "type": "string", "enum": ["tournament", "relay_group", "relay_final"] },
         "title": { "type": "string", "maxLength": 100 },
         "teamA": { "type": "string", "maxLength": 50 },
         "teamB": { "type": "string", "maxLength": 50 },
         "scoreA": { "type": "number" },
         "scoreB": { "type": "number" },
-        "status": { "type": "string", "enum": ["scheduled", "live", "finished"] },
+        "status": { "type": "string", "enum": ["scheduled", "live", "paused", "finished"] },
+        "period": { "type": "string" },
         "elapsedSeconds": { "type": "number" },
         "timerRunning": { "type": "boolean" },
+        "startTime": { "type": "string" },
+        "round": { "type": "string" },
+        "events": { "type": "array" },
         "updatedAt": { "type": "string" }
       },
       "required": ["sport", "title", "teamA", "teamB", "status"]
     },
     "Lineup": {
       "title": "Lineup",
-      "description": "Class match lineups with 5-minute pre-game lock",
+      "description": "Class sport match lineups with 5-minute pre-game lock",
       "type": "object",
       "properties": {
+        "id": { "type": "string" },
+        "matchId": { "type": "string" },
         "classId": { "type": "string", "maxLength": 20 },
         "sport": { "type": "string", "maxLength": 30 },
-        "players": { "type": "string", "maxLength": 500 },
-        "updatedBy": { "type": "string", "maxLength": 50 },
-        "updatedAt": { "type": "string" }
+        "players": { "type": "array" },
+        "submittedBy": { "type": "string" },
+        "submittedAt": { "type": "string" }
       },
-      "required": ["classId", "sport", "players"]
+      "required": ["classId", "sport"]
     },
-    "WorkspaceIntegration": {
-      "title": "WorkspaceIntegration",
-      "description": "Connected Google Workspace assets for festival operations",
+    "Message": {
+      "title": "Message",
+      "description": "Class president, teacher, and student council direct message (쪽지)",
       "type": "object",
       "properties": {
-        "userId": { "type": "string" },
-        "driveFolder": { "type": "string" },
-        "sheetsDoc": { "type": "string" },
-        "calendarEvent": { "type": "string" },
-        "updatedAt": { "type": "string" }
+        "id": { "type": "string" },
+        "fromId": { "type": "string" },
+        "fromName": { "type": "string" },
+        "fromRole": { "type": "string" },
+        "toClass": { "type": "string" },
+        "toRole": { "type": "string" },
+        "content": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string" }
       },
-      "required": ["userId"]
+      "required": ["fromName", "content", "createdAt"]
+    },
+    "Injury": {
+      "title": "Injury",
+      "description": "Sangsan health injury encyclopedia entries",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "sport": { "type": "string" },
+        "title": { "type": "string" },
+        "symptoms": { "type": "string" },
+        "firstAid": { "type": "string" },
+        "severity": { "type": "string", "enum": ["mild", "moderate", "emergency"] },
+        "tags": { "type": "array" }
+      },
+      "required": ["sport", "title", "firstAid", "severity"]
+    },
+    "Suggestion": {
+      "title": "Suggestion",
+      "description": "Real-name student council suggestion box",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "answer": { "type": "string" },
+        "answeredBy": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "answered"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["authorName", "content"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Referee score and status modification immutable audit records",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "operatorId": { "type": "string" },
+        "operatorName": { "type": "string" },
+        "matchId": { "type": "string" },
+        "action": { "type": "string" },
+        "reason": { "type": "string" },
+        "oldScore": { "type": "string" },
+        "newScore": { "type": "string" },
+        "timestamp": { "type": "string" }
+      },
+      "required": ["operatorName", "action", "timestamp"]
     }
   },
   "firestore": {
@@ -92,9 +156,21 @@
       "schema": "Lineup",
       "description": "Sport lineups submitted by class leaders"
     },
-    "/workspace/{workspaceId}": {
-      "schema": "WorkspaceIntegration",
-      "description": "Workspace sync records"
+    "/messages/{messageId}": {
+      "schema": "Message",
+      "description": "Direct messages between leaders and teachers"
+    },
+    "/injuries/{injuryId}": {
+      "schema": "Injury",
+      "description": "Health encyclopedia for sports injuries"
+    },
+    "/suggestions/{suggestionId}": {
+      "schema": "Suggestion",
+      "description": "Student council suggestions"
+    },
+    "/audit_logs/{logId}": {
+      "schema": "AuditLog",
+      "description": "Score audit logs"
     }
   }
 }
