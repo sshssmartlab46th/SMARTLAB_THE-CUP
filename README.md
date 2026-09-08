@@ -14,7 +14,7 @@
     </tr>
   </table>
 
-  # 🏆 THE SANGSAN (더 상산)
+  # 🏆 UNNAMED (더 상산)
   ### 상산고등학교 체육대회 및 학교 축제 실시간 통합 관제·운영 플랫폼
   *Authoritative, Clean, and Real-Time Event Operating System for Sangsan High School*
 
