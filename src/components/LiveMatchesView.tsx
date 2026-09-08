@@ -10,7 +10,6 @@ import {
   Flame, 
   Radio, 
   AlertTriangle, 
-  RotateLeft, 
   ChevronRight, 
   Activity, 
   Lock, 
@@ -481,7 +480,7 @@ export function LiveMatchesView({ matches, currentUser }: LiveMatchesViewProps) 
                         onClick={() => handleOpenRollback('home')}
                         className="px-2.5 py-1.5 bg-slate-800 hover:bg-red-950/80 text-slate-400 hover:text-red-300 border border-slate-700 rounded-lg text-xs font-medium flex items-center gap-1 transition"
                       >
-                        <RotateLeft className="w-3 h-3" />
+                        <RotateCcw className="w-3 h-3" />
                         오심 취소
                       </button>
                     </div>
@@ -539,7 +538,7 @@ export function LiveMatchesView({ matches, currentUser }: LiveMatchesViewProps) 
                         onClick={() => handleOpenRollback('away')}
                         className="px-2.5 py-1.5 bg-slate-800 hover:bg-red-950/80 text-slate-400 hover:text-red-300 border border-slate-700 rounded-lg text-xs font-medium flex items-center gap-1 transition"
                       >
-                        <RotateLeft className="w-3 h-3" />
+                        <RotateCcw className="w-3 h-3" />
                         오심 취소
                       </button>
                     </div>
