@@ -651,7 +651,7 @@ export default function App() {
                      currentUser.role === 'health_officer' ? '보건 담당' : '특수 권한'}
                   </span>
                   <span className="font-medium text-slate-800 dark:text-slate-200">
-                    <strong>{currentUser.name}</strong> ({currentUser.isTeacher ? '교사' : `${currentUser.grade}-${currentUser.classNum}`}) 계정으로 인증되었습니다.
+                    <strong>{currentUser.name}</strong> ({currentUser.role === 'admin' ? '총괄본부' : currentUser.isTeacher ? '교사' : `${currentUser.grade}-${currentUser.classNum}`}) 계정으로 인증되었습니다.
                   </span>
                 </div>
 
@@ -752,8 +752,8 @@ export default function App() {
         )}
       </main>
 
-      {/* 4. Footer with required made by SMARTLAB 김태호 */}
-      <Footer links={footerLinks} customCredit="made by SMARTLAB 김태호" />
+      {/* 4. Footer with made by SMARTLAB */}
+      <Footer links={footerLinks} customCredit="made by SMARTLAB" />
 
       {/* 5. Mobile Bottom Navigation */}
       <MobileBottomNav

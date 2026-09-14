@@ -141,7 +141,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onCancel, onCon
         classNum: '00',
         studentNum: '00',
         gender: 'other',
-        isTeacher: true,
+        isTeacher: false,
         canAnswerSuggestion: true,
         createdAt: new Date().toISOString(),
         lastLogin: new Date().toISOString()

@@ -53,7 +53,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             <div className="flex justify-between">
               <span className="text-slate-500">소속 및 직책</span>
               <span className="font-bold text-red-600 dark:text-emerald-400">
-                {currentUser?.isTeacher ? '교직원' : currentUser ? `${currentUser.grade}학년 ${currentUser.classNum}반` : '일반 학생'}
+                {currentUser?.role === 'admin' ? '대회 총괄본부 (운영관리)' : currentUser?.isTeacher ? '교직원' : currentUser ? `${currentUser.grade}학년 ${currentUser.classNum}반` : '일반 학생'}
               </span>
             </div>
           </div>

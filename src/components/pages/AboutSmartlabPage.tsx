@@ -67,7 +67,7 @@ export const AboutSmartlabPage: React.FC = () => {
       {/* Credit */}
       <div className="p-6 rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs text-center space-y-2">
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          시스템 총괄 개발 및 프로젝트 디렉팅: <strong>SMARTLAB 김태호</strong>
+          시스템 총괄 개발 및 프로젝트 디렉팅: <strong>made by SMARTLAB</strong>
         </p>
         <p className="text-[11px] font-mono text-slate-400 uppercase tracking-wider">
           DESIGNED AND ENGINEERED FOR SANGSAN HIGH SCHOOL SPORTS FESTIVAL

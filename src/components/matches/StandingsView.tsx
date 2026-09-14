@@ -84,16 +84,16 @@ export const StandingsView: React.FC<StandingsViewProps> = ({ standings }) => {
                   <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition">
                     <td className="p-3.5 text-center">
                       {rank === 1 ? (
-                        <span className="w-7 h-7 rounded-full bg-amber-400 text-slate-950 font-black inline-flex items-center justify-center shadow-xs">
-                          1
+                        <span className="text-lg inline-flex items-center justify-center filter drop-shadow-xs" title="1위 우승">
+                          🏆
                         </span>
                       ) : rank === 2 ? (
-                        <span className="w-7 h-7 rounded-full bg-slate-300 text-slate-900 font-black inline-flex items-center justify-center shadow-xs">
-                          2
+                        <span className="text-lg inline-flex items-center justify-center filter drop-shadow-xs" title="2위 준우승">
+                          🥈
                         </span>
                       ) : rank === 3 ? (
-                        <span className="w-7 h-7 rounded-full bg-amber-700 text-white font-black inline-flex items-center justify-center shadow-xs">
-                          3
+                        <span className="text-lg inline-flex items-center justify-center filter drop-shadow-xs" title="3위 3위">
+                          🥉
                         </span>
                       ) : (
                         <span className="font-mono font-bold text-slate-400">{rank}</span>

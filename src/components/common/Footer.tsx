@@ -20,7 +20,7 @@ const DEFAULT_LINKS: FooterLink[] = [
 
 export const Footer: React.FC<FooterProps> = ({
   links = DEFAULT_LINKS,
-  customCredit = 'MADE BY SMARTLAB · DESIGNED FOR SANGSAN HIGH SCHOOL'
+  customCredit = 'made by SMARTLAB'
 }) => {
   return (
     <footer className="w-full border-t border-slate-200 dark:border-slate-800/80 bg-white/40 dark:bg-[#0b0f19]/40 py-8 px-4 mt-auto">

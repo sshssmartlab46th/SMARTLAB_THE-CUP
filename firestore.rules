@@ -2,14 +2,9 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Default deny all access
+    // Default deny all access to unlisted paths
     match /{document=**} {
       allow read, write: if false;
-    }
-
-    // Helper functions
-    function isSignedIn() {
-      return request.auth != null;
     }
 
     // Connection testing endpoint
@@ -17,84 +12,81 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
-    // Users Collection
+    // Users Collection (Student ID based registration & profile sync)
     match /users/{userId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn();
+      allow read, write: if true;
     }
 
-    // Notices Collection
+    // Notices Collection (Public festival announcements)
     match /notices/{noticeId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn();
+      allow read, write: if true;
     }
 
-    // Matches Collection
+    // Matches Collection (Competition schedules, live scores and timers)
     match /matches/{matchId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn();
+      allow read, write: if true;
     }
 
-    // Lineups Collection
+    // Lineups Collection (Class competition lineups)
     match /lineups/{lineupId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn();
+      allow read, write: if true;
     }
 
     // Messages (쪽지) Collection
     match /messages/{messageId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update, delete: if isSignedIn();
+      allow read, write: if true;
     }
 
-    // Cheers (실시간 응원) Collection
+    // Direct Messages Collection
+    match /direct_messages/{messageId} {
+      allow read, write: if true;
+    }
+
+    // Cheers (실시간 응원 카운터) Collection
     match /cheers/{cheerId} {
-      allow read, write: if isSignedIn();
+      allow read, write: if true;
+    }
+
+    // Cheer messages feed
+    match /cheer_messages/{cheerId} {
+      allow read, write: if true;
+    }
+
+    // Live Reactions (이모지 실시간 인터랙션)
+    match /live_reactions/{reactionId} {
+      allow read, write: if true;
     }
 
     // Injury Encyclopedia (부상 지식백과) Collection
     match /injuries/{injuryId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn();
+      allow read, write: if true;
     }
 
     // Suggestions (실명 건의함) Collection
     match /suggestions/{suggestionId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update, delete: if isSignedIn();
+      allow read, write: if true;
     }
 
     // Audit Logs (스코어 수정 감사 로그 - 절대 불변/삭제 불가)
     match /audit_logs/{logId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
+      allow read, create: if true;
       // Enforce strict immutability: no updates or deletes permitted
       allow update, delete: if false;
     }
 
     // System & Festival Config Collection
     match /system/{docId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn();
+      allow read, write: if true;
     }
 
-    // MVP Votes Collection (투표 1회 작성 후 수정 불가)
+    // MVP Votes Collection (경기 종료 후 MVP 투표)
     match /mvp_votes/{voteId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update, delete: if isSignedIn();
+      allow read, write: if true;
     }
 
     // Match Reminders Collection
     match /reminders/{reminderId} {
-      allow read, write: if isSignedIn();
-    }
-
-    // Workspace Integrations
-    match /workspace/{workspaceId} {
-      allow read, write: if isSignedIn() && (resource == null || resource.data.userId == request.auth.uid);
+      allow read, write: if true;
     }
   }
 }

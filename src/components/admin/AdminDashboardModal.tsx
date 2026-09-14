@@ -190,7 +190,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                 </h3>
                 <div className="text-xs space-y-1 text-slate-600 dark:text-slate-400">
                   <p>• 행사명: <strong>{festivalConfig?.name || '2026 상산고등학교 체육대회'}</strong></p>
-                  <p>• 시스템 개발/저작권: <strong>made by SMARTLAB 김태호</strong></p>
+                  <p>• 시스템 개발/저작권: <strong>made by SMARTLAB</strong></p>
                   <p>• 계정 규정: 5자리 고유 학번 자동 파싱, 실명제, 비번 없는 세션 유지</p>
                 </div>
               </div>

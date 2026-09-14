@@ -171,6 +171,34 @@
     "/audit_logs/{logId}": {
       "schema": "AuditLog",
       "description": "Score audit logs"
+    },
+    "/direct_messages/{messageId}": {
+      "schema": "Message",
+      "description": "Direct messages between class leaders and teachers"
+    },
+    "/cheers/{cheerId}": {
+      "schema": "Match",
+      "description": "Real-time match cheer counts"
+    },
+    "/cheer_messages/{cheerId}": {
+      "schema": "Message",
+      "description": "Live cheering messages feed"
+    },
+    "/live_reactions/{reactionId}": {
+      "schema": "Match",
+      "description": "Real-time emoji reactions"
+    },
+    "/system/{docId}": {
+      "schema": "Notice",
+      "description": "Festival system configuration and state"
+    },
+    "/mvp_votes/{voteId}": {
+      "schema": "Match",
+      "description": "Post-match MVP voting records"
+    },
+    "/reminders/{reminderId}": {
+      "schema": "Match",
+      "description": "Student match reminder notification subscriptions"
     }
   }
 }

@@ -28,7 +28,8 @@ export const AdminStudentRosterTab: React.FC<AdminStudentRosterTabProps> = ({
   // Gender classification check:
   // Male: 1~4, 9~12
   // Female: 5~8
-  const getGenderLabel = (grade: string, classNum: string, isTeacher?: boolean) => {
+  const getGenderLabel = (grade: string, classNum: string, isTeacher?: boolean, role?: UserRole) => {
+    if (role === 'admin') return '총괄본부';
     if (isTeacher) return '교사';
     const c = parseInt(classNum, 10);
     if ((c >= 1 && c <= 4) || (c >= 9 && c <= 12)) return '남 (남학급)';
@@ -105,12 +106,12 @@ export const AdminStudentRosterTab: React.FC<AdminStudentRosterTabProps> = ({
       return;
     }
 
-    const headers = ['학년', '학급(반)', '번호', '학번', '성명', '성별구분', '부여역할', '등록일시'];
+    const headers = ['학년', '학급(반)', '번호', '학번', '성명', '소속구분', '부여역할', '등록일시'];
     const rows = sortedUsers.map((u) => {
-      const gLabel = u.isTeacher ? '교사' : `${u.grade}학년`;
-      const cLabel = u.isTeacher ? '교무실' : `${u.classNum}반`;
-      const numLabel = u.isTeacher ? '-' : `${u.studentNum}번`;
-      const gender = getGenderLabel(u.grade, u.classNum, u.isTeacher);
+      const gLabel = u.role === 'admin' ? '총괄본부' : u.isTeacher ? '교사' : `${u.grade}학년`;
+      const cLabel = u.role === 'admin' ? '운영본부' : u.isTeacher ? '교무실' : `${u.classNum}반`;
+      const numLabel = u.role === 'admin' || u.isTeacher ? '-' : `${u.studentNum}번`;
+      const gender = getGenderLabel(u.grade, u.classNum, u.isTeacher, u.role);
       const role = getRoleLabel(u.role);
       const date = u.createdAt ? new Date(u.createdAt).toLocaleString('ko-KR') : '-';
 
@@ -254,6 +255,9 @@ export const AdminStudentRosterTab: React.FC<AdminStudentRosterTabProps> = ({
           <span className="px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300">
             교사/심판: {sortedUsers.filter(u => u.isTeacher).length}명
           </span>
+          <span className="px-2.5 py-1 rounded-lg bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300">
+            총괄본부: {sortedUsers.filter(u => u.role === 'admin').length}명
+          </span>
         </div>
       </div>
 
@@ -281,7 +285,7 @@ export const AdminStudentRosterTab: React.FC<AdminStudentRosterTabProps> = ({
                 </tr>
               ) : (
                 sortedUsers.map((u) => {
-                  const genderText = getGenderLabel(u.grade, u.classNum, u.isTeacher);
+                  const genderText = getGenderLabel(u.grade, u.classNum, u.isTeacher, u.role);
                   const isMale = genderText.includes('남');
                   const isFemale = genderText.includes('여');
 
@@ -297,7 +301,11 @@ export const AdminStudentRosterTab: React.FC<AdminStudentRosterTabProps> = ({
                         {u.name}
                       </td>
                       <td className="py-3 px-3.5 text-slate-600 dark:text-slate-400 whitespace-nowrap">
-                        {u.isTeacher ? (
+                        {u.role === 'admin' ? (
+                          <span className="px-2 py-0.5 rounded bg-red-50 dark:bg-red-950/60 text-red-700 dark:text-red-300 font-bold text-[11px]">
+                            총괄본부 (운영관리)
+                          </span>
+                        ) : u.isTeacher ? (
                           <span className="px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold text-[11px]">
                             교사 (담임)
                           </span>
@@ -307,6 +315,7 @@ export const AdminStudentRosterTab: React.FC<AdminStudentRosterTabProps> = ({
                       </td>
                       <td className="py-3 px-3.5 whitespace-nowrap">
                         <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
+                          u.role === 'admin' ? 'bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300' :
                           isMale ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300' :
                           isFemale ? 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300' :
                           'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'

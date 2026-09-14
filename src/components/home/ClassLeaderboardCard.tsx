@@ -61,21 +61,21 @@ export const ClassLeaderboardCard: React.FC<ClassLeaderboardCardProps> = ({
               <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mb-1 truncate w-full">
                 {getLabel(second)}
               </span>
-              <span className="text-xl font-bold text-slate-700 dark:text-slate-300 mb-0.5">
-                2
+              <span className="text-2xl mb-0.5 filter drop-shadow-xs" role="img" aria-label="2위 은메달">
+                🥈
               </span>
               <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
                 {second ? getPointsText(second) : '-'}
               </span>
             </div>
 
-            {/* 1st Place (Elevated with red/green border) */}
+            {/* 1st Place (Elevated with red border) */}
             <div className="rounded-xl border-2 border-red-500 dark:border-emerald-500 bg-white dark:bg-slate-800/80 p-3 text-center flex flex-col items-center -translate-y-1.5 shadow-xs">
               <span className="text-xs font-bold text-red-600 dark:text-emerald-400 mb-1 truncate w-full">
                 {getLabel(first)}
               </span>
-              <span className="text-2xl font-black text-red-600 dark:text-emerald-400 mb-0.5">
-                1
+              <span className="text-3xl mb-0.5 filter drop-shadow-xs" role="img" aria-label="1위 트로피">
+                🏆
               </span>
               <span className="text-xs font-bold text-red-600 dark:text-emerald-400">
                 {first ? getPointsText(first) : '-'}
@@ -87,8 +87,8 @@ export const ClassLeaderboardCard: React.FC<ClassLeaderboardCardProps> = ({
               <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mb-1 truncate w-full">
                 {getLabel(third)}
               </span>
-              <span className="text-xl font-bold text-slate-700 dark:text-slate-300 mb-0.5">
-                3
+              <span className="text-2xl mb-0.5 filter drop-shadow-xs" role="img" aria-label="3위 동메달">
+                🥉
               </span>
               <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
                 {third ? getPointsText(third) : '-'}
