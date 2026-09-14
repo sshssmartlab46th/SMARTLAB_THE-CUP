@@ -25,11 +25,11 @@ export const PrivacyPage: React.FC = () => {
 
   const articles = [
     { id: 'art-1', title: '제1조 (목적 및 정의)' },
-    { id: 'art-2', title: '제2조 (개인정보 처리 기본 원칙 및 한시적 특성)' },
+    { id: 'art-2', title: '제2조 (개인정보 처리 원칙 및 연속 운영 정책)' },
     { id: 'art-3', title: '제3조 (수집 항목, 생성 정보 및 수집 방법)' },
     { id: 'art-4', title: '제4조 (학번 알고리즘 분석 및 권한 제한)' },
-    { id: 'art-5', title: '제5조 (처리, 보유 기간 및 자동 일괄 파기)' },
-    { id: 'art-6', title: '제6조 (파기절차, 기한 및 기술적 방법)' },
+    { id: 'art-5', title: '제5조 (차기 대회 연계를 위한 보유 및 관리 기간)' },
+    { id: 'art-6', title: '제6조 (데이터 안전 보관 및 불필요 정보 정비·파기)' },
     { id: 'art-7', title: '제7조 (제3자 제공, 목적 외 이용 및 철회)' },
     { id: 'art-8', title: '제8조 (업무 위탁 및 국외 이전 면책)' },
     { id: 'art-9', title: '제9조 (특수 서비스 기능 및 Zero-Storage)' },
@@ -90,7 +90,7 @@ export const PrivacyPage: React.FC = () => {
               THE SANGSAN 서비스 이용약관 및 개인정보 처리방침
             </h1>
             <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-2xl leading-relaxed">
-              상산고등학교 체육대회, 동아리 축제, 상산컵 등 학내 행사 한시적 운영을 위한 데이터 처리 및 프라이버시 보호 기준
+              상산고등학교 체육대회, 동아리 축제, 상산컵 등 연간 학내 행사 및 차기 대회 연속 운영을 위한 데이터 처리 및 프라이버시 보호 기준
             </p>
           </div>
         </div>
@@ -99,11 +99,11 @@ export const PrivacyPage: React.FC = () => {
         <div className="grid grid-cols-2 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-slate-100 dark:divide-slate-800 p-4 bg-slate-50/70 dark:bg-slate-800/40 text-center text-xs">
           <div className="p-3">
             <div className="font-bold text-slate-900 dark:text-white flex items-center justify-center gap-1">
-              <Clock className="w-3.5 h-3.5 text-red-500" />
-              한시적 운영 & 일괄 파기
+              <Server className="w-3.5 h-3.5 text-blue-500" />
+              차기 대회 연계 & 안전 보존
             </div>
             <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-              행사 종료 시 수집 데이터 자동 파기
+              다음 대회 및 학내 행사를 위한 데이터 연속 보관
             </div>
           </div>
           <div className="p-3">
@@ -229,17 +229,17 @@ export const PrivacyPage: React.FC = () => {
         <section id="art-2" className="scroll-mt-32 space-y-3">
           <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-2">
             <span className="w-1.5 h-4 bg-red-600 rounded-full inline-block"></span>
-            제2조 (개인정보 처리 기본 원칙 및 서비스의 한시적 특성)
+            제2조 (개인정보 처리 기본 원칙 및 연간 학내 행사 연속 운영 정책)
           </h2>
           <div className="space-y-2 pl-3 border-l-2 border-slate-100 dark:border-slate-800">
             <p>
               1. 서비스는 사용자의 개인정보 수집 시 서비스 제공에 필요한 최소한의 범위로 한정하며, 사용자의 기본적 인권을 침해할 우려가 있는 민감한 개인정보는 원칙적으로 수집하지 않습니다.
             </p>
             <p>
-              2. <strong>한시적 운영 특성의 명시:</strong> 본 서비스는 365일 상시 운영되는 시스템이 아니며, 학내 행사 개최 시기에 관리자의 개방 조치에 따라 한시적으로 활성화되고, 행사가 종료되면 다시 비활성화되는 특수한 목적의 시스템입니다.
+              2. <strong>연간 행사 및 차기 대회 연속 운영의 명시:</strong> 본 서비스는 단발성 일회용 시스템에 그치지 않고, 상산고등학교 내 체육대회, 동아리 축제, 상산컵 등 학기별·학년도별 차기 대회 및 교내 행사의 원활한 연속 운영, 역대 경기 결과 공식 아카이빙, 학생 계정 편의를 위하여 수집된 기본 데이터 및 경기 기록을 지속적으로 안전하게 보존·관리합니다.
             </p>
             <p>
-              3. 서비스 제공자는 시스템 운영 기간 동안 최소한의 정보만을 처리하며, 행사 종료 시점 이후에는 서비스에 수집된 대부분의 개인정보 데이터를 즉시 파기하거나 비식별화 처리합니다. 사용자는 이러한 한시적 운영 방식 및 데이터 파기 정책에 사전 동의한 것으로 간주됩니다.
+              3. 행사 종료 시에도 사용자의 기본 프로필(학번, 이름, 학년)과 경기 기록, 감사 로그 등은 차기 대회 연계 및 명예의 전당 보존을 위해 영구 소멸되지 않고 안전하게 유지됩니다. 단, 제9조에 명시된 AI 부상 지식백과 매칭 시 첨부된 환부 사진 등 일회성 민감 데이터는 분석 즉시 파기(Zero-Storage)됩니다.
             </p>
           </div>
         </section>
@@ -344,13 +344,13 @@ export const PrivacyPage: React.FC = () => {
         <section id="art-5" className="scroll-mt-32 space-y-4">
           <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-2">
             <span className="w-1.5 h-4 bg-red-600 rounded-full inline-block"></span>
-            제5조 (개인정보의 처리, 보유 기간 및 자동 일괄 파기 조치)
+            제5조 (개인정보의 처리, 차기 대회 연계를 위한 보유 및 관리 기간)
           </h2>
           <div className="space-y-3 pl-3 border-l-2 border-slate-100 dark:border-slate-800">
             <p>
-              1. 서비스는 원칙적으로 개인정보의 수집 및 이용 목적이 달성되면 지체 없이 해당 정보를 파기합니다.
+              1. 서비스는 상산고등학교 내 차기 대회(다음 학기·차기 연도 체육대회, 상산컵, 동아리 축제 등)의 연속적인 연계 운영과 역대 경기 기록 공식 아카이빙을 위하여 사용자의 기본 식별 데이터 및 경기 로그를 안전하게 보관·관리합니다.
             </p>
-            <p>2. 본 서비스의 개인정보 보유 기간은 다음과 같습니다.</p>
+            <p>2. 본 서비스의 개인정보 및 데이터 보유·관리 기간은 다음과 같습니다.</p>
 
             {/* Table 2: 보유 기간 */}
             <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
@@ -359,39 +359,44 @@ export const PrivacyPage: React.FC = () => {
                   <tr>
                     <th className="p-3">개인정보 항목</th>
                     <th className="p-3">보유 및 이용 기간</th>
-                    <th className="p-3">파기 사유 및 시점</th>
+                    <th className="p-3">보유 목적 및 관리 기준</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                   <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
                     <td className="p-3 font-bold text-slate-900 dark:text-white">사용자 가입 정보 (학번, 이름, 학년)</td>
-                    <td className="p-3">행사 운영 기간 전체</td>
-                    <td className="p-3 text-slate-600 dark:text-slate-400">행사 종료 및 시스템 비활성화 시 일괄 파기</td>
+                    <td className="p-3 font-medium text-blue-600 dark:text-blue-400">재학 기간 및 차기 대회 연속 운영 기간</td>
+                    <td className="p-3 text-slate-600 dark:text-slate-400">차기 대회(체육대회, 상산컵 등) 계정 재사용, 출전 선수 등록 및 학생 식별 목적 보존</td>
+                  </tr>
+                  <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
+                    <td className="p-3 font-bold text-slate-900 dark:text-white">경기 결과, 스코어보드, 타임라인 기록</td>
+                    <td className="p-3 font-medium text-blue-600 dark:text-blue-400">학내 공식 기록 아카이빙 (준영구)</td>
+                    <td className="p-3 text-slate-600 dark:text-slate-400">상산고 행사 역사 보존, 명예의 전당, 역대 전적 조회 및 학내 공식 통계</td>
                   </tr>
                   <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
                     <td className="p-3 font-bold text-slate-900 dark:text-white">세션 토큰 및 인증 데이터</td>
-                    <td className="p-3">행사 운영 기간 전체</td>
-                    <td className="p-3 text-slate-600 dark:text-slate-400">행사 종료 시 서버 인증 무효화 및 클라이언트 삭제</td>
+                    <td className="p-3">보안 세션 유효 기간</td>
+                    <td className="p-3 text-slate-600 dark:text-slate-400">세션 만료 시 갱신 관리 및 사용자 로그아웃 시 단말기 소멸</td>
                   </tr>
                   <tr className="hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 bg-emerald-50/20 dark:bg-emerald-950/10">
                     <td className="p-3 font-bold text-emerald-800 dark:text-emerald-300">부상 지식백과 첨부 사진 데이터</td>
                     <td className="p-3 font-bold text-red-600 dark:text-red-400">분석 실행 즉시 파기 (Zero-Storage)</td>
-                    <td className="p-3 font-bold text-emerald-700 dark:text-emerald-300">API 전송 및 분석 완료 즉시 0초 내 임시 메모리 파기</td>
+                    <td className="p-3 font-bold text-emerald-700 dark:text-emerald-300">API 전송 및 분석 완료 즉시 0초 내 임시 메모리 파기 (미성년자 프라이버시 보호)</td>
                   </tr>
                   <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
                     <td className="p-3 font-bold text-slate-900 dark:text-white">부상 분석 요약 텍스트 로그</td>
-                    <td className="p-3">행사 운영 기간 전체</td>
-                    <td className="p-3 text-slate-600 dark:text-slate-400">행사 종료 시 시스템 데이터와 함께 일괄 파기</td>
+                    <td className="p-3">당해 학년도 보건 안전 지원 기간</td>
+                    <td className="p-3 text-slate-600 dark:text-slate-400">행사 안전 관리, 의무실 통계 및 보건 지원 목적 후 정비</td>
                   </tr>
                   <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
                     <td className="p-3 font-bold text-slate-900 dark:text-white">점수 및 일정 수정 감사 로그</td>
-                    <td className="p-3">행사 종료 후 최대 30일</td>
-                    <td className="p-3 text-slate-600 dark:text-slate-400">시스템 감사, 분쟁 조정, 무단 조작 검증 목적 후 파기</td>
+                    <td className="p-3 font-medium text-purple-600 dark:text-purple-400">영구 보존 (위·변조 방지)</td>
+                    <td className="p-3 text-slate-600 dark:text-slate-400">시스템 감사, 분쟁 조정, 무단 조작 검증 목적으로 수정·삭제 불가 보존</td>
                   </tr>
                   <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
                     <td className="p-3 font-bold text-slate-900 dark:text-white">퇴출 사용자 이력 데이터</td>
-                    <td className="p-3">행사 운영 기간 전체</td>
-                    <td className="p-3 text-slate-600 dark:text-slate-400">행사 기간 내 재가입 검증 목적으로 보관 후 종료 시 파기</td>
+                    <td className="p-3">행사 연속 운영 기간</td>
+                    <td className="p-3 text-slate-600 dark:text-slate-400">차기 대회 비인가 접근 및 부정 이용 방지 목적으로 보존 관리</td>
                   </tr>
                 </tbody>
               </table>
@@ -403,19 +408,19 @@ export const PrivacyPage: React.FC = () => {
         <section id="art-6" className="scroll-mt-32 space-y-3">
           <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-2">
             <span className="w-1.5 h-4 bg-red-600 rounded-full inline-block"></span>
-            제6조 (개인정보 파기절차, 기한 및 기술적 파기 방법)
+            제6조 (데이터의 장기 안전 보관 및 불필요 정보 정비·파기 기준)
           </h2>
           <div className="space-y-2 pl-3 border-l-2 border-slate-100 dark:border-slate-800">
             <p>
-              1. <strong>파기절차:</strong> 정보주체의 개인정보는 목적 달성(행사 종료) 후 별도의 복구 가능한 백업 DB로 이전되지 않고, 시스템 종료 절차에 따라 즉시 파기 대상이 됩니다.
+              1. <strong>차기 대회를 위한 안전 보관 원칙:</strong> 본 서비스의 데이터는 단일 행사 종료 시 임의로 일괄 삭제되지 않으며, 차기 대회 운영 및 학내 공식 기록 보존을 위해 인가된 관리자만 접근 가능한 보안 클라우드 데이터베이스에 안전하게 영속 보관됩니다.
             </p>
             <p>
-              2. <strong>파기기한:</strong> 개인정보의 보유 기간이 경과하거나 서비스 종료, 행사 완료 등 개인정보가 불필요하게 되었을 때에는 불필요한 것으로 인정되는 날로부터 5일 이내에 파기 조치를 완료합니다.
+              2. <strong>불필요 정보의 선별적 정비:</strong> 학생 졸업, 당사자의 정당한 삭제 청구권 행사, 또는 운영위원회의 심의에 따라 더 이상 보관이 불필요하다고 판단되는 노후 데이터에 한하여 선별적으로 정비 및 파기를 수행합니다.
             </p>
-            <p>3. <strong>기술적 파기방법:</strong></p>
+            <p>3. <strong>기술적 파기방법 (파기 대상 확정 시):</strong></p>
             <ul className="list-disc list-inside space-y-1 pl-2 text-slate-600 dark:text-slate-400">
-              <li><strong>전자적 파일 형태:</strong> 데이터베이스 내에 저장된 레코드는 복구 및 재생이 불가능하도록 표준 데이터베이스 삭제 명령(<code className="font-mono">TRUNCATE</code>, <code className="font-mono">DROP</code>) 및 영구 덮어쓰기 기법을 사용하여 삭제합니다.</li>
-              <li><strong>임시 파일 및 바이너리 데이터:</strong> AI 부상 분석을 위하여 서버에 임시 업로드된 사진 파일은 RAM 및 백엔드 임시 디렉토리에서 분석 프로세스가 종료되는 즉시 완전 덮어쓰기(Overwrite) 방식으로 소멸시킵니다.</li>
+              <li><strong>전자적 파일 형태:</strong> 데이터베이스 내 영구 삭제 대상 레코드는 복구 및 재생이 불가능하도록 표준 데이터베이스 삭제 명령 및 영구 덮어쓰기 기법을 적용합니다.</li>
+              <li><strong>일회성 민감 데이터:</strong> AI 부상 분석을 위해 임시 전송된 사진 파일은 제9조에 의거하여 RAM 및 백엔드 임시 버퍼에서 분석 프로세스 완료 즉시 0초 내 완전 덮어쓰기(Overwrite) 소멸 조치(Zero-Storage Policy)를 유지합니다.</li>
             </ul>
           </div>
         </section>
