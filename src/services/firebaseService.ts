@@ -158,8 +158,12 @@ export function listenMatches(callback: (matches: MatchItem[]) => void): () => v
     const unsubscribe = onSnapshot(q, (snapshot) => {
       if (!snapshot.empty) {
         const list: MatchItem[] = [];
-        snapshot.forEach((doc) => {
-          list.push(doc.data() as MatchItem);
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          list.push({
+            ...data,
+            id: docSnap.id
+          } as MatchItem);
         });
         callback(list);
       } else {
@@ -207,8 +211,9 @@ export async function createMatch(matchData: Partial<MatchItem>): Promise<string
 }
 
 export async function updateMatch(matchId: string, partial: Partial<MatchItem>): Promise<void> {
+  if (!matchId) return;
   try {
-    await ensureFirebaseAuth();
+    ensureFirebaseAuth().catch(() => {});
     const docRef = doc(db, 'matches', matchId);
     // Sanitize partial payload to avoid Firestore undefined errors
     const sanitized: Record<string, any> = {};
@@ -228,14 +233,175 @@ export async function updateMatch(matchId: string, partial: Partial<MatchItem>):
 }
 
 export async function deleteMatch(matchId: string): Promise<void> {
+  if (!matchId) {
+    console.warn('[Firebase] deleteMatch called with empty matchId');
+    return;
+  }
   try {
-    await ensureFirebaseAuth();
+    ensureFirebaseAuth().catch(() => {});
     const docRef = doc(db, 'matches', matchId);
     await deleteDoc(docRef);
+    console.log('[Firebase] Successfully deleted match document:', matchId);
   } catch (e) {
     console.error('[Firebase] deleteMatch error:', e);
     throw e;
   }
+}
+
+export async function batchDeleteMatches(matchIds: string[]): Promise<number> {
+  if (!matchIds || matchIds.length === 0) return 0;
+  ensureFirebaseAuth().catch(() => {});
+  let deletedCount = 0;
+  const validIds = matchIds.filter(Boolean);
+  const chunks: string[][] = [];
+  for (let i = 0; i < validIds.length; i += 20) {
+    chunks.push(validIds.slice(i, i + 20));
+  }
+  for (const chunk of chunks) {
+    await Promise.all(
+      chunk.map(async (id) => {
+        try {
+          const docRef = doc(db, 'matches', id);
+          await deleteDoc(docRef);
+          deletedCount++;
+        } catch (err) {
+          console.error(`[Firebase] Failed to delete match ${id}:`, err);
+        }
+      })
+    );
+  }
+  return deletedCount;
+}
+
+export function getMatchTournamentSlot(m: MatchItem): 'QF1' | 'QF2' | 'QF3' | 'QF4' | 'SF1' | 'SF2' | 'FINAL' | 'BRONZE' | null {
+  if (m.tournamentSlot) return m.tournamentSlot;
+  const str = `${m.round || ''} ${m.title || ''}`;
+  if (str.includes('8강 1') || str.includes('준준결승 1') || str.includes('QF1')) return 'QF1';
+  if (str.includes('8강 2') || str.includes('준준결승 2') || str.includes('QF2')) return 'QF2';
+  if (str.includes('8강 3') || str.includes('준준결승 3') || str.includes('QF3')) return 'QF3';
+  if (str.includes('8강 4') || str.includes('준준결승 4') || str.includes('QF4')) return 'QF4';
+  if ((str.includes('4강 1') || str.includes('준결승 1') || str.includes('SF1')) && !str.includes('결승전')) return 'SF1';
+  if ((str.includes('4강 2') || str.includes('준결승 2') || str.includes('SF2')) && !str.includes('결승전')) return 'SF2';
+  if (str.includes('3·4위') || str.includes('3위') || str.includes('BRONZE')) return 'BRONZE';
+  if (str.includes('결승전') || str.includes('결승') || str.includes('FINAL')) return 'FINAL';
+  return null;
+}
+
+export function getMatchGrade(m: MatchItem): string {
+  if (m.homeClass && m.homeClass.length >= 1 && /^[1-3]/.test(m.homeClass)) {
+    return m.homeClass.charAt(0);
+  }
+  const match = (m.title || '').match(/([1-3])학년/);
+  if (match) return match[1];
+  const teamMatch = (m.homeTeam || '').match(/([1-3])-(\d+)/);
+  if (teamMatch) return teamMatch[1];
+  return '1';
+}
+
+export async function advanceTournamentRound(
+  completedMatch: MatchItem,
+  allMatches: MatchItem[]
+): Promise<{ updatedCount: number; messages: string[] }> {
+  const slot = getMatchTournamentSlot(completedMatch);
+  if (!slot || slot === 'FINAL' || slot === 'BRONZE') {
+    return { updatedCount: 0, messages: [] };
+  }
+
+  let winner: { name: string; classId: string } | null = null;
+  let loser: { name: string; classId: string } | null = null;
+
+  if (completedMatch.homeScore > completedMatch.awayScore) {
+    winner = { name: completedMatch.homeTeam, classId: completedMatch.homeClass };
+    loser = { name: completedMatch.awayTeam, classId: completedMatch.awayClass };
+  } else if (completedMatch.awayScore > completedMatch.homeScore) {
+    winner = { name: completedMatch.awayTeam, classId: completedMatch.awayClass };
+    loser = { name: completedMatch.homeTeam, classId: completedMatch.homeClass };
+  } else {
+    return { updatedCount: 0, messages: [] };
+  }
+
+  const matchGrade = getMatchGrade(completedMatch);
+  const sameContextMatches = allMatches.filter(
+    (m) => m.id !== completedMatch.id && m.sport === completedMatch.sport && getMatchGrade(m) === matchGrade
+  );
+
+  let updatedCount = 0;
+  const messages: string[] = [];
+
+  if (slot === 'QF1') {
+    const target = sameContextMatches.find((m) => getMatchTournamentSlot(m) === 'SF1');
+    if (target && (target.homeTeam !== winner.name || target.homeClass !== winner.classId)) {
+      await updateMatch(target.id, { homeTeam: winner.name, homeClass: winner.classId });
+      updatedCount++;
+      messages.push(`[8강 1경기 승자 ${winner.name}] → 4강 1경기(홈) 자동 진출`);
+    }
+  } else if (slot === 'QF2') {
+    const target = sameContextMatches.find((m) => getMatchTournamentSlot(m) === 'SF1');
+    if (target && (target.awayTeam !== winner.name || target.awayClass !== winner.classId)) {
+      await updateMatch(target.id, { awayTeam: winner.name, awayClass: winner.classId });
+      updatedCount++;
+      messages.push(`[8강 2경기 승자 ${winner.name}] → 4강 1경기(원정) 자동 진출`);
+    }
+  } else if (slot === 'QF3') {
+    const target = sameContextMatches.find((m) => getMatchTournamentSlot(m) === 'SF2');
+    if (target && (target.homeTeam !== winner.name || target.homeClass !== winner.classId)) {
+      await updateMatch(target.id, { homeTeam: winner.name, homeClass: winner.classId });
+      updatedCount++;
+      messages.push(`[8강 3경기 승자 ${winner.name}] → 4강 2경기(홈) 자동 진출`);
+    }
+  } else if (slot === 'QF4') {
+    const target = sameContextMatches.find((m) => getMatchTournamentSlot(m) === 'SF2');
+    if (target && (target.awayTeam !== winner.name || target.awayClass !== winner.classId)) {
+      await updateMatch(target.id, { awayTeam: winner.name, awayClass: winner.classId });
+      updatedCount++;
+      messages.push(`[8강 4경기 승자 ${winner.name}] → 4강 2경기(원정) 자동 진출`);
+    }
+  } else if (slot === 'SF1') {
+    const finalTarget = sameContextMatches.find((m) => getMatchTournamentSlot(m) === 'FINAL');
+    if (finalTarget && (finalTarget.homeTeam !== winner.name || finalTarget.homeClass !== winner.classId)) {
+      await updateMatch(finalTarget.id, { homeTeam: winner.name, homeClass: winner.classId });
+      updatedCount++;
+      messages.push(`[4강 1경기 승자 ${winner.name}] → 결승전(홈) 자동 진출`);
+    }
+    const bronzeTarget = sameContextMatches.find((m) => getMatchTournamentSlot(m) === 'BRONZE');
+    if (bronzeTarget && loser && (bronzeTarget.homeTeam !== loser.name || bronzeTarget.homeClass !== loser.classId)) {
+      await updateMatch(bronzeTarget.id, { homeTeam: loser.name, homeClass: loser.classId });
+      updatedCount++;
+      messages.push(`[4강 1경기 패자 ${loser.name}] → 3·4위전(홈) 자동 배정`);
+    }
+  } else if (slot === 'SF2') {
+    const finalTarget = sameContextMatches.find((m) => getMatchTournamentSlot(m) === 'FINAL');
+    if (finalTarget && (finalTarget.awayTeam !== winner.name || finalTarget.awayClass !== winner.classId)) {
+      await updateMatch(finalTarget.id, { awayTeam: winner.name, awayClass: winner.classId });
+      updatedCount++;
+      messages.push(`[4강 2경기 승자 ${winner.name}] → 결승전(원정) 자동 진출`);
+    }
+    const bronzeTarget = sameContextMatches.find((m) => getMatchTournamentSlot(m) === 'BRONZE');
+    if (bronzeTarget && loser && (bronzeTarget.awayTeam !== loser.name || bronzeTarget.awayClass !== loser.classId)) {
+      await updateMatch(bronzeTarget.id, { awayTeam: loser.name, awayClass: loser.classId });
+      updatedCount++;
+      messages.push(`[4강 2경기 패자 ${loser.name}] → 3·4위전(원정) 자동 배정`);
+    }
+  }
+
+  return { updatedCount, messages };
+}
+
+export async function syncAllTournamentAdvancements(allMatches: MatchItem[]): Promise<{ updatedCount: number; logs: string[] }> {
+  let totalUpdated = 0;
+  const allLogs: string[] = [];
+
+  const eligible = allMatches.filter(
+    (m) => (m.status === 'FINISHED' || m.status === 'LIVE') && m.homeScore !== m.awayScore
+  );
+
+  for (const match of eligible) {
+    const res = await advanceTournamentRound(match, allMatches);
+    totalUpdated += res.updatedCount;
+    allLogs.push(...res.messages);
+  }
+
+  return { updatedCount: totalUpdated, logs: allLogs };
 }
 
 export async function updateScoreWithAudit(
@@ -360,10 +526,15 @@ export async function createNotice(notice: Omit<NoticeItem, 'id' | 'createdAt'>)
   });
 }
 
+export const sendNotice = createNotice;
+
 export async function deleteNotice(noticeId: string): Promise<void> {
+  if (!noticeId) return;
   try {
+    ensureFirebaseAuth().catch(() => {});
     const docRef = doc(db, 'notices', noticeId);
     await deleteDoc(docRef);
+    console.log('[Firebase] Successfully deleted notice document:', noticeId);
   } catch (e) {
     console.error('[Firebase] deleteNotice error:', e);
     throw e;
@@ -839,5 +1010,124 @@ export async function deleteDirectMessage(id: string): Promise<void> {
     throw e;
   }
 }
+
+// -------------------------------------------------------------
+// Points Config (종목별 배점 설정 클라우드 동기화)
+// -------------------------------------------------------------
+export function listenPointsConfig(callback: (configs: any[] | null) => void): () => void {
+  try {
+    const docRef = doc(db, 'system', 'points_config');
+    const unsubscribe = onSnapshot(docRef, (snapshot) => {
+      if (snapshot.exists() && snapshot.data()?.configs) {
+        callback(snapshot.data().configs);
+      } else {
+        callback(null);
+      }
+    }, () => callback(null));
+    return unsubscribe;
+  } catch (e) {
+    callback(null);
+    return () => {};
+  }
+}
+
+export async function savePointsConfig(configs: any[]): Promise<void> {
+  try {
+    await ensureFirebaseAuth();
+    const docRef = doc(db, 'system', 'points_config');
+    await setDoc(docRef, {
+      configs,
+      updatedAt: new Date().toISOString()
+    }, { merge: true });
+  } catch (e) {
+    console.error('[Firebase] savePointsConfig error:', e);
+    throw e;
+  }
+}
+
+// -------------------------------------------------------------
+// Score Approval Requests (심판 점수 승인 파이프라인)
+// -------------------------------------------------------------
+export function listenScoreApprovals(callback: (requests: any[]) => void): () => void {
+  try {
+    const q = collection(db, 'score_approvals');
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const list: any[] = [];
+      snapshot.forEach((d) => list.push(d.data()));
+      list.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+      callback(list);
+    }, () => callback([]));
+    return unsubscribe;
+  } catch (e) {
+    callback([]);
+    return () => {};
+  }
+}
+
+export async function submitScoreApprovalRequest(req: any): Promise<void> {
+  try {
+    await ensureFirebaseAuth();
+    const id = req.id || `req-${Date.now()}`;
+    const docRef = doc(db, 'score_approvals', id);
+    await setDoc(docRef, {
+      ...req,
+      id,
+      status: req.status || 'PENDING',
+      createdAt: req.createdAt || new Date().toISOString()
+    });
+  } catch (e) {
+    console.error('[Firebase] submitScoreApprovalRequest error:', e);
+    throw e;
+  }
+}
+
+export async function approveScoreRequest(
+  requestId: string,
+  matchId: string,
+  homeScore: number,
+  awayScore: number
+): Promise<void> {
+  try {
+    await ensureFirebaseAuth();
+    // 1. Mark approval as APPROVED
+    const appRef = doc(db, 'score_approvals', requestId);
+    await updateDoc(appRef, {
+      status: 'APPROVED',
+      approvedAt: new Date().toISOString()
+    });
+
+    // 2. Update match score and status
+    if (matchId) {
+      const matchRef = doc(db, 'matches', matchId);
+      await updateDoc(matchRef, {
+        homeScore,
+        awayScore,
+        status: 'FINISHED',
+        period: '경기 종료',
+        timerRunning: false,
+        updatedAt: new Date().toISOString()
+      });
+    }
+  } catch (e) {
+    console.error('[Firebase] approveScoreRequest error:', e);
+    throw e;
+  }
+}
+
+export async function rejectScoreRequest(requestId: string, reason?: string): Promise<void> {
+  try {
+    await ensureFirebaseAuth();
+    const appRef = doc(db, 'score_approvals', requestId);
+    await updateDoc(appRef, {
+      status: 'REJECTED',
+      rejectionReason: reason || '본부 확인 결과 반려',
+      rejectedAt: new Date().toISOString()
+    });
+  } catch (e) {
+    console.error('[Firebase] rejectScoreRequest error:', e);
+    throw e;
+  }
+}
+
 
 

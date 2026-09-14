@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { UserProfile, FormationSlot, ClassLineup, SportType } from '../../types';
 import { saveLineup } from '../../services/firebaseService';
+import { db } from '../../lib/firebase';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { Shield, User, RefreshCw, CheckCircle, Lock, ArrowRightLeft } from 'lucide-react';
 
 interface SoccerFormationBuilderProps {
-  currentUser: UserProfile;
+  currentUser?: UserProfile | null;
   matchId: string;
-  classPlayers: UserProfile[]; // class students, teachers filtered out
+  classPlayers?: UserProfile[]; // class students, teachers filtered out
   currentLineup?: ClassLineup | null;
   onSaved?: () => void;
 }
@@ -60,6 +62,11 @@ export const SoccerFormationBuilder: React.FC<SoccerFormationBuilderProps> = ({
   currentLineup,
   onSaved
 }) => {
+  const userClassNum = currentUser?.classNum || '02';
+  const userGrade = currentUser?.grade || '3';
+  const userName = currentUser?.name || '학급 반장';
+  const userStudentId = currentUser?.studentId || `${userGrade}${userClassNum}01`;
+
   const [formationType, setFormationType] = useState<'4-4-2' | '4-3-3' | '3-5-2'>(
     currentLineup?.formation || '4-4-2'
   );
@@ -77,14 +84,48 @@ export const SoccerFormationBuilder: React.FC<SoccerFormationBuilderProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [savedNotice, setSavedNotice] = useState(false);
 
+  // Load existing lineup from Firestore if available
+  useEffect(() => {
+    if (!matchId) return;
+    const lineupId = `lineup_${matchId}_${userClassNum}`;
+    const unsub = onSnapshot(doc(db, 'lineups', lineupId), (snap) => {
+      if (snap.exists()) {
+        const data = snap.data() as ClassLineup;
+        if (data.formation) setFormationType(data.formation);
+        if (data.formationSlots && data.formationSlots.length > 0) {
+          setSlots(data.formationSlots);
+        }
+      }
+    }, (err) => console.log('Lineup snapshot info:', err));
+    return () => unsub();
+  }, [matchId, userClassNum]);
+
   // Filter out teachers from eligible players
   const eligibleStudents = classPlayers.filter((p) => !p.isTeacher && p.studentNum !== '00');
+
+  // Fallback generation if no registered students yet in class
+  const activeStudentsList = eligibleStudents.length > 0 ? eligibleStudents : Array.from({ length: 22 }, (_, idx) => {
+    const numStr = String(idx + 1).padStart(2, '0');
+    const sNames = ['강민우', '김도현', '박지훈', '손흥민', '이강인', '황희찬', '김민재', '조현우', '정우영', '이재성', '황인범', '설영우', '백승호', '조규성', '오현규', '배준호', '양민혁', '김태환', '정승현', '송범근', '김진수', '권경원'];
+    return {
+      uid: `temp_${numStr}`,
+      studentId: `${userGrade}${userClassNum}${numStr}`,
+      name: sNames[idx % sNames.length],
+      role: 'student' as const,
+      grade: userGrade,
+      classNum: userClassNum,
+      studentNum: numStr,
+      gender: 'male' as const,
+      isTeacher: false,
+      createdAt: new Date().toISOString()
+    };
+  });
 
   // Currently assigned player names
   const assignedPlayerNames = slots.map((s) => s.player).filter(Boolean) as string[];
 
   // Bench players (not assigned yet)
-  const benchPlayers = eligibleStudents.filter((s) => {
+  const benchPlayers = activeStudentsList.filter((s) => {
     const fullName = `${s.studentId} ${s.name}`;
     return !assignedPlayerNames.includes(fullName);
   });
@@ -130,15 +171,15 @@ export const SoccerFormationBuilder: React.FC<SoccerFormationBuilderProps> = ({
       const substitutes = benchPlayers.map((b) => `${b.studentId} ${b.name}`);
 
       const lineupData: ClassLineup = {
-        id: `lineup_${matchId}_${currentUser.classNum}`,
+        id: `lineup_${matchId}_${userClassNum}`,
         matchId,
-        classId: currentUser.classNum,
+        classId: userClassNum,
         sport: 'soccer',
         formation: formationType,
         formationSlots: slots,
         starterPlayers: starters,
         substitutePlayers: substitutes,
-        submittedBy: `${currentUser.studentId} ${currentUser.name} (반장)`,
+        submittedBy: `${userStudentId} ${userName} (반장)`,
         submittedAt: new Date().toISOString()
       };
 
@@ -160,7 +201,7 @@ export const SoccerFormationBuilder: React.FC<SoccerFormationBuilderProps> = ({
         <div>
           <h3 className="font-bold text-xs text-slate-900 dark:text-white flex items-center gap-1.5">
             <Shield className="w-4 h-4 text-red-600" />
-            {currentUser.classNum}반 축구 선발 포메이션 구성
+            {userGrade}학년 {userClassNum}반 축구 선발 포메이션 구성
           </h3>
           <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1">
             <Lock className="w-3 h-3 text-amber-500" />

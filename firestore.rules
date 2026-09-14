@@ -88,5 +88,10 @@ service cloud.firestore {
     match /reminders/{reminderId} {
       allow read, write: if true;
     }
+
+    // Score Approvals Collection
+    match /score_approvals/{approvalId} {
+      allow read, write: if true;
+    }
   }
 }

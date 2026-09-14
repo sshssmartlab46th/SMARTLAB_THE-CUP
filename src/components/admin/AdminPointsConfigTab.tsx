@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { SportPointsConfig, SportType } from '../../types';
-import { Trophy, Award, Medal, Check, Save } from 'lucide-react';
+import { listenPointsConfig, savePointsConfig } from '../../services/firebaseService';
+import { Trophy, Award, Medal, Check, Save, RefreshCw } from 'lucide-react';
 
 interface AdminPointsConfigTabProps {
   onNotice: (msg: string) => void;
@@ -99,6 +100,22 @@ export const AdminPointsConfigTab: React.FC<AdminPointsConfigTabProps> = ({
   });
 
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  // Sync real-time points config from Firestore
+  useEffect(() => {
+    const unsub = listenPointsConfig((cloudConfigs) => {
+      if (cloudConfigs && cloudConfigs.length > 0) {
+        setConfigs(cloudConfigs as SportPointsConfig[]);
+        try {
+          localStorage.setItem('sangsan_sport_points_config', JSON.stringify(cloudConfigs));
+        } catch {
+          // ignore local cache error
+        }
+      }
+    });
+    return () => unsub();
+  }, []);
 
   const handleValueChange = (sport: SportType, field: keyof SportPointsConfig, val: number) => {
     setConfigs(prev => prev.map(c => {
@@ -109,22 +126,31 @@ export const AdminPointsConfigTab: React.FC<AdminPointsConfigTabProps> = ({
     }));
   };
 
-  const handleSaveConfigs = () => {
+  const handleSaveConfigs = async () => {
+    setIsSyncing(true);
     try {
       localStorage.setItem('sangsan_sport_points_config', JSON.stringify(configs));
+      await savePointsConfig(configs);
       setSavedSuccess(true);
-      onNotice('종목별 배점 기준이 성공적으로 저장되었습니다. 학급 종합 순위에 즉시 반영됩니다.');
+      onNotice('종목별 배점 기준이 Firestore 클라우드에 성공적으로 동기화되었습니다. 전교 학급 종합 순위에 즉시 반영됩니다.');
       setTimeout(() => setSavedSuccess(false), 3000);
     } catch (err) {
       console.error(err);
-      alert('배점 설정 저장 중 오류가 발생했습니다.');
+      onNotice('배점 설정 로컬 저장 완료 (클라우드 오프라인)');
+    } finally {
+      setIsSyncing(false);
     }
   };
 
-  const handleResetDefaults = () => {
+  const handleResetDefaults = async () => {
     if (window.confirm('기본 배점 설정으로 초기화하시겠습니까?')) {
       setConfigs(DEFAULT_SPORT_POINTS);
-      localStorage.setItem('sangsan_sport_points_config', JSON.stringify(DEFAULT_SPORT_POINTS));
+      try {
+        localStorage.setItem('sangsan_sport_points_config', JSON.stringify(DEFAULT_SPORT_POINTS));
+        await savePointsConfig(DEFAULT_SPORT_POINTS);
+      } catch (err) {
+        console.warn(err);
+      }
       onNotice('배점 설정이 기본값으로 초기화되었습니다.');
     }
   };

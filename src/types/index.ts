@@ -29,6 +29,9 @@ export interface FestivalConfig {
   description?: string;
   updatedAt?: string;
   updatedBy?: string;
+  isEmergencyActive?: boolean;
+  emergencyReason?: string;
+  emergencyTriggeredAt?: string;
 }
 
 export interface FormationSlot {
@@ -91,6 +94,7 @@ export interface MatchItem {
   mvpCandidateIds?: string[];
   mvpWinner?: string;
   mvpVotingClosedAt?: string;
+  tournamentSlot?: 'QF1' | 'QF2' | 'QF3' | 'QF4' | 'SF1' | 'SF2' | 'FINAL' | 'BRONZE';
   events: TimelineEvent[];
   updatedAt: string;
 }

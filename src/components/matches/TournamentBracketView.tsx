@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { MatchItem, SportType } from '../../types';
-import { Trophy, Clock, MapPin, Bell, BellRing, ChevronRight, Activity, Flame, Filter } from 'lucide-react';
+import { Trophy, Clock, MapPin, Bell, BellRing, ChevronRight, Activity, Flame, Filter, GitMerge, LayoutList, Medal, Crown } from 'lucide-react';
+import { getMatchTournamentSlot } from '../../services/firebaseService';
 
 interface TournamentBracketViewProps {
   matches: MatchItem[];
@@ -20,6 +21,7 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
   onOpenMatchDetail
 }) => {
   const [selectedGrade, setSelectedGrade] = useState<'all' | '1' | '2' | '3'>('all');
+  const [viewMode, setViewMode] = useState<'tree' | 'list'>('tree');
 
   const sportsList: { key: SportType; label: string; genderNote: string }[] = [
     { key: 'soccer', label: '축구', genderNote: '남자 8개 반 (8강)' },
@@ -43,35 +45,169 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
 
   const isRelay = sport === 'relay_male' || sport === 'relay_female';
 
+  // Group matches by round for bracket tree view
+  const findMatchBySlot = (slot: 'QF1' | 'QF2' | 'QF3' | 'QF4' | 'SF1' | 'SF2' | 'FINAL' | 'BRONZE') => {
+    return sportMatches.find(m => getMatchTournamentSlot(m) === slot);
+  };
+
+  const qfMatches = sportMatches.filter(m => m.round?.includes('8강') || m.title?.includes('8강'));
+  const sfMatches = sportMatches.filter(m => (m.round?.includes('4강') || m.round?.includes('준결승') || m.title?.includes('4강') || m.title?.includes('준결승')) && !m.round?.includes('결승'));
+  const finalMatches = sportMatches.filter(m => (m.round?.includes('결승') || m.title?.includes('결승')) && !m.round?.includes('3') && !m.title?.includes('3'));
+  const bronzeMatches = sportMatches.filter(m => m.round?.includes('3') || m.title?.includes('3'));
+
+  const mFinal = findMatchBySlot('FINAL') || finalMatches[0];
+  const championTeam = mFinal && mFinal.status === 'FINISHED'
+    ? mFinal.homeScore > mFinal.awayScore
+      ? mFinal.homeTeam
+      : mFinal.awayScore > mFinal.homeScore
+      ? mFinal.awayTeam
+      : null
+    : null;
+
+  const renderBracketMatchCard = (m: MatchItem | undefined, placeholderTitle: string) => {
+    if (!m) {
+      return (
+        <div className="w-56 p-3.5 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900/40 text-xs text-slate-400 dark:text-slate-600 flex flex-col justify-center items-center h-28 select-none">
+          <span className="font-semibold">{placeholderTitle}</span>
+          <span className="text-[10px] mt-1 text-slate-400">대진 미정 (이전 라운드 대기)</span>
+        </div>
+      );
+    }
+
+    const hasReminder = userReminders.includes(m.id);
+    const isHomeWinner = m.status === 'FINISHED' && m.homeScore > m.awayScore;
+    const isAwayWinner = m.status === 'FINISHED' && m.awayScore > m.homeScore;
+
+    return (
+      <div 
+        onClick={() => onOpenMatchDetail?.(m)}
+        className="w-56 p-3 rounded-2xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 shadow-xs hover:border-red-500 hover:shadow-md transition cursor-pointer relative group select-none"
+      >
+        <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-100 dark:border-slate-800 text-[11px]">
+          <span className="font-bold text-slate-700 dark:text-slate-300 truncate">
+            {m.round || m.title}
+          </span>
+          <div className="flex items-center gap-1.5">
+            <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+              m.status === 'LIVE' 
+                ? 'bg-red-600 text-white animate-pulse' 
+                : m.status === 'FINISHED'
+                ? 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                : 'bg-blue-50 dark:bg-blue-950/60 text-blue-600'
+            }`}>
+              {m.status === 'LIVE' ? 'LIVE' : m.status === 'FINISHED' ? '종료' : '예정'}
+            </span>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleReminder(m);
+              }}
+              className={`p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer ${
+                hasReminder ? 'text-amber-500' : 'text-slate-300 hover:text-slate-500'
+              }`}
+            >
+              {hasReminder ? <BellRing className="w-3 h-3" /> : <Bell className="w-3 h-3" />}
+            </button>
+          </div>
+        </div>
+
+        {/* Home Team */}
+        <div className={`flex items-center justify-between py-1 px-1.5 rounded-lg text-xs transition ${
+          isHomeWinner ? 'bg-red-50 dark:bg-red-950/40 font-bold text-red-600 dark:text-red-400' : 'text-slate-800 dark:text-slate-200'
+        }`}>
+          <div className="flex items-center gap-1.5 truncate">
+            {isHomeWinner && <Crown className="w-3 h-3 text-amber-500 shrink-0" />}
+            <span className="truncate">{m.homeTeam}</span>
+          </div>
+          <span className="font-mono font-bold text-sm ml-2">
+            {m.status === 'FINISHED' || m.status === 'LIVE' ? m.homeScore : '-'}
+          </span>
+        </div>
+
+        {/* Away Team */}
+        <div className={`flex items-center justify-between py-1 px-1.5 rounded-lg text-xs transition mt-0.5 ${
+          isAwayWinner ? 'bg-red-50 dark:bg-red-950/40 font-bold text-red-600 dark:text-red-400' : 'text-slate-800 dark:text-slate-200'
+        }`}>
+          <div className="flex items-center gap-1.5 truncate">
+            {isAwayWinner && <Crown className="w-3 h-3 text-amber-500 shrink-0" />}
+            <span className="truncate">{m.awayTeam}</span>
+          </div>
+          <span className="font-mono font-bold text-sm ml-2">
+            {m.status === 'FINISHED' || m.status === 'LIVE' ? m.awayScore : '-'}
+          </span>
+        </div>
+
+        <div className="pt-1.5 mt-1 border-t border-slate-50 dark:border-slate-800/80 flex items-center justify-between text-[10px] text-slate-400">
+          <span>{m.court || '경기장'}</span>
+          <span>{m.startTime ? new Date(m.startTime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false }) : ''}</span>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-4">
       {/* Grade Selector & Sport Bar */}
       <div className="space-y-2">
-        {/* Grade Selector */}
-        <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl w-fit">
-          <span className="text-xs font-bold text-slate-500 dark:text-slate-400 px-2.5 py-1 flex items-center gap-1">
-            <Filter className="w-3.5 h-3.5" />
-            학년 필터:
-          </span>
-          {[
-            { key: 'all', label: '전체 학년' },
-            { key: '1', label: '1학년' },
-            { key: '2', label: '2학년' },
-            { key: '3', label: '3학년' }
-          ].map(g => (
-            <button
-              key={g.key}
-              type="button"
-              onClick={() => setSelectedGrade(g.key as any)}
-              className={`px-3 py-1 rounded-xl text-xs font-bold transition cursor-pointer ${
-                selectedGrade === g.key
-                  ? 'bg-white dark:bg-slate-900 text-red-600 dark:text-white shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-              }`}
-            >
-              {g.label}
-            </button>
-          ))}
+        {/* Controls Bar: Grade & View Mode */}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          {/* Grade Selector */}
+          <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl">
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 px-2.5 py-1 flex items-center gap-1">
+              <Filter className="w-3.5 h-3.5" />
+              학년 필터:
+            </span>
+            {[
+              { key: 'all', label: '전체 학년' },
+              { key: '1', label: '1학년' },
+              { key: '2', label: '2학년' },
+              { key: '3', label: '3학년' }
+            ].map(g => (
+              <button
+                key={g.key}
+                type="button"
+                onClick={() => setSelectedGrade(g.key as any)}
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition cursor-pointer ${
+                  selectedGrade === g.key
+                    ? 'bg-white dark:bg-slate-900 text-red-600 dark:text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                }`}
+              >
+                {g.label}
+              </button>
+            ))}
+          </div>
+
+          {/* View Mode Toggle: Tree vs List */}
+          {!isRelay && (
+            <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl">
+              <button
+                type="button"
+                onClick={() => setViewMode('tree')}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold transition cursor-pointer ${
+                  viewMode === 'tree'
+                    ? 'bg-white dark:bg-slate-900 text-red-600 dark:text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                }`}
+              >
+                <GitMerge className="w-3.5 h-3.5" />
+                <span>트리 대진표</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('list')}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold transition cursor-pointer ${
+                  viewMode === 'list'
+                    ? 'bg-white dark:bg-slate-900 text-red-600 dark:text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                }`}
+              >
+                <LayoutList className="w-3.5 h-3.5" />
+                <span>목록 카드</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Sport Bar */}
@@ -195,8 +331,92 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
             )}
           </div>
         </div>
+      ) : viewMode === 'tree' ? (
+        /* Real Tournament Tree Diagram */
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+            <div>
+              <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                <Trophy className="w-4 h-4 text-amber-500" />
+                {sportsList.find((s) => s.key === sport)?.label} 공식 토너먼트 대진 트리 ({selectedGrade === 'all' ? '전학년' : `${selectedGrade}학년`})
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                8강전 → 4강 준결승 → 결승전 및 최종 우승팀 대진도
+              </p>
+            </div>
+            {championTeam && (
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs font-bold animate-in fade-in">
+                <Crown className="w-4 h-4 text-amber-500" />
+                <span>우승: {championTeam}</span>
+              </div>
+            )}
+          </div>
+
+          {sportMatches.length === 0 ? (
+            <div className="py-12 text-center text-xs text-slate-400">
+              해당 종목 및 학년에 등록된 경기 대진표가 없습니다.
+            </div>
+          ) : (
+            <div className="overflow-x-auto pb-6 pt-2">
+              <div className="min-w-[650px] flex items-stretch justify-start gap-8 relative px-4">
+                {/* Column 1: 8강전 (Quarterfinals) - Show if 8-team tournament */}
+                {(qfMatches.length > 0 || findMatchBySlot('QF1') || findMatchBySlot('QF2')) && (
+                  <div className="flex flex-col justify-around gap-6">
+                    <div className="text-center font-bold text-xs text-slate-500 dark:text-slate-400 pb-2 border-b border-slate-200 dark:border-slate-800">
+                      8강전 (준준결승)
+                    </div>
+                    <div className="space-y-6">
+                      {renderBracketMatchCard(findMatchBySlot('QF1') || qfMatches[0], '8강 1경기')}
+                      {renderBracketMatchCard(findMatchBySlot('QF2') || qfMatches[1], '8강 2경기')}
+                    </div>
+                    <div className="space-y-6 mt-4">
+                      {renderBracketMatchCard(findMatchBySlot('QF3') || qfMatches[2], '8강 3경기')}
+                      {renderBracketMatchCard(findMatchBySlot('QF4') || qfMatches[3], '8강 4경기')}
+                    </div>
+                  </div>
+                )}
+
+                {/* Column 2: 4강전 (Semifinals) */}
+                <div className="flex flex-col justify-around gap-6">
+                  <div className="text-center font-bold text-xs text-slate-500 dark:text-slate-400 pb-2 border-b border-slate-200 dark:border-slate-800">
+                    4강전 (준결승)
+                  </div>
+                  <div className="flex flex-col justify-around h-full py-8 space-y-12">
+                    {renderBracketMatchCard(findMatchBySlot('SF1') || sfMatches[0] || (sportMatches.length > 4 ? sportMatches[4] : undefined), '4강 1경기 (준결승 A)')}
+                    {renderBracketMatchCard(findMatchBySlot('SF2') || sfMatches[1] || (sportMatches.length > 5 ? sportMatches[5] : undefined), '4강 2경기 (준결승 B)')}
+                  </div>
+                </div>
+
+                {/* Column 3: 결승전 & 3위 결정전 (Finals) */}
+                <div className="flex flex-col justify-around gap-6">
+                  <div className="text-center font-bold text-xs text-red-600 dark:text-red-400 pb-2 border-b border-red-200 dark:border-red-900/60 flex items-center justify-center gap-1">
+                    <Trophy className="w-3.5 h-3.5 text-amber-500" />
+                    <span>결승전 & 3·4위전</span>
+                  </div>
+                  <div className="flex flex-col justify-center h-full py-8 space-y-8">
+                    {/* Final Match Card */}
+                    <div className="relative">
+                      <div className="text-[10px] font-bold text-amber-600 dark:text-amber-400 mb-1 flex items-center gap-1">
+                        <Crown className="w-3 h-3 text-amber-500" /> 결승전 (1·2위 결정)
+                      </div>
+                      {renderBracketMatchCard(findMatchBySlot('FINAL') || finalMatches[0] || (sportMatches.length > 6 ? sportMatches[6] : undefined), '결승전 (우승 결정전)')}
+                    </div>
+
+                    {/* Bronze Match Card */}
+                    <div className="relative pt-4 border-t border-slate-100 dark:border-slate-800">
+                      <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1 flex items-center gap-1">
+                        <Medal className="w-3 h-3 text-amber-700" /> 3·4위 결정전
+                      </div>
+                      {renderBracketMatchCard(findMatchBySlot('BRONZE') || bronzeMatches[0] || (sportMatches.length > 7 ? sportMatches[7] : undefined), '3·4위 결정전')}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       ) : (
-        /* Tournament Bracket Layout */
+        /* Tournament List Layout */
         <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-xs space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
             <div>

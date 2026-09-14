@@ -73,6 +73,7 @@ export * from './pages/SuggestionBoxPage';
 export * from './pages/SettingsPage';
 export * from './pages/FormationInputPage';
 export * from './pages/AdminConsolePage';
+export * from './pages/RoleDashboardPage';
 export * from './pages/MessagesPage';
 
 // Project Documentation & Design Specification SSOT (Dead-code reference for AI models)

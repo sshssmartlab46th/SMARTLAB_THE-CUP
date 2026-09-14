@@ -27,11 +27,12 @@ export const AdminNoticeManagerTab: React.FC<AdminNoticeManagerTabProps> = ({
   const [linkUrl, setLinkUrl] = useState('');
   const [linkLabel, setLinkLabel] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<{ id: string; title: string } | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !content.trim()) {
-      alert('공지 제목과 내용을 입력해 주세요.');
+      onNotice('공지 제목과 내용을 입력해 주세요.');
       return;
     }
 
@@ -58,23 +59,22 @@ export const AdminNoticeManagerTab: React.FC<AdminNoticeManagerTabProps> = ({
       onNotice('공지사항이 성공적으로 등록되었습니다.');
     } catch (err) {
       console.error(err);
-      alert('공지 등록 중 오류가 발생했습니다.');
+      onNotice('공지 등록 중 오류가 발생했습니다.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleDelete = async (noticeId: string, noticeTitle: string) => {
-    if (!window.confirm(`"${noticeTitle}" 공지를 삭제하시겠습니까?`)) {
-      return;
-    }
+  const handleDelete = async () => {
+    if (!confirmDelete) return;
 
     try {
-      await deleteNotice(noticeId);
-      onNotice('공지가 정상적으로 삭제되었습니다.');
+      await deleteNotice(confirmDelete.id);
+      onNotice(`"${confirmDelete.title}" 공지가 정상적으로 삭제되었습니다.`);
+      setConfirmDelete(null);
     } catch (err) {
       console.error(err);
-      alert('공지 삭제에 실패했습니다.');
+      onNotice('공지 삭제에 실패했습니다.');
     }
   };
 
@@ -258,7 +258,7 @@ export const AdminNoticeManagerTab: React.FC<AdminNoticeManagerTabProps> = ({
 
                 <button
                   type="button"
-                  onClick={() => handleDelete(n.id, n.title)}
+                  onClick={() => setConfirmDelete({ id: n.id, title: n.title })}
                   className="self-end sm:self-start p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition cursor-pointer"
                   title="공지 삭제"
                 >
@@ -269,6 +269,44 @@ export const AdminNoticeManagerTab: React.FC<AdminNoticeManagerTabProps> = ({
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-5 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="p-2.5 rounded-xl bg-rose-100 dark:bg-rose-950/60 text-rose-600 shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="font-bold text-sm text-slate-900 dark:text-white">
+                  공지사항 영구 삭제
+                </h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  &quot;{confirmDelete.title}&quot; 공지를 삭제하시겠습니까? 삭제 즉시 전교생 및 교직원 화면에서 제거됩니다.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(null)}
+                className="px-3 py-1.5 text-xs font-bold rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 cursor-pointer"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                className="px-3.5 py-1.5 text-xs font-bold rounded-xl bg-rose-600 hover:bg-rose-700 text-white cursor-pointer shadow-xs"
+              >
+                삭제하기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

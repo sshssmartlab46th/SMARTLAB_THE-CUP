@@ -46,6 +46,7 @@ import {
   SettingsPage,
   FormationInputPage,
   AdminConsolePage,
+  RoleDashboardPage,
   MessagesPage,
   // Role Dashboard cards
   ClassScopeNoticeCard,
@@ -588,6 +589,15 @@ export default function App() {
           />
         )}
 
+        {activeTab === 'roledashboard' && (
+          <RoleDashboardPage
+            currentUser={currentUser}
+            matches={matches}
+            notices={notices}
+            onBackToHome={() => setActiveTab('home')}
+          />
+        )}
+
         {/* BRACKET VIEW */}
         {activeTab === 'bracket' && (
           <TournamentBracketView
@@ -665,47 +675,117 @@ export default function App() {
 
                 <div className="flex items-center gap-2">
                   {currentUser.role === 'admin' && (
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('admin')}
-                      className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition cursor-pointer shadow-xs"
-                    >
-                      어드민 콘솔 열기
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('admin')}
+                        className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition cursor-pointer shadow-xs"
+                      >
+                        어드민 콘솔 열기
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('roledashboard')}
+                        className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl transition cursor-pointer shadow-xs"
+                      >
+                        직무별 대시보드
+                      </button>
+                    </>
                   )}
                   {currentUser.role === 'class_president' && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('roledashboard')}
+                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition cursor-pointer shadow-xs"
+                      >
+                        학급 반장 전용 대시보드
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('formation')}
+                        className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl transition cursor-pointer shadow-xs"
+                      >
+                        라인업 제출
+                      </button>
+                    </>
+                  )}
+                  {currentUser.role === 'student_council' && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('roledashboard')}
+                        className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition cursor-pointer shadow-xs"
+                      >
+                        학생회 진행 대시보드
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (currentLiveMatch) {
+                            setActiveMatchForLive(currentLiveMatch);
+                            setActiveTab('live');
+                          } else {
+                            setActiveTab('schedule');
+                          }
+                        }}
+                        className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl transition cursor-pointer shadow-xs"
+                      >
+                        스코어보드 제어 (+1/-1)
+                      </button>
+                    </>
+                  )}
+                  {currentUser.role === 'referee' && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('roledashboard')}
+                        className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl transition cursor-pointer shadow-xs"
+                      >
+                        심판 전용 대시보드
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (currentLiveMatch) {
+                            setActiveMatchForLive(currentLiveMatch);
+                            setActiveTab('live');
+                          } else {
+                            setActiveTab('schedule');
+                          }
+                        }}
+                        className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl transition cursor-pointer shadow-xs"
+                      >
+                        실시간 기록판 제어
+                      </button>
+                    </>
+                  )}
+                  {currentUser.role === 'health_officer' && (
                     <button
                       type="button"
-                      onClick={() => setActiveTab('formation')}
-                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition cursor-pointer shadow-xs"
+                      onClick={() => setActiveTab('roledashboard')}
+                      className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl transition cursor-pointer shadow-xs"
                     >
-                      학급 라인업 제출
+                      의무실 전용 대시보드
                     </button>
                   )}
                   {currentUser.role === 'teacher' && (
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('schedule')}
-                      className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl transition cursor-pointer shadow-xs"
-                    >
-                      학급 대진 및 경기 참관
-                    </button>
-                  )}
-                  {(currentUser.role === 'referee' || currentUser.role === 'student_council') && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (currentLiveMatch) {
-                          setActiveMatchForLive(currentLiveMatch);
-                          setActiveTab('live');
-                        } else {
-                          setActiveTab('schedule');
-                        }
-                      }}
-                      className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl transition cursor-pointer shadow-xs"
-                    >
-                      실시간 스코어보드 제어 (+1/-1)
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('schedule')}
+                        className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl transition cursor-pointer shadow-xs"
+                      >
+                        학급 대진 및 경기 참관
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('roledashboard')}
+                        className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl transition cursor-pointer shadow-xs"
+                      >
+                        직무별 대시보드
+                      </button>
+                    </>
                   )}
                 </div>
               </div>

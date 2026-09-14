@@ -1,25 +1,42 @@
 import React, { useState } from 'react';
-import { MatchItem, SportType } from '../../types';
+import { MatchItem, SportType, UserProfile } from '../../types';
 import { SoccerFormationBuilder } from '../lineup/SoccerFormationBuilder';
 import { Users, Shield, Save, CheckCircle2, ChevronRight, AlertTriangle } from 'lucide-react';
 
 interface FormationInputPageProps {
   matches: MatchItem[];
   userClass?: string; // e.g., '302' or '3-2'
+  currentUser?: UserProfile | null;
+  allUsers?: UserProfile[];
 }
 
 export const FormationInputPage: React.FC<FormationInputPageProps> = ({
   matches,
-  userClass = '302'
+  userClass = '302',
+  currentUser,
+  allUsers = []
 }) => {
   const [selectedSport, setSelectedSport] = useState<SportType>('soccer');
   const [savedSuccess, setSavedSuccess] = useState(false);
 
+  // Normalize user class
+  const activeClassNum = currentUser?.classNum || (userClass.length === 3 ? userClass.slice(1) : userClass.replace(/[^\d]/g, '').slice(-2)) || '02';
+
+  // Filter players in this class
+  const classPlayers = allUsers.filter(u => {
+    if (u.isTeacher || u.studentNum === '00') return false;
+    const gradeMatch = currentUser?.grade ? u.grade === currentUser.grade : true;
+    const classMatch = u.classNum === activeClassNum || u.classNum === userClass;
+    return gradeMatch && classMatch;
+  });
+
   // Find matches relevant to this class
   const classMatches = matches.filter(m => 
     m.homeClass === userClass || m.awayClass === userClass ||
+    m.homeClass === activeClassNum || m.awayClass === activeClassNum ||
     m.homeTeam.includes(userClass) || m.awayTeam.includes(userClass) ||
-    m.homeTeam.includes('3-2') || m.awayTeam.includes('3-2')
+    m.homeTeam.includes(`${currentUser?.grade || '3'}-${activeClassNum}`) ||
+    m.awayTeam.includes(`${currentUser?.grade || '3'}-${activeClassNum}`)
   );
 
   const targetMatchId = classMatches.length > 0 ? classMatches[0].id : (matches[0]?.id || 'match-demo');
@@ -32,7 +49,7 @@ export const FormationInputPage: React.FC<FormationInputPageProps> = ({
           <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-400 text-slate-950">
             CLASS LEADER (반대표)
           </span>
-          <span className="text-xs text-slate-400">학급 스코프: {userClass}반</span>
+          <span className="text-xs text-slate-400">학급 스코프: {currentUser?.grade || '3'}학년 {activeClassNum}반</span>
         </div>
         <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2 mt-2">
           <Users className="w-6 h-6 text-red-600 dark:text-emerald-400" />
@@ -64,9 +81,9 @@ export const FormationInputPage: React.FC<FormationInputPageProps> = ({
       {/* Formation Builder Component Container */}
       <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-xs">
         <SoccerFormationBuilder
+          currentUser={currentUser}
           matchId={targetMatchId}
-          classId={userClass}
-          sport={selectedSport}
+          classPlayers={classPlayers}
           onSaved={() => {
             setSavedSuccess(true);
             setTimeout(() => setSavedSuccess(false), 3000);

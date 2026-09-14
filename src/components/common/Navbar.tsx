@@ -14,7 +14,6 @@ import {
   Calendar,
   LogIn,
   Shield,
-  BookOpen,
   CloudRain,
   CloudSun,
   Droplets,
@@ -42,7 +41,8 @@ export type MainNavTab =
   | 'messages'
   | 'settings' 
   | 'formation' 
-  | 'admin';
+  | 'admin'
+  | 'roledashboard';
 
 export interface NavbarProps {
   currentRole: UserRole;
@@ -204,8 +204,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 { tab: 'bracket', label: '대진표' },
                 { tab: 'schedule', label: '전체 일정' },
                 { tab: 'live', label: '실시간 현황' },
-                { tab: 'standings', label: '학급 순위' },
-                { tab: 'rules', label: '규정집' }
+                { tab: 'standings', label: '학급 순위' }
               ].map(t => (
                 <button
                   key={t.tab}
