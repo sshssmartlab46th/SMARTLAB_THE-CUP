@@ -147,6 +147,8 @@ export interface DirectMessage {
   toClass: string;
   toRole: string;
   content: string;
+  imageUrl?: string;
+  images?: string[];
   createdAt: string;
 }
 
@@ -177,6 +179,9 @@ export interface SuggestionItem {
   title: string;
   content: string;
   category?: string;
+  imageUrl?: string;
+  images?: string[];
+  status?: 'PENDING' | 'RESOLVED';
   answer?: string;
   answeredBy?: string;
   answeredAt?: string;

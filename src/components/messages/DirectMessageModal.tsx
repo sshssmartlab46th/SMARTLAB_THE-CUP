@@ -1,7 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { UserProfile, UserRole, DirectMessage } from '../../types';
 import { listenMessages, sendDirectMessage, listenAllUsers } from '../../services/firebaseService';
-import { Send, Users, MessageSquare, X, ShieldAlert, Check } from 'lucide-react';
+import { 
+  Send, 
+  Users, 
+  MessageSquare, 
+  X, 
+  ShieldAlert, 
+  Check, 
+  Image as ImageIcon,
+  ZoomIn,
+  Loader2
+} from 'lucide-react';
+import { compressImageFile } from '../../utils/imageCompressor';
+import { ImageLightboxModal } from '../common/ImageLightboxModal';
 
 interface DirectMessageModalProps {
   currentUser: UserProfile;
@@ -19,8 +31,13 @@ export const DirectMessageModal: React.FC<DirectMessageModalProps> = ({
   const [activeCategory, setActiveCategory] = useState<'class_president' | 'student_council' | 'admin' | 'teacher'>('class_president');
   const [selectedRecipient, setSelectedRecipient] = useState<string>('ALL'); // 'ALL' or specific user studentId
   const [messageText, setMessageText] = useState('');
+  const [attachedImage, setAttachedImage] = useState<string | null>(null);
+  const [isCompressing, setIsCompressing] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [sendSuccess, setSendSuccess] = useState(false);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Check if role is authorized (반장, 학생회, 관리자, 선생님만 가능)
   const isAuthorized = ['class_president', 'student_council', 'admin', 'teacher'].includes(currentUser.role);
@@ -68,9 +85,28 @@ export const DirectMessageModal: React.FC<DirectMessageModalProps> = ({
   // Filter users by active category
   const categoryUsers = users.filter((u) => u.role === activeCategory);
 
+  const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      alert('이미지 파일만 첨부할 수 있습니다.');
+      return;
+    }
+    setIsCompressing(true);
+    try {
+      const compressed = await compressImageFile(file, { maxWidth: 1200, maxHeight: 1200, quality: 0.75 });
+      setAttachedImage(compressed);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsCompressing(false);
+      e.target.value = '';
+    }
+  };
+
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!messageText.trim()) return;
+    if (!messageText.trim() && !attachedImage) return;
 
     setIsSending(true);
     try {
@@ -80,10 +116,13 @@ export const DirectMessageModal: React.FC<DirectMessageModalProps> = ({
         fromRole: currentUser.role,
         toClass: selectedRecipient === 'ALL' ? 'all' : selectedRecipient,
         toRole: activeCategory,
-        content: messageText.trim()
+        content: messageText.trim(),
+        imageUrl: attachedImage || undefined,
+        images: attachedImage ? [attachedImage] : undefined
       });
 
       setMessageText('');
+      setAttachedImage(null);
       setSendSuccess(true);
       setTimeout(() => setSendSuccess(false), 2500);
     } catch (err) {
@@ -220,6 +259,26 @@ export const DirectMessageModal: React.FC<DirectMessageModalProps> = ({
                         }`}
                       >
                         {m.content}
+
+                        {/* Attached Image inside bubble */}
+                        {(m.imageUrl || (m.images && m.images.length > 0)) && (
+                          <div className="mt-2">
+                            <div
+                              className="relative inline-block rounded-xl overflow-hidden border border-black/10 dark:border-white/10 cursor-pointer group max-w-[200px]"
+                              onClick={() => setLightboxSrc(m.imageUrl || m.images![0])}
+                            >
+                              <img
+                                src={m.imageUrl || m.images![0]}
+                                alt="첨부 이미지"
+                                referrerPolicy="no-referrer"
+                                className="max-h-36 w-auto object-cover rounded-xl group-hover:opacity-90 transition"
+                              />
+                              <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white">
+                                <ZoomIn className="w-4 h-4" />
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
@@ -234,7 +293,45 @@ export const DirectMessageModal: React.FC<DirectMessageModalProps> = ({
                   <Check className="w-3.5 h-3.5" /> 쪽지가 성공적으로 발송되었습니다.
                 </div>
               )}
+
+              {attachedImage && (
+                <div className="mb-2 flex items-center gap-2 p-1.5 bg-slate-100 dark:bg-slate-800 rounded-xl text-[11px]">
+                  <div
+                    className="relative w-8 h-8 rounded-lg overflow-hidden bg-slate-200 dark:bg-slate-700 cursor-pointer"
+                    onClick={() => setLightboxSrc(attachedImage)}
+                  >
+                    <img src={attachedImage} alt="첨부 미리보기" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
+                  </div>
+                  <span className="text-slate-600 dark:text-slate-300 font-medium">사진 1장 첨부됨</span>
+                  <button
+                    type="button"
+                    onClick={() => setAttachedImage(null)}
+                    className="ml-auto p-1 text-slate-400 hover:text-red-500 cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+
               <div className="flex items-center gap-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileInputChange}
+                  className="hidden"
+                  id="dm-modal-file-input"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isCompressing}
+                  className="p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition cursor-pointer shrink-0"
+                  title="사진 첨부"
+                >
+                  {isCompressing ? <Loader2 className="w-4 h-4 animate-spin text-red-500" /> : <ImageIcon className="w-4 h-4" />}
+                </button>
+
                 <input
                   type="text"
                   value={messageText}
@@ -244,8 +341,8 @@ export const DirectMessageModal: React.FC<DirectMessageModalProps> = ({
                 />
                 <button
                   type="submit"
-                  disabled={isSending || !messageText.trim()}
-                  className="p-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white rounded-xl transition shadow-xs"
+                  disabled={isSending || isCompressing || (!messageText.trim() && !attachedImage)}
+                  className="p-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white rounded-xl transition shadow-xs cursor-pointer shrink-0"
                 >
                   <Send className="w-4 h-4" />
                 </button>
@@ -254,6 +351,11 @@ export const DirectMessageModal: React.FC<DirectMessageModalProps> = ({
           </div>
         </div>
       </div>
+
+      <ImageLightboxModal
+        src={lightboxSrc}
+        onClose={() => setLightboxSrc(null)}
+      />
     </div>
   );
 };
