@@ -34,12 +34,9 @@ export const TodayScheduleCard: React.FC<TodayScheduleCardProps> = ({
   return (
     <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-xs transition-all">
       <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-        <div className="flex items-center gap-3">
-          <h2 className="font-bold text-sm sm:text-base text-slate-900 dark:text-white tracking-tight">
-            오늘 예정된 경기
-          </h2>
-          <WeatherWidget variant="compact" />
-        </div>
+        <h2 className="font-bold text-sm sm:text-base text-slate-900 dark:text-white tracking-tight">
+          오늘 예정된 경기
+        </h2>
         {onViewAll && (
           <button
             type="button"

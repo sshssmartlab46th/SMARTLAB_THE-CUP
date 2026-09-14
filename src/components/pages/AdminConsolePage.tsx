@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   MatchItem, 
   AuditLogEntry, 
   SuggestionItem, 
-  FestivalConfig
+  FestivalConfig,
+  UserProfile,
+  UserRole
 } from '../../types';
 import { 
   AdminEmergencyControlCard, 
@@ -17,12 +19,20 @@ import {
   Trophy, 
   CheckCircle2, 
   Plus, 
-  Shuffle
+  Shuffle,
+  Users,
+  Search,
+  Check,
+  Trash2,
+  UserCheck
 } from 'lucide-react';
 import { 
   createMatch, 
   updateFestivalConfig,
-  answerSuggestion 
+  answerSuggestion,
+  listenAllUsers,
+  updateUserRole,
+  deleteUser
 } from '../../services/firebaseService';
 
 interface AdminConsolePageProps {
@@ -39,7 +49,54 @@ export const AdminConsolePage: React.FC<AdminConsolePageProps> = ({
   inquiries,
   festivalConfig
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'overview' | 'brackets' | 'points' | 'audit'>('overview');
+  const [activeSubTab, setActiveSubTab] = useState<'overview' | 'roles' | 'brackets' | 'points' | 'audit'>('overview');
+
+  // User management state
+  const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
+  const [userSearch, setUserSearch] = useState('');
+  const [userActionNotice, setUserActionNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    const unsub = listenAllUsers((list) => {
+      setAllUsers(list);
+    });
+    return () => unsub();
+  }, []);
+
+  const handleRoleChange = async (studentId: string, role: UserRole) => {
+    try {
+      await updateUserRole(studentId, role);
+      setUserActionNotice(`학번 [${studentId}]의 역할이 [${getRoleLabel(role)}]로 변경되었습니다.`);
+      setTimeout(() => setUserActionNotice(null), 3500);
+    } catch (e) {
+      console.error(e);
+      alert('역할 변경 실패');
+    }
+  };
+
+  const handleDeleteUser = async (studentId: string, name: string) => {
+    if (confirm(`[${studentId} ${name}] 사용자를 삭제/초기화하시겠습니까? 재가입이 가능해집니다.`)) {
+      try {
+        await deleteUser(studentId);
+        setUserActionNotice(`학번 [${studentId}] 사용자가 삭제되었습니다.`);
+        setTimeout(() => setUserActionNotice(null), 3500);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  };
+
+  const getRoleLabel = (role: UserRole) => {
+    switch (role) {
+      case 'admin': return '총괄 관리자';
+      case 'student_council': return '학생회 / 체육부';
+      case 'class_president': return '학급 반장';
+      case 'teacher': return '교사 / 심판';
+      case 'health_officer': return '보건 / 의무담당';
+      case 'student': return '일반 학생';
+      default: return role;
+    }
+  };
 
   // Point scoring criteria setting (User request 3: 관리자가 정할 수 있게)
   const [pointsConfig, setPointsConfig] = useState({
@@ -145,9 +202,10 @@ export const AdminConsolePage: React.FC<AdminConsolePageProps> = ({
         </div>
 
         {/* Sub tabs */}
-        <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl">
+        <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl overflow-x-auto">
           {[
             { key: 'overview', label: '종합 관제' },
+            { key: 'roles', label: '학생 역할 지정 관리' },
             { key: 'brackets', label: '대진표 생성' },
             { key: 'points', label: '배점 기준 설정' },
             { key: 'audit', label: '감사 로그' }
@@ -156,7 +214,7 @@ export const AdminConsolePage: React.FC<AdminConsolePageProps> = ({
               key={t.key}
               type="button"
               onClick={() => setActiveSubTab(t.key as any)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap ${
                 activeSubTab === t.key
                   ? 'bg-white dark:bg-slate-900 text-red-600 dark:text-white shadow-xs'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
@@ -167,6 +225,129 @@ export const AdminConsolePage: React.FC<AdminConsolePageProps> = ({
           ))}
         </div>
       </div>
+
+      {userActionNotice && (
+        <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-2xl text-xs text-emerald-800 dark:text-emerald-300 font-medium flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+          <span>{userActionNotice}</span>
+        </div>
+      )}
+
+      {/* Roles Subtab: Admin Student Role Assignment */}
+      {activeSubTab === 'roles' && (
+        <div className="space-y-4">
+          <div className="p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-2xl text-xs text-amber-900 dark:text-amber-300 space-y-1">
+            <p className="font-bold flex items-center gap-1.5">
+              <UserCheck className="w-4 h-4 text-amber-600" />
+              학생 역할 배정 원칙 (Strict Role Rule)
+            </p>
+            <p className="leading-relaxed text-amber-800 dark:text-amber-400">
+              학생은 회원가입 시 스스로 역할을 고를 수 없으며, 기본 '일반 학생(교사는 번호 00으로 교사)'으로만 가입됩니다.
+              학생회, 반장, 심판, 보건담당 등의 특수 역할은 <strong>오직 이곳 총괄 관리자(어드민) 콘솔에서 지정할 때만</strong> 부여됩니다.
+            </p>
+          </div>
+
+          <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Users className="w-4 h-4 text-red-600" />
+                  전체 등록 회원 명단 및 역할 부여 ({allUsers.length}명)
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  학번 또는 이름으로 학생을 찾아 원하는 역할을 원클릭으로 지정하세요.
+                </p>
+              </div>
+
+              <div className="relative w-full sm:w-64">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                <input
+                  type="text"
+                  placeholder="학번 또는 이름 검색..."
+                  value={userSearch}
+                  onChange={(e) => setUserSearch(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:outline-hidden focus:border-red-500"
+                />
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 font-medium">
+                    <th className="py-2.5 px-3">학번</th>
+                    <th className="py-2.5 px-3">성명</th>
+                    <th className="py-2.5 px-3">학급</th>
+                    <th className="py-2.5 px-3">현재 역할</th>
+                    <th className="py-2.5 px-3">관리자 역할 지정</th>
+                    <th className="py-2.5 px-3 text-right">관리</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                  {allUsers
+                    .filter(u => !userSearch || u.studentId.includes(userSearch) || u.name.includes(userSearch))
+                    .map((user) => (
+                      <tr key={user.studentId} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition">
+                        <td className="py-3 px-3 font-mono font-bold text-slate-900 dark:text-white">
+                          {user.studentId}
+                        </td>
+                        <td className="py-3 px-3 font-bold text-slate-800 dark:text-slate-200">
+                          {user.name}
+                        </td>
+                        <td className="py-3 px-3 text-slate-500">
+                          {user.isTeacher ? '선생님' : `${user.grade}학년 ${user.classNum}반`}
+                        </td>
+                        <td className="py-3 px-3">
+                          <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
+                            user.role === 'admin' ? 'bg-red-600 text-white' :
+                            user.role === 'student_council' ? 'bg-blue-600 text-white' :
+                            user.role === 'class_president' ? 'bg-emerald-600 text-white' :
+                            user.role === 'teacher' ? 'bg-purple-600 text-white' :
+                            user.role === 'health_officer' ? 'bg-rose-600 text-white' :
+                            'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                          }`}>
+                            {getRoleLabel(user.role)}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3">
+                          <select
+                            value={user.role}
+                            onChange={(e) => handleRoleChange(user.studentId, e.target.value as UserRole)}
+                            className="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-medium text-xs focus:ring-2 focus:ring-red-500"
+                          >
+                            <option value="student">일반 학생 (기본)</option>
+                            <option value="class_president">학급 반장 (라인업 제출)</option>
+                            <option value="student_council">학생회 / 체육부 (점수 입력·공지)</option>
+                            <option value="teacher">교사 / 심판 (점수 심판)</option>
+                            <option value="health_officer">보건 / 의무본부 (부상백과 관리)</option>
+                            <option value="admin">총괄 관리자</option>
+                          </select>
+                        </td>
+                        <td className="py-3 px-3 text-right">
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteUser(user.studentId, user.name)}
+                            className="p-1.5 text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition"
+                            title="회원 삭제 (오타 학번 초기화)"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  {allUsers.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="py-8 text-center text-slate-400">
+                        현재 등록된 회원이 없습니다. 학생들이 로그인하면 여기에 실시간으로 표시됩니다.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
 
       {activeSubTab === 'overview' && (
         <div className="space-y-6">

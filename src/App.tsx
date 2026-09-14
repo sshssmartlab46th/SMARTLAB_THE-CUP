@@ -105,8 +105,15 @@ export default function App() {
     return currentUser?.role || 'student';
   });
 
-  // 2. Navigation & UI state (Independent Pages support)
-  const [activeTab, setActiveTab] = useState<MainNavTab>('home');
+  // 2. Navigation & UI state: Show login page by default on first entry
+  const [activeTab, setActiveTab] = useState<MainNavTab>(() => {
+    try {
+      const saved = localStorage.getItem('sangsan_current_user');
+      return saved ? 'home' : 'login';
+    } catch {
+      return 'login';
+    }
+  });
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
     return document.documentElement.classList.contains('dark');
   });
@@ -446,8 +453,9 @@ export default function App() {
         {/* INDEPENDENT PAGES ROUTING */}
         {activeTab === 'login' && (
           <LoginPage
-            onLoginSuccess={handleLoginSuccess}
+            onSuccess={handleLoginSuccess}
             onCancel={() => setActiveTab('home')}
+            onContinueAsGuest={() => setActiveTab('home')}
           />
         )}
 
@@ -558,182 +566,125 @@ export default function App() {
           <StandingsView standings={calculatedStandings as any} />
         )}
 
-        {/* HOME DASHBOARD / ROLE DASHBOARDS */}
+        {/* HOME DASHBOARD */}
         {activeTab === 'home' && (
-          <>
-            {/* Student standard view */}
-            {currentRole === 'student' && (
-              <div className="space-y-6">
-                <WeatherWidget variant="banner" />
-                <SafetyGuideCard onOpenInjuryEncyclopedia={() => setActiveTab('injury')} />
+          <div className="space-y-5">
+            {/* Special Role Quick Banner for authorized personnel */}
+            {currentUser && currentUser.role !== 'student' && (
+              <div className="p-3.5 bg-red-50/80 dark:bg-slate-900 border border-red-200 dark:border-slate-800 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-xs shadow-xs">
+                <div className="flex items-center gap-2">
+                  <span className={`px-2 py-0.5 rounded font-bold text-[11px] ${
+                    currentUser.role === 'admin' ? 'bg-red-600 text-white' :
+                    currentUser.role === 'student_council' ? 'bg-blue-600 text-white' :
+                    currentUser.role === 'class_president' ? 'bg-emerald-600 text-white' :
+                    currentUser.role === 'teacher' ? 'bg-purple-600 text-white' :
+                    'bg-slate-700 text-white'
+                  }`}>
+                    {currentUser.role === 'admin' ? '총괄 관리자' :
+                     currentUser.role === 'student_council' ? '학생회 / 체육부' :
+                     currentUser.role === 'class_president' ? '학급 반장' :
+                     currentUser.role === 'teacher' ? '교사 / 심판' :
+                     currentUser.role === 'health_officer' ? '보건 담당' : '특수 권한'}
+                  </span>
+                  <span className="font-medium text-slate-800 dark:text-slate-200">
+                    <strong>{currentUser.name}</strong> ({currentUser.isTeacher ? '교사' : `${currentUser.grade}-${currentUser.classNum}`}) 계정으로 인증되었습니다.
+                  </span>
+                </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                  <div className="lg:col-span-8 space-y-6">
-                    <LiveMatchHeroCard
-                      match={currentLiveMatch}
-                      onOpenLiveScore={() => {
+                <div className="flex items-center gap-2">
+                  {currentUser.role === 'admin' && (
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('admin')}
+                      className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition cursor-pointer shadow-xs"
+                    >
+                      어드민 콘솔 열기
+                    </button>
+                  )}
+                  {currentUser.role === 'class_president' && (
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('formation')}
+                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition cursor-pointer shadow-xs"
+                    >
+                      학급 라인업 제출
+                    </button>
+                  )}
+                  {currentUser.role === 'teacher' && (
+                    <button
+                      type="button"
+                      onClick={() => {
                         if (currentLiveMatch) {
                           setActiveMatchForLive(currentLiveMatch);
                           setActiveTab('live');
+                        } else {
+                          setActiveTab('schedule');
                         }
                       }}
-                      onCheerReaction={handleSendReaction}
-                      onToggleReminder={handleToggleReminder}
-                      isReminderSet={currentLiveMatch ? userReminders.includes(currentLiveMatch.id) : false}
-                    />
-
-                    <TodayScheduleCard
-                      matches={matches}
-                      userReminders={userReminders}
-                      onToggleReminder={handleToggleReminder}
-                      onSelectMatch={(m) => {
-                        setActiveMatchForLive(m);
-                        setActiveTab('live');
-                      }}
-                    />
-
-                    <TournamentSummaryCard
-                      matches={matches}
-                      onOpenFullBracket={() => setActiveTab('bracket')}
-                    />
-                  </div>
-
-                  <div className="lg:col-span-4 space-y-6">
-                    <ClassLeaderboardCard
-                      standings={calculatedStandings as any}
-                      onOpenFullStandings={() => setActiveTab('standings')}
-                    />
-
-                    <LiveCheersFeedCard
-                      cheers={cheersFeed}
-                      isSubmitting={isSubmittingCheer}
-                      onSubmitCheer={handleSubmitCheerMessage}
-                      disabledNotice={!currentUser ? '학번 로그인이 필요합니다' : undefined}
-                    />
-                  </div>
+                      className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl transition cursor-pointer shadow-xs"
+                    >
+                      실시간 스코어 기록
+                    </button>
+                  )}
                 </div>
               </div>
             )}
 
-            {/* Class Leader Role Dashboard */}
-            {currentRole === 'class_president' && (
-              <div className="space-y-6">
-                <ClassScopeNoticeCard
-                  classId={currentUser?.grade && currentUser?.classNum ? `${currentUser.grade}${currentUser.classNum.padStart(2, '0')}` : '302'}
-                  notices={notices}
+            {/* 3-Column Layout Matching Reference Design (image.png) */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+              {/* Left Column: Safety Guide Sidebar & Today's Schedule */}
+              <div className="lg:col-span-3 space-y-5">
+                <SafetyGuideCard onOpenInjuryEncyclopedia={() => setActiveTab('injury')} />
+
+                <TodayScheduleCard
+                  matches={matches}
+                  userReminders={userReminders}
+                  onToggleReminder={handleToggleReminder}
+                  onViewAll={() => setActiveTab('schedule')}
+                  onSelectMatch={(m) => {
+                    setActiveMatchForLive(m);
+                    setActiveTab('live');
+                  }}
                 />
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                  <div className="lg:col-span-8 space-y-6">
-                    <ClassRosterManagerCard
-                      classId={currentUser?.grade && currentUser?.classNum ? `${currentUser.grade}${currentUser.classNum.padStart(2, '0')}` : '302'}
-                    />
-                    <ClassScheduleInquiryCard
-                      classId={currentUser?.grade && currentUser?.classNum ? `${currentUser.grade}${currentUser.classNum.padStart(2, '0')}` : '302'}
-                      matches={matches}
-                    />
-                  </div>
-                  <div className="lg:col-span-4 space-y-6">
-                    <ClassLeaderSpecialActionsCard
-                      onOpenFormationBuilder={() => setActiveTab('formation')}
-                      onEmergencyMessage={() => setShowDirectMessageModal(true)}
-                    />
-                  </div>
-                </div>
               </div>
-            )}
 
-            {/* Student Council & Staff Role Dashboard */}
-            {currentRole === 'student_council' && (
-              <div className="space-y-6">
-                <StaffQuickControlCard
-                  onOpenNoticeComposer={() => setSelectedNoticeForPopup(notices[0] || null)}
-                  onOpenBracketModifier={() => setActiveTab('admin')}
+              {/* Center Column: Live Match Hero & Tournament Summary */}
+              <div className="lg:col-span-6 space-y-5">
+                <LiveMatchHeroCard
+                  match={currentLiveMatch}
+                  onOpenLiveScore={() => {
+                    if (currentLiveMatch) {
+                      setActiveMatchForLive(currentLiveMatch);
+                      setActiveTab('live');
+                    }
+                  }}
+                  onCheerReaction={handleSendReaction}
+                  onToggleReminder={handleToggleReminder}
+                  isReminderSet={currentLiveMatch ? userReminders.includes(currentLiveMatch.id) : false}
                 />
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                  <div className="lg:col-span-8 space-y-6">
-                    <StaffPendingResultsCard
-                      matches={matches.filter(m => m.status === 'IN_PROGRESS')}
-                      onConfirmScore={(matchId) => {
-                        updateMatch(matchId, { status: 'FINISHED', period: '경기종료' });
-                      }}
-                    />
-                  </div>
-                  <div className="lg:col-span-4 space-y-6">
-                    <StaffInventoryCard />
-                    <StaffFieldIssuesCard />
-                  </div>
-                </div>
-              </div>
-            )}
 
-            {/* Teacher & Referee Role Dashboard */}
-            {currentRole === 'teacher' && (
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                  <div className="lg:col-span-8 space-y-6">
-                    <RefereeScoreboardCard
-                      match={currentLiveMatch}
-                      onUpdateScore={(team, delta) => {
-                        if (!currentLiveMatch) return;
-                        const newHome = team === 'home' ? Math.max(0, currentLiveMatch.homeScore + delta) : currentLiveMatch.homeScore;
-                        const newAway = team === 'away' ? Math.max(0, currentLiveMatch.awayScore + delta) : currentLiveMatch.awayScore;
-                        updateScoreWithAudit(
-                          currentLiveMatch,
-                          newHome,
-                          newAway,
-                          '심판 점수 입력',
-                          { id: currentUser?.uid || 'teacher', name: currentUser?.name || '심판교사', role: 'teacher' }
-                        );
-                      }}
-                      onToggleTimer={() => {
-                        if (!currentLiveMatch) return;
-                        updateMatch(currentLiveMatch.id, { timerRunning: !currentLiveMatch.timerRunning });
-                      }}
-                      onEndMatch={() => {
-                        if (!currentLiveMatch) return;
-                        updateMatch(currentLiveMatch.id, { status: 'FINISHED', period: '경기종료' });
-                      }}
-                    />
-                    <RefereeSubstitutionsCard match={currentLiveMatch} />
-                  </div>
-                  <div className="lg:col-span-4 space-y-6">
-                    <RefereeAssignedMatchesCard
-                      matches={matches}
-                      selectedMatchId={currentLiveMatch?.id}
-                      onSelectMatch={(m) => setActiveMatchForLive(m)}
-                    />
-                    <RefereeSubmissionQueueCard />
-                  </div>
-                </div>
+                <TournamentSummaryCard
+                  matches={matches}
+                  onOpenFullBracket={() => setActiveTab('bracket')}
+                />
               </div>
-            )}
 
-            {/* Safety & Medical Officer Role Dashboard */}
-            {currentRole === 'health_officer' && (
-              <div className="space-y-6">
-                <MedicalEmergencyHotlineCard />
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                  <div className="lg:col-span-8 space-y-6">
-                    <MedicalTriageQueueCard onOpenEncyclopedia={() => setActiveTab('injury')} />
-                    <MedicalPatientTimelineCard />
-                  </div>
-                  <div className="lg:col-span-4 space-y-6">
-                    <MedicalSuppliesCard />
-                  </div>
-                </div>
+              {/* Right Column: Class Leaderboard & Live Cheers Feed */}
+              <div className="lg:col-span-3 space-y-5">
+                <ClassLeaderboardCard
+                  standings={calculatedStandings as any}
+                  onOpenFullStandings={() => setActiveTab('standings')}
+                />
+
+                <LiveCheersFeedCard
+                  cheers={cheersFeed}
+                  isSubmitting={isSubmittingCheer}
+                  onSubmitCheer={handleSubmitCheerMessage}
+                  disabledNotice={!currentUser ? '학번 로그인이 필요합니다' : undefined}
+                />
               </div>
-            )}
-
-            {/* Administrator Role Dashboard */}
-            {currentRole === 'admin' && (
-              <AdminConsolePage
-                matches={matches}
-                auditLogs={auditLogs}
-                inquiries={inquiries}
-                festivalConfig={festivalConfig}
-              />
-            )}
-          </>
+            </div>
+          </div>
         )}
       </main>
 

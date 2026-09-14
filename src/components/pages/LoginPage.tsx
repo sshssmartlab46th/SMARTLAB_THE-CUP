@@ -1,17 +1,18 @@
 import React, { useState } from 'react';
 import { parseStudentId } from '../../utils/studentIdParser';
 import { UserProfile } from '../../types';
-import { checkStudentIdExists, createAccount } from '../../services/firebaseService';
+import { checkStudentIdExists, createAccount, getUserProfile, syncUserProfile } from '../../services/firebaseService';
 import { SangsanLogo } from '../common/SangsanLogo';
 import { SmartlabLogo } from '../common/SmartlabLogo';
-import { Shield, CheckCircle, AlertTriangle, LogIn, UserCheck, Key, Lock, ArrowLeft, ArrowRight, User } from 'lucide-react';
+import { Shield, CheckCircle, AlertTriangle, LogIn, UserCheck, Key, Lock, ArrowLeft, ArrowRight, User, Eye } from 'lucide-react';
 
 interface LoginPageProps {
   onSuccess: (profile: UserProfile) => void;
   onCancel?: () => void;
+  onContinueAsGuest?: () => void;
 }
 
-export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onCancel }) => {
+export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onCancel, onContinueAsGuest }) => {
   const [tab, setTab] = useState<'student' | 'admin'>('student');
 
   // Student login / signup fields
@@ -37,11 +38,11 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onCancel }) => 
     const trimmedName = nameInput.trim();
 
     if (!trimmedId) {
-      setErrorMessage('5자리 학번을 입력해주세요. (예: 10101, 30215)');
+      setErrorMessage('5자리 학번을 입력해주세요. (예: 10101, 30215, 교사는 10100)');
       return;
     }
     if (!trimmedName) {
-      setErrorMessage('이름을 입력해주세요.');
+      setErrorMessage('성명(이름)을 입력해주세요.');
       return;
     }
 
@@ -53,6 +54,23 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onCancel }) => 
 
     setIsSubmitting(true);
     try {
+      // 1. Check if user already exists in DB (to preserve admin-assigned roles)
+      const existingUser = await getUserProfile(trimmedId);
+      if (existingUser) {
+        // Update name if changed & record lastLogin
+        const updatedProfile: UserProfile = {
+          ...existingUser,
+          name: trimmedName,
+          lastLogin: new Date().toISOString()
+        };
+        await syncUserProfile(updatedProfile);
+        localStorage.setItem('sangsan_current_user', JSON.stringify(updatedProfile));
+        onSuccess(updatedProfile);
+        return;
+      }
+
+      // 2. New User: Automatic role assignment (Teacher if ends in '00', else standard Student)
+      // Note: Students never choose their role; roles can only be granted by Admin (sshsgym)
       const isTeacher = parsed.isTeacher;
       const actualGrade = isTeacher ? '교사' : parsed.grade;
       const role = isTeacher ? 'teacher' : 'student';
@@ -112,15 +130,15 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onCancel }) => 
       return;
     }
 
-    // Official Sangsan Admin Credentials
-    if ((trimmedAdmin === 'sshsgym' || trimmedAdmin === 'admin') && (trimmedPw === 'sangsan2026' || trimmedPw === 'admin1234')) {
+    // Official Sangsan Admin Credentials (sshsgym / sshsgymgo)
+    if ((trimmedAdmin === 'sshsgym' || trimmedAdmin === 'admin') && (trimmedPw === 'sshsgymgo' || trimmedPw === 'admin1234' || trimmedPw === 'sangsan2026')) {
       const adminProfile: UserProfile = {
-        uid: 'admin_master',
+        uid: 'admin_sshsgym',
         studentId: 'sshsgym',
-        name: '총괄 관리자 (김태호)',
+        name: '총괄 관리자',
         role: 'admin',
-        grade: '관리자',
-        classNum: '본부',
+        grade: '본부',
+        classNum: '00',
         studentNum: '00',
         gender: 'other',
         isTeacher: true,
@@ -131,7 +149,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onCancel }) => 
       localStorage.setItem('sangsan_current_user', JSON.stringify(adminProfile));
       onSuccess(adminProfile);
     } else {
-      setErrorMessage('관리자 아이디 또는 비밀번호가 일치하지 않습니다.');
+      setErrorMessage('관리자 아이디 또는 비밀번호가 일치하지 않습니다. (아이디: sshsgym / 패스워드: sshsgymgo)');
     }
   };
 
@@ -280,6 +298,20 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onCancel }) => 
                 총괄 관리자 로그인
               </button>
             </form>
+          )}
+
+          {/* Guest preview button if user wants to look around first */}
+          {onContinueAsGuest && (
+            <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-center">
+              <button
+                type="button"
+                onClick={onContinueAsGuest}
+                className="text-xs text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition cursor-pointer flex items-center justify-center gap-1.5 mx-auto py-1"
+              >
+                <Eye className="w-3.5 h-3.5 text-slate-400" />
+                <span>로그인 없이 먼저 대시보드 둘러보기</span>
+              </button>
+            </div>
           )}
         </div>
       </div>

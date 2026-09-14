@@ -218,13 +218,13 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Right Tools & Shortcuts */}
         <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
-          {/* Real-time Open-Meteo Weather Badge & Popover */}
+          {/* Real-time Weather Badge & Popover */}
           <div className="relative" ref={weatherPopupRef}>
             <button
               type="button"
               onClick={() => setShowWeatherPopup(!showWeatherPopup)}
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
-              title="상산고 실시간 기상 정보 (Open-Meteo)"
+              title="상산고 실시간 기상 정보"
             >
               <span className={`w-2 h-2 rounded-full inline-block ${weatherRefreshing ? 'bg-amber-400 animate-pulse' : 'bg-emerald-500'}`} />
               <span className="hidden sm:inline font-semibold font-mono">{weather?.temp ?? 22}°C</span>
@@ -241,7 +241,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <MapPin className="w-3.5 h-3.5 text-red-600 dark:text-emerald-400" />
                     <div>
                       <div className="text-xs font-bold text-slate-900 dark:text-white">상산고 실시간 기상</div>
-                      <div className="text-[10px] text-slate-400">Open-Meteo 전주 효자동 관측</div>
+                      <div className="text-[10px] text-slate-400">전주시 완산구 효자동 상산고 운동장</div>
                     </div>
                   </div>
                   <button
@@ -300,7 +300,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             type="button"
             onClick={() => onTabChange('suggestions')}
-            title="익명 건의함"
+            title="건의함"
             className={`p-1.5 rounded-lg border transition cursor-pointer ${
               activeTab === 'suggestions'
                 ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500 text-emerald-600'
@@ -321,74 +321,82 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           )}
 
-          {/* Settings */}
-          <button
-            type="button"
-            onClick={() => onTabChange('settings')}
-            title="환경설정"
-            className={`p-1.5 rounded-lg border transition cursor-pointer ${
-              activeTab === 'settings'
-                ? 'bg-slate-100 dark:bg-slate-800 border-slate-400 text-slate-900 dark:text-white'
-                : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900'
-            }`}
-          >
-            <Settings className="w-4 h-4" />
-          </button>
-
-          {/* Theme toggle */}
-          <button
-            type="button"
-            onClick={onToggleDarkMode}
-            aria-label="Toggle Theme"
-            className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition cursor-pointer"
-          >
-            {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
-          </button>
-
-          {/* Role selector dropdown */}
-          <div className="relative">
-            <select
-              value={currentRole}
-              onChange={(e) => {
-                const newRole = e.target.value as UserRole;
-                onRoleChange(newRole);
-                if (newRole === 'class_president') {
-                  onTabChange('formation');
-                } else if (newRole === 'admin') {
-                  onTabChange('admin');
-                } else {
-                  onTabChange('home');
-                }
-              }}
-              className="text-xs bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-1.5 focus:outline-hidden focus:ring-1 focus:ring-red-500 cursor-pointer"
-            >
-              <option value="student">학생 (홈)</option>
-              <option value="class_president">반대표 (포메이션)</option>
-              <option value="student_council">학생회 (점수확정)</option>
-              <option value="teacher">교사/심판 (스코어)</option>
-              <option value="health_officer">보건담당 (트리아지)</option>
-              <option value="admin">총괄관리자 (어드민)</option>
-            </select>
-          </div>
-
-          {/* Login / Profile button */}
+          {/* User Role Badge (Assigned strictly by Admin) */}
           {userProfile ? (
-            <button
-              type="button"
-              onClick={onLogout}
-              title="로그아웃"
-              className="p-1.5 text-slate-400 hover:text-red-500 transition cursor-pointer"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-            </button>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
+                <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                  currentRole === 'admin' ? 'bg-red-600 text-white' :
+                  currentRole === 'student_council' ? 'bg-blue-600 text-white' :
+                  currentRole === 'class_president' ? 'bg-emerald-600 text-white' :
+                  currentRole === 'teacher' ? 'bg-purple-600 text-white' :
+                  currentRole === 'health_officer' ? 'bg-rose-600 text-white' :
+                  'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                }`}>
+                  {currentRole === 'admin' ? '총괄관리자' :
+                   currentRole === 'student_council' ? '학생회' :
+                   currentRole === 'class_president' ? '반장' :
+                   currentRole === 'teacher' ? '교사' :
+                   currentRole === 'health_officer' ? '보건담당' : '학생'}
+                </span>
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200 font-mono">
+                  {userProfile.studentId}
+                </span>
+                <span className="text-xs text-slate-600 dark:text-slate-400 hidden sm:inline">
+                  {userProfile.name}
+                </span>
+              </div>
+
+              {/* Admin Console Shortcut if Admin */}
+              {currentRole === 'admin' && (
+                <button
+                  type="button"
+                  onClick={() => onTabChange('admin')}
+                  className={`px-2 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                    activeTab === 'admin'
+                      ? 'bg-red-600 text-white'
+                      : 'bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 hover:bg-red-100'
+                  }`}
+                  title="관리자 콘솔 열기"
+                >
+                  어드민
+                </button>
+              )}
+
+              {/* Class President Formation Shortcut */}
+              {currentRole === 'class_president' && (
+                <button
+                  type="button"
+                  onClick={() => onTabChange('formation')}
+                  className={`px-2 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                    activeTab === 'formation'
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100'
+                  }`}
+                  title="학급 라인업 제출"
+                >
+                  라인업
+                </button>
+              )}
+
+              {/* Logout Button */}
+              <button
+                type="button"
+                onClick={onLogout}
+                title="로그아웃"
+                className="p-1.5 text-slate-400 hover:text-red-500 transition cursor-pointer"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+              </button>
+            </div>
           ) : (
             <button
               type="button"
               onClick={() => onTabChange('login')}
-              className="px-2.5 py-1.5 rounded-lg bg-red-600 dark:bg-emerald-500 text-white dark:text-slate-950 font-bold text-xs flex items-center gap-1 cursor-pointer"
+              className="px-3 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs transition"
             >
-              <LogIn className="w-3 h-3" />
-              로그인
+              <LogIn className="w-3.5 h-3.5" />
+              로그인 / 인증
             </button>
           )}
 
