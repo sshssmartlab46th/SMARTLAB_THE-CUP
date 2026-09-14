@@ -154,7 +154,7 @@ export const SuggestionModal: React.FC<SuggestionModalProps> = ({
                     )}
                   </div>
                   <span className="text-[11px] text-slate-400">
-                    {item.authorStudentId} {item.authorName} · {new Date(item.createdAt).toLocaleDateString()}
+                    {item.authorStudentId} {item.authorName} · {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ''}
                   </span>
                 </div>
 

@@ -43,7 +43,7 @@ export const AdminScoreApprovalCard: React.FC<AdminScoreApprovalCardProps> = ({
               미확정 포인트 누적
             </div>
             <div className="text-xl font-black font-mono text-amber-600 dark:text-amber-400">
-              {unconfirmedPointsTotal.toLocaleString()} pts
+              {(unconfirmedPointsTotal ?? 0).toLocaleString()} pts
             </div>
           </div>
           <span className="text-[11px] text-slate-400">

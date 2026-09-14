@@ -321,7 +321,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                       </div>
                       <div className="text-right text-[11px] text-slate-400">
                         <div>수정자: {log.modifiedByName} ({log.modifiedBy})</div>
-                        <div>{new Date(log.timestamp).toLocaleString()}</div>
+                        <div>{log.timestamp ? new Date(log.timestamp).toLocaleString() : '-'}</div>
                       </div>
                     </div>
                   ))

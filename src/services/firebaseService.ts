@@ -129,6 +129,36 @@ export function listenMatches(callback: (matches: MatchItem[]) => void): () => v
   }
 }
 
+export async function createMatch(matchData: Partial<MatchItem>): Promise<string> {
+  const id = matchData.id || `match-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+  const docRef = doc(db, 'matches', id);
+  const now = new Date().toISOString();
+  const fullMatch: MatchItem = {
+    id,
+    sport: matchData.sport || 'soccer',
+    matchType: matchData.matchType || 'tournament',
+    title: matchData.title || '새로운 경기',
+    round: matchData.round || '16강',
+    court: matchData.court || '대운동장 A',
+    status: matchData.status || 'SCHEDULED',
+    period: matchData.period || '경기전',
+    homeTeam: matchData.homeTeam || '미정',
+    awayTeam: matchData.awayTeam || '미정',
+    homeClass: matchData.homeClass || '101',
+    awayClass: matchData.awayClass || '102',
+    homeScore: matchData.homeScore || 0,
+    awayScore: matchData.awayScore || 0,
+    elapsedSeconds: 0,
+    timerRunning: matchData.timerRunning ?? false,
+    startTime: matchData.startTime || now,
+    events: [],
+    updatedAt: now,
+    ...matchData
+  };
+  await setDoc(docRef, fullMatch);
+  return id;
+}
+
 export async function updateMatch(matchId: string, partial: Partial<MatchItem>): Promise<void> {
   try {
     const docRef = doc(db, 'matches', matchId);
@@ -356,6 +386,19 @@ export async function sendCheerMessage(
     await setDoc(docRef, item);
   } catch (e) {
     console.error('[Firebase] sendCheerMessage error:', e);
+  }
+}
+
+export async function sendLiveReaction(reactionType: 'fire' | 'clap' | 'heart' | 'cheer'): Promise<void> {
+  try {
+    await ensureFirebaseAuth();
+    const docRef = doc(collection(db, 'live_reactions'));
+    await setDoc(docRef, {
+      reactionType,
+      timestamp: new Date().toISOString()
+    });
+  } catch (e) {
+    console.warn('[Firebase] sendLiveReaction error:', e);
   }
 }
 

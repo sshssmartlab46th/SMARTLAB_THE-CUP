@@ -102,7 +102,7 @@ export const LiveMatchHeroCard: React.FC<LiveMatchHeroCardProps> = ({
           className="w-full py-3 px-4 rounded-xl bg-red-600 hover:bg-red-700 dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white dark:text-slate-950 font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-xs transition disabled:opacity-50 cursor-pointer"
         >
           <Heart className="w-4 h-4 fill-current" />
-          <span>우리 학급 실시간 응원하기 ({cheerVotes.toLocaleString()}표)</span>
+          <span>우리 학급 실시간 응원하기 ({Number(cheerVotes ?? 0).toLocaleString()}표)</span>
         </button>
       </div>
     </div>

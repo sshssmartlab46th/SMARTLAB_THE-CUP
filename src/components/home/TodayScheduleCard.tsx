@@ -1,8 +1,10 @@
 import React from 'react';
 import { MatchItem } from '../../types';
+import { WeatherWidget } from '../common/WeatherWidget';
 
 export interface TodayScheduleCardProps {
   schedules?: MatchItem[];
+  matches?: MatchItem[];
   userReminders?: string[];
   onViewAll?: () => void;
   onSelectMatch?: (match: MatchItem) => void;
@@ -10,12 +12,14 @@ export interface TodayScheduleCardProps {
 }
 
 export const TodayScheduleCard: React.FC<TodayScheduleCardProps> = ({
-  schedules = [],
+  schedules,
+  matches,
   userReminders = [],
   onViewAll,
   onSelectMatch,
   onToggleReminder
 }) => {
+  const displaySchedules = schedules || matches || [];
   const formatTime = (timeStr?: string) => {
     if (!timeStr) return '-';
     if (timeStr.includes(':') && timeStr.length <= 5) return timeStr;
@@ -29,10 +33,13 @@ export const TodayScheduleCard: React.FC<TodayScheduleCardProps> = ({
 
   return (
     <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-xs transition-all">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="font-bold text-sm sm:text-base text-slate-900 dark:text-white tracking-tight">
-          오늘 예정된 경기
-        </h2>
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+        <div className="flex items-center gap-3">
+          <h2 className="font-bold text-sm sm:text-base text-slate-900 dark:text-white tracking-tight">
+            오늘 예정된 경기
+          </h2>
+          <WeatherWidget variant="compact" />
+        </div>
         {onViewAll && (
           <button
             type="button"
@@ -44,13 +51,13 @@ export const TodayScheduleCard: React.FC<TodayScheduleCardProps> = ({
         )}
       </div>
 
-      {schedules.length === 0 ? (
+      {displaySchedules.length === 0 ? (
         <div className="py-8 text-center text-slate-400 dark:text-slate-500 text-xs">
           오늘 예정된 경기 일정이 없습니다.
         </div>
       ) : (
         <div className="space-y-4">
-          {schedules.slice(0, 5).map((item) => {
+          {displaySchedules.slice(0, 5).map((item) => {
             const isFinished = item.status === 'FINISHED';
             const isLive = item.status === 'LIVE';
             const hasReminder = userReminders.includes(item.id);

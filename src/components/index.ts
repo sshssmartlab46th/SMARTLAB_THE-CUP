@@ -3,7 +3,9 @@ export * from './common/SangsanLogo';
 export * from './common/SmartlabLogo';
 export * from './common/Navbar';
 export * from './common/NoticeTickerBanner';
+export * from './common/NoticeModal';
 export * from './common/Footer';
+export * from './common/WeatherWidget';
 
 // Home / Student view components
 export * from './home/SafetyGuideCard';
@@ -56,6 +58,19 @@ export * from './matches/TournamentBracketView';
 export * from './matches/LiveMatchStatusView';
 export * from './matches/StandingsView';
 export * from './admin/AdminDashboardModal';
+
+// Dedicated Standalone Pages
+export * from './pages/LoginPage';
+export * from './pages/SchedulePage';
+export * from './pages/PrivacyPage';
+export * from './pages/RulesPage';
+export * from './pages/AboutSmartlabPage';
+export * from './pages/ContactInquiryPage';
+export * from './pages/InjuryEncyclopediaPage';
+export * from './pages/SuggestionBoxPage';
+export * from './pages/SettingsPage';
+export * from './pages/FormationInputPage';
+export * from './pages/AdminConsolePage';
 
 // Project Documentation & Design Specification SSOT (Dead-code reference for AI models)
 export * from '../docs/projectSpecification';

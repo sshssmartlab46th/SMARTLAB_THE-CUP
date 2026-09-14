@@ -57,7 +57,7 @@ export const AdminSystemStatusCard: React.FC<AdminSystemStatusCardProps> = ({
 
       {/* Stats row */}
       <div className="border-t border-slate-100 dark:border-slate-800 pt-3 space-y-3">
-        {totalMembersCount !== undefined && (
+        {totalMembersCount != null && (
           <div>
             <div className="text-[11px] text-slate-500 flex items-center justify-between">
               <span className="flex items-center gap-1">
@@ -66,9 +66,9 @@ export const AdminSystemStatusCard: React.FC<AdminSystemStatusCardProps> = ({
             </div>
             <div className="flex items-baseline gap-2 mt-1">
               <span className="text-xl font-black font-mono text-slate-900 dark:text-white">
-                {totalMembersCount.toLocaleString()}명
+                {(totalMembersCount ?? 0).toLocaleString()}명
               </span>
-              {unregisteredMembersCount !== undefined && (
+              {unregisteredMembersCount != null && (
                 <span className="text-xs text-slate-400">
                   미등록 {unregisteredMembersCount}명
                 </span>
@@ -77,7 +77,7 @@ export const AdminSystemStatusCard: React.FC<AdminSystemStatusCardProps> = ({
           </div>
         )}
 
-        {totalMatchesCount !== undefined && (
+        {totalMatchesCount != null && (
           <div>
             <div className="text-[11px] text-slate-500 flex items-center justify-between">
               <span className="flex items-center gap-1">

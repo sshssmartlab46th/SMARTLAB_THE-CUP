@@ -117,7 +117,7 @@ export const StandingsView: React.FC<StandingsViewProps> = ({ standings }) => {
                       {item.bronzeCount ?? 0}
                     </td>
                     <td className="p-3.5 text-right font-black font-mono text-sm sm:text-base text-red-600 dark:text-red-400">
-                      {(item.points || 0).toLocaleString()}P
+                      {Number(item.points ?? (item as any).totalPoints ?? 0).toLocaleString()}P
                     </td>
                   </tr>
                 );

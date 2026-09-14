@@ -154,11 +154,14 @@ export interface InjuryEntry {
 
 export interface SuggestionItem {
   id: string;
-  authorId: string;
+  authorId?: string;
   authorName: string;
-  authorStudentId: string;
+  authorStudentId?: string;
+  authorGrade?: string;
+  authorClass?: string;
   title: string;
   content: string;
+  category?: string;
   answer?: string;
   answeredBy?: string;
   answeredAt?: string;
@@ -185,9 +188,18 @@ export interface AuditLogEntry {
 // -------------------------------------------------------------
 
 export interface WeatherInfo {
-  temperature: string;
+  temperature: string | number;
+  temp?: number;
   condition: string;
-  precipitation: string;
+  precipitation: string | number;
+  rainProb?: number;
+  apparentTemp?: number;
+  humidity?: number;
+  windSpeed?: number;
+  weatherCode?: number;
+  isDay?: boolean;
+  statusText?: string;
+  lastUpdated?: string;
   uvIndex?: string;
 }
 

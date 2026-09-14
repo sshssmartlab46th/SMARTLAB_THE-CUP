@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { UserProfile, UserRole, WeatherInfo } from '../../types';
 import { SangsanLogo } from './SangsanLogo';
 import { SmartlabLogo } from './SmartlabLogo';
+import { useOpenMeteoWeather } from '../../hooks/useOpenMeteoWeather';
 import { 
   Sun, 
   Moon,
@@ -9,10 +10,38 @@ import {
   HelpCircle,
   Activity,
   LogOut,
-  Settings
+  Settings,
+  Calendar,
+  LogIn,
+  Shield,
+  BookOpen,
+  CloudRain,
+  CloudSun,
+  Droplets,
+  Wind,
+  Thermometer,
+  RefreshCw,
+  MapPin,
+  CheckCircle2,
+  AlertTriangle
 } from 'lucide-react';
 
-export type MainNavTab = 'home' | 'bracket' | 'live' | 'standings';
+export type MainNavTab = 
+  | 'home' 
+  | 'bracket' 
+  | 'live' 
+  | 'standings' 
+  | 'schedule' 
+  | 'login' 
+  | 'privacy' 
+  | 'rules' 
+  | 'smartlab' 
+  | 'contact' 
+  | 'injury' 
+  | 'suggestions' 
+  | 'settings' 
+  | 'formation' 
+  | 'admin';
 
 export interface NavbarProps {
   currentRole: UserRole;
@@ -36,7 +65,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onTabChange,
   onRoleChange,
   userProfile,
-  weather = { temp: 21, condition: '맑음', rainProb: 10 },
+  weather: propWeather,
   isDarkMode,
   onToggleDarkMode,
   onOpenMessages,
@@ -46,45 +75,75 @@ export const Navbar: React.FC<NavbarProps> = ({
   onLogout
 }) => {
   const isDashboardRole = currentRole !== 'student';
+  const { weather: liveWeather, refreshing: weatherRefreshing, refetch: refetchWeather } = useOpenMeteoWeather({
+    refreshIntervalMs: 60000 // Direct client-side refresh from Open-Meteo every 60s
+  });
+
+  const weather = liveWeather || propWeather || {
+    temp: 22,
+    temperature: 22,
+    condition: '맑음',
+    rainProb: 10,
+    precipitation: '10%',
+    apparentTemp: 22,
+    humidity: 55,
+    windSpeed: 8,
+    statusText: '야외 체육활동 및 경기 진행 최적'
+  };
+
+  const [showWeatherPopup, setShowWeatherPopup] = useState(false);
+  const weatherPopupRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (weatherPopupRef.current && !weatherPopupRef.current.contains(event.target as Node)) {
+        setShowWeatherPopup(false);
+      }
+    };
+    if (showWeatherPopup) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showWeatherPopup]);
 
   const getRoleHeaderInfo = (role: UserRole) => {
     switch (role) {
       case 'admin':
         return {
-          title: 'SYSTEM ADMINISTRATOR (총괄 관리자)',
+          title: 'SYSTEM ADMINISTRATOR',
+          scope: '전교 시스템 제어 & 전교 데이터',
           badgeColor: 'bg-red-600 text-white font-bold',
-          scope: '접근 권한: 전체 시스템 제어 & 전교 데이터',
-          lastActive: '방금 전 (14:24)'
+          lastActive: '방금 전'
         };
       case 'class_president':
         return {
-          title: 'CLASS LEADER (학급 반대표)',
-          badgeColor: 'bg-[#eab308] text-slate-950 font-bold',
-          scope: userProfile?.grade && userProfile?.classNum
-            ? `접근 권한: ${userProfile.grade}학년 ${userProfile.classNum}반 전용 채널`
-            : '접근 권한: 3학년 2반 전용 채널',
-          lastActive: '5분 전 (14:19)'
+          title: 'CLASS LEADER (반대표)',
+          scope: '소속 학급 전용 라인업 및 선수 소집',
+          badgeColor: 'bg-amber-400 text-slate-950 font-bold',
+          lastActive: '3분 전'
         };
       case 'student_council':
         return {
-          title: 'STUDENT COUNCIL & SPORTS COMMITTEE (학생회 / 체육부)',
-          badgeColor: 'bg-slate-900 text-white font-bold border border-slate-700 dark:bg-slate-800',
-          scope: '접근 권한: 대회 현장 운영 & 자원 배치',
-          lastActive: '3분 전 (14:21)'
+          title: 'STUDENT COUNCIL & SPORTS COMMITTEE',
+          scope: '경기 진행 지원 및 점수 확정',
+          badgeColor: 'bg-blue-600 text-white font-bold',
+          lastActive: '방금 전'
         };
       case 'teacher':
         return {
           title: 'MATCH OPERATOR (심판 · 기록원)',
+          scope: '오프라인 캐싱 지원 배정 경기 기록',
           badgeColor: 'bg-red-600 text-white font-bold',
-          scope: '경기 권한: 배정 경기 득점 및 로스터 제어',
-          lastActive: '방금 전 (15:02)'
+          lastActive: '1분 전'
         };
       case 'health_officer':
         return {
           title: 'SAFETY & MEDICAL OFFICER (보건 안전 의무 본부)',
-          badgeColor: 'bg-[#0284c7] text-white font-bold',
-          scope: '의무 권한: 전교 부상자 발생 접수, 환자 이송 및 연락 제어',
-          lastActive: '방금 전 (15:03)'
+          scope: '실시간 트리아지 및 응급조치',
+          badgeColor: 'bg-sky-500 text-white font-bold',
+          lastActive: '방금 전'
         };
       default:
         return null;
@@ -94,35 +153,13 @@ export const Navbar: React.FC<NavbarProps> = ({
   const roleInfo = isDashboardRole ? getRoleHeaderInfo(currentRole) : null;
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-[#0b0f19]/95 backdrop-blur-md transition-colors duration-200">
-      {/* Top Banner Alert Strip matching PDF Page 7 and Page 8 */}
-      {currentRole === 'teacher' && (
-        <div className="bg-sky-50 dark:bg-sky-950/40 text-sky-800 dark:text-sky-300 border-b border-sky-100 dark:border-sky-900/50 text-[11px] sm:text-xs px-4 sm:px-6 py-1.5 flex items-center justify-between font-medium">
-          <div className="flex items-center gap-1.5 truncate">
-            <span>📡</span>
-            <span className="font-bold">실시간 로컬 백업 활성화됨 • 오프라인 임시 저장 지원</span>
-          </div>
-          <span className="hidden md:inline text-sky-600 dark:text-sky-400 text-[11px]">
-            네트워크 연결 손실 시에도 입력된 스코어와 메모가 브라우저에 캐싱되어 보존됩니다.
-          </span>
-        </div>
-      )}
-
-      {currentRole === 'health_officer' && (
-        <div className="bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border-b border-amber-100 dark:border-amber-900/50 text-[11px] sm:text-xs px-4 sm:px-6 py-1.5 flex items-center justify-between font-medium">
-          <div className="flex items-center gap-1.5 truncate">
-            <span>⚠️</span>
-            <span className="font-bold">학생 개인정보 및 의료 민감 데이터 보호 의무 대상 화면</span>
-          </div>
-          <span className="hidden md:inline text-amber-600 dark:text-amber-400 text-[11px]">
-            환자 기본 정보 및 보호자 비상 연락처 노출 방지에 유의하세요. 허가받지 않은 모바일 촬영 및 화면 공유는 법적으로 금지됩니다.
-          </span>
-        </div>
-      )}
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
-        {/* Left: Brand logo & titles matching design */}
-        <div className="flex items-center gap-3 shrink-0">
+    <header className="sticky top-0 z-40 w-full border-b border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-[#0b0f19]/90 backdrop-blur-md transition-colors">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+        {/* Left: Sangsan Crest & App Title */}
+        <div 
+          onClick={() => onTabChange('home')}
+          className="flex items-center gap-3 shrink-0 cursor-pointer select-none"
+        >
           <SangsanLogo size={36} />
           <div>
             <div className="flex items-center gap-1.5">
@@ -141,7 +178,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         </div>
 
-        {/* Center: Main Nav Tabs (for Student) or Role Pill (for Dashboard) */}
+        {/* Center: Main Nav Tabs */}
         <div className="hidden md:flex items-center justify-center flex-1">
           {roleInfo ? (
             <div className="flex items-center gap-3 text-xs">
@@ -153,111 +190,157 @@ export const Navbar: React.FC<NavbarProps> = ({
               </span>
             </div>
           ) : (
-            <nav className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => onTabChange('home')}
-                className={`px-3.5 py-1.5 text-xs font-semibold rounded-full transition ${
-                  activeTab === 'home'
-                    ? 'bg-red-600 dark:bg-emerald-500 text-white dark:text-slate-950 shadow-xs'
-                    : 'text-slate-700 dark:text-slate-300 hover:text-red-600 dark:hover:text-emerald-400'
-                }`}
-              >
-                종합 홈
-              </button>
-              <button
-                type="button"
-                onClick={() => onTabChange('bracket')}
-                className={`px-3.5 py-1.5 text-xs font-semibold rounded-full transition ${
-                  activeTab === 'bracket'
-                    ? 'bg-red-600 dark:bg-emerald-500 text-white dark:text-slate-950 shadow-xs'
-                    : 'text-slate-700 dark:text-slate-300 hover:text-red-600 dark:hover:text-emerald-400'
-                }`}
-              >
-                대진표
-              </button>
-              <button
-                type="button"
-                onClick={() => onTabChange('live')}
-                className={`px-3.5 py-1.5 text-xs font-semibold rounded-full transition ${
-                  activeTab === 'live'
-                    ? 'bg-red-600 dark:bg-emerald-500 text-white dark:text-slate-950 shadow-xs'
-                    : 'text-slate-700 dark:text-slate-300 hover:text-red-600 dark:hover:text-emerald-400'
-                }`}
-              >
-                실시간 현황
-              </button>
-              <button
-                type="button"
-                onClick={() => onTabChange('standings')}
-                className={`px-3.5 py-1.5 text-xs font-semibold rounded-full transition ${
-                  activeTab === 'standings'
-                    ? 'bg-red-600 dark:bg-emerald-500 text-white dark:text-slate-950 shadow-xs'
-                    : 'text-slate-700 dark:text-slate-300 hover:text-red-600 dark:hover:text-emerald-400'
-                }`}
-              >
-                학급 순위
-              </button>
+            <nav className="flex items-center gap-1 overflow-x-auto py-1">
+              {[
+                { tab: 'home', label: '종합 홈' },
+                { tab: 'bracket', label: '대진표' },
+                { tab: 'schedule', label: '전체 일정' },
+                { tab: 'live', label: '실시간 현황' },
+                { tab: 'standings', label: '학급 순위' },
+                { tab: 'rules', label: '규정집' }
+              ].map(t => (
+                <button
+                  key={t.tab}
+                  type="button"
+                  onClick={() => onTabChange(t.tab as MainNavTab)}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-full transition cursor-pointer whitespace-nowrap ${
+                    activeTab === t.tab
+                      ? 'bg-red-600 dark:bg-emerald-500 text-white dark:text-slate-950 shadow-xs'
+                      : 'text-slate-700 dark:text-slate-300 hover:text-red-600 dark:hover:text-emerald-400'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
             </nav>
           )}
         </div>
 
-        {/* Right tools: Weather/Activity, Role Selector, Theme toggle & Smartlab Logo */}
-        <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
-          {/* Weather on Home board or Last Activity on Dashboard */}
-          {!isDashboardRole ? (
-            <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300 font-medium">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
-              <span>{weather?.temp || 21}°C {weather?.condition || '맑음'} (강수 {weather?.rainProb || 10}%)</span>
-            </div>
-          ) : (
-            roleInfo && (
-              <span className="hidden lg:inline text-xs text-slate-500 dark:text-slate-400 font-medium">
-                마지막 활동: {roleInfo.lastActive}
-              </span>
-            )
-          )}
+        {/* Right Tools & Shortcuts */}
+        <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+          {/* Real-time Open-Meteo Weather Badge & Popover */}
+          <div className="relative" ref={weatherPopupRef}>
+            <button
+              type="button"
+              onClick={() => setShowWeatherPopup(!showWeatherPopup)}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
+              title="상산고 실시간 기상 정보 (Open-Meteo)"
+            >
+              <span className={`w-2 h-2 rounded-full inline-block ${weatherRefreshing ? 'bg-amber-400 animate-pulse' : 'bg-emerald-500'}`} />
+              <span className="hidden sm:inline font-semibold font-mono">{weather?.temp ?? 22}°C</span>
+              <span className="hidden md:inline text-slate-500 dark:text-slate-400">{weather?.condition ?? '맑음'}</span>
+              <span className="hidden lg:inline text-slate-400">(강수 {weather?.rainProb ?? 10}%)</span>
+              <RefreshCw className={`w-3 h-3 text-slate-400 ml-0.5 ${weatherRefreshing ? 'animate-spin text-red-600 dark:text-emerald-400' : ''}`} />
+            </button>
+
+            {/* Weather Popover */}
+            {showWeatherPopup && (
+              <div className="absolute right-0 mt-2 w-72 sm:w-80 p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl z-50 animate-in fade-in zoom-in-95 duration-150">
+                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5 mb-3">
+                  <div className="flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-red-600 dark:text-emerald-400" />
+                    <div>
+                      <div className="text-xs font-bold text-slate-900 dark:text-white">상산고 실시간 기상</div>
+                      <div className="text-[10px] text-slate-400">Open-Meteo 전주 효자동 관측</div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => refetchWeather()}
+                    disabled={weatherRefreshing}
+                    className="p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition cursor-pointer flex items-center gap-1 text-[11px]"
+                    title="기상 실시간 새로고침"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${weatherRefreshing ? 'animate-spin text-red-600' : ''}`} />
+                    <span>{weather.lastUpdated ? `${weather.lastUpdated} 갱신` : '새로고침'}</span>
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <div className="text-3xl font-black font-mono text-slate-900 dark:text-white">
+                      {weather?.temp ?? 22}°C
+                    </div>
+                    <div className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-0.5">
+                      {weather?.condition ?? '맑음'} · 체감 {weather?.apparentTemp ?? 22}°C
+                    </div>
+                  </div>
+                  <div className="text-right space-y-1 text-[11px] font-mono">
+                    <div className="px-2 py-1 rounded bg-slate-50 dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-bold">
+                      강수확률 {weather?.rainProb ?? 10}%
+                    </div>
+                    <div className="px-2 py-0.5 rounded bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+                      습도 {weather?.humidity ?? 55}% · 풍속 {weather?.windSpeed ?? 8}km/h
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 text-xs text-slate-600 dark:text-slate-300 flex items-start gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 mt-0.5 shrink-0" />
+                  <span className="leading-snug text-[11px]">{weather?.statusText || '야외 체육활동 및 경기 진행에 적합한 날씨입니다.'}</span>
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Quick Shortcuts */}
-          {onOpenInjuries && (
-            <button
-              type="button"
-              onClick={onOpenInjuries}
-              title="부상백과"
-              className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-red-600 dark:hover:text-emerald-400 transition"
-            >
-              <Activity className="w-4 h-4" />
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => onTabChange('injury')}
+            title="부상백과"
+            className={`p-1.5 rounded-lg border transition cursor-pointer ${
+              activeTab === 'injury'
+                ? 'bg-red-50 dark:bg-red-950/40 border-red-500 text-red-600'
+                : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-red-600'
+            }`}
+          >
+            <Activity className="w-4 h-4" />
+          </button>
 
-          {onOpenSuggestions && (
-            <button
-              type="button"
-              onClick={onOpenSuggestions}
-              title="건의함"
-              className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-blue-500 transition"
-            >
-              <HelpCircle className="w-4 h-4" />
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => onTabChange('suggestions')}
+            title="익명 건의함"
+            className={`p-1.5 rounded-lg border transition cursor-pointer ${
+              activeTab === 'suggestions'
+                ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500 text-emerald-600'
+                : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-emerald-500'
+            }`}
+          >
+            <HelpCircle className="w-4 h-4" />
+          </button>
 
-          {onOpenMessages && ['class_president', 'student_council', 'admin', 'teacher'].includes(currentRole) && (
+          {['class_president', 'student_council', 'admin', 'teacher'].includes(currentRole) && (
             <button
               type="button"
               onClick={onOpenMessages}
-              title="쪽지"
-              className="p-1.5 rounded-lg border border-red-200 dark:border-red-900/60 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition"
+              title="비상 쪽지"
+              className="p-1.5 rounded-lg border border-red-200 dark:border-red-900/60 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition cursor-pointer"
             >
               <MessageSquare className="w-4 h-4" />
             </button>
           )}
+
+          {/* Settings */}
+          <button
+            type="button"
+            onClick={() => onTabChange('settings')}
+            title="환경설정"
+            className={`p-1.5 rounded-lg border transition cursor-pointer ${
+              activeTab === 'settings'
+                ? 'bg-slate-100 dark:bg-slate-800 border-slate-400 text-slate-900 dark:text-white'
+                : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900'
+            }`}
+          >
+            <Settings className="w-4 h-4" />
+          </button>
 
           {/* Theme toggle */}
           <button
             type="button"
             onClick={onToggleDarkMode}
             aria-label="Toggle Theme"
-            className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition"
+            className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition cursor-pointer"
           >
             {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
           </button>
@@ -266,32 +349,53 @@ export const Navbar: React.FC<NavbarProps> = ({
           <div className="relative">
             <select
               value={currentRole}
-              onChange={(e) => onRoleChange(e.target.value as UserRole)}
-              className="text-xs bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-1.5 focus:outline-hidden focus:ring-1 focus:ring-red-500"
+              onChange={(e) => {
+                const newRole = e.target.value as UserRole;
+                onRoleChange(newRole);
+                if (newRole === 'class_president') {
+                  onTabChange('formation');
+                } else if (newRole === 'admin') {
+                  onTabChange('admin');
+                } else {
+                  onTabChange('home');
+                }
+              }}
+              className="text-xs bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-1.5 focus:outline-hidden focus:ring-1 focus:ring-red-500 cursor-pointer"
             >
               <option value="student">학생 (홈)</option>
-              <option value="class_president">반대표</option>
-              <option value="student_council">학생회</option>
-              <option value="teacher">교사/심판</option>
-              <option value="health_officer">보건담당</option>
-              <option value="admin">총괄관리자</option>
+              <option value="class_president">반대표 (포메이션)</option>
+              <option value="student_council">학생회 (점수확정)</option>
+              <option value="teacher">교사/심판 (스코어)</option>
+              <option value="health_officer">보건담당 (트리아지)</option>
+              <option value="admin">총괄관리자 (어드민)</option>
             </select>
           </div>
 
-          {/* User profile identifier & Logout */}
-          {userProfile && (
+          {/* Login / Profile button */}
+          {userProfile ? (
             <button
               type="button"
               onClick={onLogout}
               title="로그아웃"
-              className="p-1.5 text-slate-400 hover:text-red-500 transition"
+              className="p-1.5 text-slate-400 hover:text-red-500 transition cursor-pointer"
             >
               <LogOut className="w-3.5 h-3.5" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onTabChange('login')}
+              className="px-2.5 py-1.5 rounded-lg bg-red-600 dark:bg-emerald-500 text-white dark:text-slate-950 font-bold text-xs flex items-center gap-1 cursor-pointer"
+            >
+              <LogIn className="w-3 h-3" />
+              로그인
             </button>
           )}
 
           {/* Smartlab official logo */}
-          <SmartlabLogo size={28} showText={true} />
+          <div onClick={() => onTabChange('smartlab')} className="cursor-pointer">
+            <SmartlabLogo size={28} showText={true} />
+          </div>
         </div>
       </div>
     </header>

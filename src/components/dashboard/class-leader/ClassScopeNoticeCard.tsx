@@ -41,7 +41,7 @@ export const ClassScopeNoticeCard: React.FC<ClassScopeNoticeCardProps> = ({
           </div>
           <div className="flex items-baseline gap-2">
             <span className="text-2xl font-black font-mono text-slate-900 dark:text-white">
-              {totalPoints !== undefined ? `${totalPoints.toLocaleString()} pts` : '-'}
+              {totalPoints != null ? `${Number(totalPoints || 0).toLocaleString()} pts` : '-'}
             </span>
             {currentRank !== undefined && (
               <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
