@@ -34,6 +34,7 @@ import {
   SafetyGuideCard,
   TournamentSummaryCard,
   WeatherWidget,
+  WeatherAtmosphereOverlay,
   // Independent pages
   LoginPage,
   SchedulePage,
@@ -48,6 +49,7 @@ import {
   AdminConsolePage,
   RoleDashboardPage,
   MessagesPage,
+  WeatherDetailPage,
   // Role Dashboard cards
   ClassScopeNoticeCard,
   ClassRosterManagerCard,
@@ -93,9 +95,16 @@ import {
 } from './services/firebaseService';
 import { parseStudentId } from './utils/studentIdParser';
 import { filterProfanity } from './utils/profanityFilter';
+import { getKSTNowParts } from './utils/kstTime';
+import { useOpenMeteoWeather } from './hooks/useOpenMeteoWeather';
 import { ShieldAlert, LogIn, Lock } from 'lucide-react';
 
 export default function App() {
+  // Real-time Weather & Atmospheric Visual Effects
+  const { weather, refreshing: weatherRefreshing, refetch: refetchWeather } = useOpenMeteoWeather({
+    refreshIntervalMs: 60000
+  });
+
   // 1. Current User state
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => {
     try {
@@ -226,12 +235,20 @@ export default function App() {
     return () => clearInterval(interval);
   }, [matches]);
 
-  // Popup important notice automatically on initial load if present
+  // Popup important notice automatically on initial load if present and not dismissed today
   useEffect(() => {
     if (!hasShownInitialPopup && notices.length > 0) {
-      const urgent = notices.find(n => n.important);
-      if (urgent) {
-        setSelectedNoticeForPopup(urgent);
+      try {
+        const { dateStr } = getKSTNowParts();
+        const hideDate = localStorage.getItem('sangsan_hide_notice_date');
+        if (hideDate !== dateStr) {
+          const targetNotice = notices.find(n => n.important) || notices[0];
+          if (targetNotice) {
+            setSelectedNoticeForPopup(targetNotice);
+          }
+        }
+      } catch (e) {
+        console.error('Failed checking notice dismissal date', e);
       }
       setHasShownInitialPopup(true);
     }
@@ -505,6 +522,12 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col transition-colors">
+      {/* Site-Wide Atmospheric Weather Overlay (Snow, Rain, Fog, Sun, Clouds) */}
+      <WeatherAtmosphereOverlay
+        weather={weather}
+        enabled={true}
+      />
+
       {/* 1. Global Navigation Bar */}
       <Navbar
         currentRole={currentRole}
@@ -670,6 +693,16 @@ export default function App() {
           <StandingsView standings={calculatedStandings as any} />
         )}
 
+        {/* DEDICATED WEATHER DETAILS PAGE */}
+        {activeTab === 'weather' && (
+           <WeatherDetailPage
+             weather={weather}
+             refreshing={weatherRefreshing}
+             onRefresh={refetchWeather}
+             onBack={() => setActiveTab('home')}
+           />
+        )}
+
         {/* HOME DASHBOARD */}
         {activeTab === 'home' && (
           <div className="space-y-5">
@@ -816,10 +849,21 @@ export default function App() {
               </div>
             )}
 
+            {/* Real-time Weather Banner with Direct Link to Dedicated Weather Page */}
+            <WeatherWidget
+              variant="banner"
+              onOpenDetails={() => setActiveTab('weather')}
+            />
+
             {/* 3-Column Layout Matching Reference Design (image.png) */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-              {/* Left Column: Safety Guide Sidebar & Today's Schedule */}
+              {/* Left Column: Weather Card, Safety Guide Sidebar & Today's Schedule */}
               <div className="lg:col-span-3 space-y-5">
+                <WeatherWidget
+                  variant="card"
+                  onOpenDetails={() => setActiveTab('weather')}
+                />
+
                 <SafetyGuideCard onOpenInjuryEncyclopedia={() => setActiveTab('injury')} />
 
                 <TodayScheduleCard
@@ -885,11 +929,21 @@ export default function App() {
         userProfile={currentUser}
       />
 
-      {/* 6. Notice Popup Modal (User request: 공지의 경우 팝업이 떠야 함) */}
+      {/* 6. Notice Popup Modal (실제 작동하는 공지 팝업창) */}
       {selectedNoticeForPopup && (
         <NoticeModal
+          isOpen={Boolean(selectedNoticeForPopup)}
           notice={selectedNoticeForPopup}
+          notices={notices}
           onClose={() => setSelectedNoticeForPopup(null)}
+          onDismissToday={() => {
+            try {
+              const { dateStr } = getKSTNowParts();
+              localStorage.setItem('sangsan_hide_notice_date', dateStr);
+            } catch (e) {
+              console.error(e);
+            }
+          }}
         />
       )}
 

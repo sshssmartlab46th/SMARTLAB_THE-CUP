@@ -7,6 +7,7 @@ export * from './common/NoticeTickerBanner';
 export * from './common/NoticeModal';
 export * from './common/Footer';
 export * from './common/WeatherWidget';
+export * from './common/WeatherAtmosphereOverlay';
 
 // Home / Student view components
 export * from './home/SafetyGuideCard';
@@ -75,6 +76,7 @@ export * from './pages/FormationInputPage';
 export * from './pages/AdminConsolePage';
 export * from './pages/RoleDashboardPage';
 export * from './pages/MessagesPage';
+export * from './pages/WeatherDetailPage';
 
 // Project Documentation & Design Specification SSOT (Dead-code reference for AI models)
 export * from '../docs/projectSpecification';

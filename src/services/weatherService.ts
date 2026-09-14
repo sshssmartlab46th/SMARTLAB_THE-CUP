@@ -14,7 +14,7 @@ export const SANGSAN_COORDINATES = {
   timezone: 'Asia/Seoul'
 };
 
-export const OPEN_METEO_API_URL = `https://api.open-meteo.com/v1/forecast?latitude=${SANGSAN_COORDINATES.latitude}&longitude=${SANGSAN_COORDINATES.longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,weather_code,wind_speed_10m&hourly=precipitation_probability&timezone=Asia%2FSeoul`;
+export const OPEN_METEO_API_URL = `https://api.open-meteo.com/v1/forecast?latitude=${SANGSAN_COORDINATES.latitude}&longitude=${SANGSAN_COORDINATES.longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,weather_code,wind_speed_10m,wind_direction_10m,uv_index&hourly=temperature_2m,relative_humidity_2m,precipitation_probability,precipitation,weather_code,wind_speed_10m,apparent_temperature,uv_index&daily=weather_code,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,uv_index_max,sunrise,sunset&timezone=Asia%2FSeoul&forecast_days=7`;
 
 /**
  * WMO Weather interpretation codes (WW)
@@ -120,43 +120,118 @@ export async function fetchLiveOpenMeteoWeather(): Promise<WeatherInfo> {
     });
 
     if (!response.ok) {
-      throw new Error(`Open-Meteo HTTP error ${response.status}`);
+      throw new Error(`Weather HTTP error ${response.status}`);
     }
 
     const data = await response.json();
-    const current = data.current;
-    const hourly = data.hourly;
+    const current = data.current || {};
+    const hourly = data.hourly || {};
+    const daily = data.daily || {};
 
     const temp = Math.round(Number(current.temperature_2m || 0));
     const apparentTemp = Math.round(Number(current.apparent_temperature || temp));
     const humidity = Math.round(Number(current.relative_humidity_2m || 0));
     const windSpeed = Math.round(Number(current.wind_speed_10m || 0));
+    const windDirection = Math.round(Number(current.wind_direction_10m || 0));
+    const uvIndexValue = typeof current.uv_index === 'number' ? Math.round(current.uv_index * 10) / 10 : 0;
     const weatherCode = Number(current.weather_code ?? 0);
     const isDay = current.is_day === 1;
     const precipMm = Number(current.precipitation || 0);
 
     // Calculate precipitation probability from hourly forecast for current time
     let rainProb = 0;
-    if (hourly && Array.isArray(hourly.precipitation_probability)) {
-      // Find current hour index or use the first available
-      const nowIsoHour = new Date().toISOString().substring(0, 13);
-      if (Array.isArray(hourly.time)) {
-        const idx = hourly.time.findIndex((t: string) => t.startsWith(nowIsoHour));
-        if (idx !== -1 && typeof hourly.precipitation_probability[idx] === 'number') {
-          rainProb = hourly.precipitation_probability[idx];
-        } else {
-          rainProb = hourly.precipitation_probability[0] || 0;
+    let currentHourIndex = 0;
+    if (hourly && Array.isArray(hourly.time)) {
+      const nowIso = new Date().toISOString();
+      // Format to match "YYYY-MM-DDTHH"
+      const nowHourPrefix = `${nowIso.slice(0, 10)}T${nowIso.slice(11, 13)}`;
+      const idx = hourly.time.findIndex((t: string) => t.startsWith(nowHourPrefix));
+      if (idx !== -1) {
+        currentHourIndex = idx;
+        if (Array.isArray(hourly.precipitation_probability)) {
+          rainProb = Math.round(Number(hourly.precipitation_probability[idx] || 0));
         }
-      } else {
-        rainProb = hourly.precipitation_probability[0] || 0;
+      } else if (Array.isArray(hourly.precipitation_probability)) {
+        rainProb = Math.round(Number(hourly.precipitation_probability[0] || 0));
       }
     }
 
     const desc = getWmoWeatherDescription(weatherCode, isDay);
     const assessment = evaluateFestivalOutdoorStatus(temp, rainProb, precipMm, windSpeed);
 
+    // Parse Hourly Forecast (Next 24 hours from current index)
+    const hourlyForecast = [];
+    if (hourly && Array.isArray(hourly.time)) {
+      const startIdx = Math.max(0, currentHourIndex);
+      const endIdx = Math.min(hourly.time.length, startIdx + 24);
+      for (let i = startIdx; i < endIdx; i++) {
+        const timeStr = hourly.time[i];
+        const hourPart = timeStr.split('T')[1] || '';
+        const hourNum = parseInt(hourPart.split(':')[0], 10) || 0;
+        const hCode = Number(hourly.weather_code?.[i] ?? 0);
+        const hIsDay = hourNum >= 6 && hourNum < 19;
+        const hDesc = getWmoWeatherDescription(hCode, hIsDay);
+
+        hourlyForecast.push({
+          time: timeStr,
+          hourLabel: `${hourNum}시`,
+          temp: Math.round(Number(hourly.temperature_2m?.[i] || 0)),
+          apparentTemp: Math.round(Number(hourly.apparent_temperature?.[i] || hourly.temperature_2m?.[i] || 0)),
+          rainProb: Math.round(Number(hourly.precipitation_probability?.[i] || 0)),
+          precipMm: Math.round(Number(hourly.precipitation?.[i] || 0) * 10) / 10,
+          weatherCode: hCode,
+          condition: hDesc.text,
+          isDay: hIsDay,
+          windSpeed: Math.round(Number(hourly.wind_speed_10m?.[i] || 0)),
+          uvIndex: typeof hourly.uv_index?.[i] === 'number' ? Math.round(hourly.uv_index[i] * 10) / 10 : 0
+        });
+      }
+    }
+
+    // Parse Daily Forecast (7 days)
+    const dailyForecast = [];
+    const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+    if (daily && Array.isArray(daily.time)) {
+      for (let i = 0; i < daily.time.length; i++) {
+        const dDate = daily.time[i];
+        const dateObj = new Date(dDate);
+        let dayName = dayNames[dateObj.getDay()];
+        if (i === 0) dayName = '오늘';
+        else if (i === 1) dayName = '내일';
+
+        const dCode = Number(daily.weather_code?.[i] ?? 0);
+        const dDesc = getWmoWeatherDescription(dCode, true);
+
+        const sunriseStr = daily.sunrise?.[i]?.split('T')[1] || '';
+        const sunsetStr = daily.sunset?.[i]?.split('T')[1] || '';
+
+        dailyForecast.push({
+          date: dDate,
+          dayName,
+          tempMax: Math.round(Number(daily.temperature_2m_max?.[i] || 0)),
+          tempMin: Math.round(Number(daily.temperature_2m_min?.[i] || 0)),
+          apparentTempMax: Math.round(Number(daily.apparent_temperature_max?.[i] || 0)),
+          rainProbMax: Math.round(Number(daily.precipitation_probability_max?.[i] || 0)),
+          precipSum: Math.round(Number(daily.precipitation_sum?.[i] || 0) * 10) / 10,
+          weatherCode: dCode,
+          condition: dDesc.text,
+          windSpeedMax: Math.round(Number(daily.wind_speed_10m_max?.[i] || 0)),
+          uvIndexMax: typeof daily.uv_index_max?.[i] === 'number' ? Math.round(daily.uv_index_max[i] * 10) / 10 : 0,
+          sunrise: sunriseStr,
+          sunset: sunsetStr
+        });
+      }
+    }
+
     const now = new Date();
     const lastUpdated = formatKSTTime(now);
+
+    let uvText = '낮음';
+    if (uvIndexValue >= 8) uvText = '매우 높음';
+    else if (uvIndexValue >= 6) uvText = '높음';
+    else if (uvIndexValue >= 3) uvText = '보통';
+    else if (uvIndexValue > 0) uvText = '낮음';
+    else uvText = '없음';
 
     return {
       temperature: temp,
@@ -167,14 +242,20 @@ export async function fetchLiveOpenMeteoWeather(): Promise<WeatherInfo> {
       apparentTemp,
       humidity,
       windSpeed,
+      windDirection,
       weatherCode,
       isDay,
       statusText: assessment.message,
       lastUpdated,
-      uvIndex: isDay ? '보통' : '없음'
+      uvIndex: uvText,
+      uvIndexValue,
+      sunrise: dailyForecast[0]?.sunrise,
+      sunset: dailyForecast[0]?.sunset,
+      hourlyForecast,
+      dailyForecast
     };
   } catch (error) {
-    console.warn('[Open-Meteo] Direct weather fetch failed, using realistic fallback:', error);
+    console.warn('[Weather] Direct fetch failed, using fallback:', error);
     return {
       temperature: 22,
       temp: 22,
@@ -184,11 +265,13 @@ export async function fetchLiveOpenMeteoWeather(): Promise<WeatherInfo> {
       apparentTemp: 22,
       humidity: 55,
       windSpeed: 8,
+      windDirection: 180,
       weatherCode: 0,
       isDay: true,
       statusText: '야외 체육활동 최적: 대운동장 및 농구장 경기 진행에 완벽한 날씨입니다',
       lastUpdated: formatKSTTime(new Date()),
-      uvIndex: '보통'
+      uvIndex: '보통',
+      uvIndexValue: 4.2
     };
   }
 }

@@ -42,7 +42,8 @@ export type MainNavTab =
   | 'settings' 
   | 'formation' 
   | 'admin'
-  | 'roledashboard';
+  | 'roledashboard'
+  | 'weather';
 
 export interface NavbarProps {
   currentRole: UserRole;
@@ -286,6 +287,18 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 mt-0.5 shrink-0" />
                   <span className="leading-snug text-[11px]">{weather?.statusText || '야외 체육활동 및 경기 진행에 적합한 날씨입니다.'}</span>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowWeatherPopup(false);
+                    onTabChange('weather');
+                  }}
+                  className="w-full mt-3 py-2 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                >
+                  <Calendar className="w-3.5 h-3.5 text-red-400 dark:text-emerald-400" />
+                  <span>상세 예보 & 날씨 센터 열기</span>
+                </button>
               </div>
             )}
           </div>

@@ -32,6 +32,7 @@ export interface FestivalConfig {
   isEmergencyActive?: boolean;
   emergencyReason?: string;
   emergencyTriggeredAt?: string;
+  isIndoorMode?: boolean;
 }
 
 export interface FormationSlot {
@@ -89,6 +90,7 @@ export interface MatchItem {
   lastTimerStartedAt?: number;
   startTime: string; // ISO String (e.g. '2026-09-08T10:00:00Z')
   court: string; // '대운동장 A', '체육관 1층'
+  originalCourt?: string; // 백업된 원래 경기장 정보 (우천/실내 전환 시 복귀용)
   assignedRefereeId?: string;
   assignedRefereeName?: string;
   mvpCandidateIds?: string[];
@@ -142,6 +144,7 @@ export interface NoticeItem {
   linkUrl?: string;
   linkLabel?: string;
   category?: 'tournament' | 'festival' | 'urgent' | 'general';
+  tag?: string; // 'emergency_stop' | 'indoor_switch' 등 식별 태그
 }
 
 export interface DirectMessage {
@@ -212,6 +215,35 @@ export interface AuditLogEntry {
 // Generalized interfaces for festival board & role dashboards
 // -------------------------------------------------------------
 
+export interface HourlyForecastItem {
+  time: string;
+  hourLabel: string;
+  temp: number;
+  apparentTemp: number;
+  rainProb: number;
+  precipMm: number;
+  weatherCode: number;
+  condition: string;
+  isDay: boolean;
+  windSpeed: number;
+  uvIndex?: number;
+}
+
+export interface DailyForecastItem {
+  date: string;
+  dayName: string;
+  tempMax: number;
+  tempMin: number;
+  rainProbMax: number;
+  precipSum: number;
+  weatherCode: number;
+  condition: string;
+  windSpeedMax: number;
+  uvIndexMax?: number;
+  sunrise?: string;
+  sunset?: string;
+}
+
 export interface WeatherInfo {
   temperature: string | number;
   temp?: number;
@@ -221,11 +253,17 @@ export interface WeatherInfo {
   apparentTemp?: number;
   humidity?: number;
   windSpeed?: number;
+  windDirection?: number;
   weatherCode?: number;
   isDay?: boolean;
   statusText?: string;
   lastUpdated?: string;
   uvIndex?: string;
+  uvIndexValue?: number;
+  sunrise?: string;
+  sunset?: string;
+  hourlyForecast?: HourlyForecastItem[];
+  dailyForecast?: DailyForecastItem[];
 }
 
 export interface SafetyGuideItem {

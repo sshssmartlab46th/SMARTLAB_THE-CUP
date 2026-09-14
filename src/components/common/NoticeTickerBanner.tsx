@@ -1,5 +1,6 @@
 import React from 'react';
 import { NoticeItem } from '../../types';
+import { formatKSTTime } from '../../utils/kstTime';
 
 export interface NoticeTickerBannerProps {
   notice?: NoticeItem | null;
@@ -9,21 +10,34 @@ export interface NoticeTickerBannerProps {
 
 export const NoticeTickerBanner: React.FC<NoticeTickerBannerProps> = ({
   notice,
-  timeLabel = '방금 전 업데이트',
+  timeLabel = '실시간 공지',
   onClick
 }) => {
-  const content = notice ? `${notice.title}${notice.content ? ` ${notice.content}` : ''}` : '오후 2시 폐회식 및 이어달리기 예선이 시작됩니다! 모든 학급은 스탠드로 모여주시기 바랍니다.';
-  const time = notice?.time || timeLabel;
+  if (!notice) return null;
+
+  const content = `${notice.title}${notice.content ? ` - ${notice.content}` : ''}`;
+  const time = notice.createdAt ? formatKSTTime(notice.createdAt) : timeLabel;
 
   return (
     <div 
       onClick={onClick}
-      className="w-full bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 py-2.5 px-4 sm:px-6 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-colors"
+      className={`w-full border-b py-2.5 px-4 sm:px-6 cursor-pointer transition-colors ${
+        notice.important 
+          ? 'bg-red-50/90 dark:bg-red-950/40 border-red-200 dark:border-red-900/60 hover:bg-red-100/90 dark:hover:bg-red-950/60'
+          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/80'
+      }`}
+      role="button"
+      tabIndex={0}
+      title="공지사항 팝업 열기"
     >
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-3 text-xs">
         <div className="flex items-center gap-2.5 min-w-0">
-          <span className="shrink-0 px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 font-bold text-[11px] tracking-tight">
-            공지사항
+          <span className={`shrink-0 px-2.5 py-0.5 rounded-full font-bold text-[11px] tracking-tight ${
+            notice.important
+              ? 'bg-red-600 text-white animate-pulse'
+              : 'bg-amber-400 text-slate-950'
+          }`}>
+            {notice.important ? '긴급공지' : '공지사항'}
           </span>
           <span className="text-xs shrink-0">📢</span>
           <p className="truncate text-slate-900 dark:text-slate-100 font-medium text-xs sm:text-[13px]">

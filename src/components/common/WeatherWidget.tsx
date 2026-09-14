@@ -10,18 +10,21 @@ import {
   RefreshCw, 
   MapPin, 
   CheckCircle2, 
-  AlertTriangle 
+  AlertTriangle,
+  ChevronRight
 } from 'lucide-react';
 import { useOpenMeteoWeather } from '../../hooks/useOpenMeteoWeather';
 
 interface WeatherWidgetProps {
   variant?: 'compact' | 'card' | 'banner';
   className?: string;
+  onOpenDetails?: () => void;
 }
 
 export const WeatherWidget: React.FC<WeatherWidgetProps> = ({
   variant = 'card',
-  className = ''
+  className = '',
+  onOpenDetails
 }) => {
   const { weather, loading, refreshing, refetch } = useOpenMeteoWeather({
     refreshIntervalMs: 60000 // Automatically refreshes every 1 minute from Open-Meteo
@@ -39,21 +42,35 @@ export const WeatherWidget: React.FC<WeatherWidgetProps> = ({
   if (variant === 'compact') {
     return (
       <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-xs font-medium text-slate-700 dark:text-slate-300 ${className}`}>
-        <span className="flex items-center gap-1">
+        <button
+          type="button"
+          onClick={onOpenDetails}
+          className="flex items-center gap-1 hover:opacity-80 transition cursor-pointer text-left"
+          title="날씨 상세 예보 열기"
+        >
           {getWeatherIcon()}
           <span className="font-bold">{weather?.temp ?? 22}°C</span>
           <span className="text-slate-500 dark:text-slate-400">{weather?.condition ?? '맑음'}</span>
-        </span>
+        </button>
         <span className="text-slate-300 dark:text-slate-600">|</span>
         <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1">
           <Droplets className="w-3.5 h-3.5 text-blue-500" />
           <span>강수 {weather?.rainProb ?? 10}%</span>
         </span>
+        {onOpenDetails && (
+          <button
+            type="button"
+            onClick={onOpenDetails}
+            className="text-[11px] font-bold text-red-600 dark:text-red-400 hover:underline cursor-pointer"
+          >
+            자세히
+          </button>
+        )}
         <button
           type="button"
           onClick={() => refetch()}
           disabled={refreshing}
-          title="Open-Meteo 날씨 즉시 새로고침"
+          title="날씨 즉시 새로고침"
           className="p-1 hover:text-red-600 dark:hover:text-emerald-400 transition cursor-pointer disabled:opacity-50"
         >
           <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin text-red-600 dark:text-emerald-400' : ''}`} />
@@ -78,7 +95,7 @@ export const WeatherWidget: React.FC<WeatherWidgetProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-bold text-sm">
-                  상산고 실시간 기상 현황 (Open-Meteo)
+                  상산고 실시간 기상 현황
                 </span>
                 <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-white/70 dark:bg-slate-800/80">
                   {weather?.lastUpdated ? `${weather.lastUpdated} 관측` : '실시간'}
@@ -91,7 +108,7 @@ export const WeatherWidget: React.FC<WeatherWidgetProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-4 text-xs font-mono font-semibold self-end sm:self-center">
+          <div className="flex flex-wrap items-center gap-3 text-xs font-mono font-semibold self-end sm:self-center">
             <span className="flex items-center gap-1 text-slate-800 dark:text-slate-200">
               <Thermometer className="w-3.5 h-3.5 text-red-500" />
               {weather?.temp ?? 22}°C (체감 {weather?.apparentTemp ?? 22}°C)
@@ -100,16 +117,22 @@ export const WeatherWidget: React.FC<WeatherWidgetProps> = ({
               <Droplets className="w-3.5 h-3.5" />
               강수 {weather?.rainProb ?? 10}%
             </span>
-            <span className="hidden md:flex items-center gap-1 text-slate-600 dark:text-slate-400">
-              <Wind className="w-3.5 h-3.5" />
-              {weather?.windSpeed ?? 8}km/h
-            </span>
+            {onOpenDetails && (
+              <button
+                type="button"
+                onClick={onOpenDetails}
+                className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-sans text-xs font-bold border border-slate-200 dark:border-slate-700 flex items-center gap-1 transition cursor-pointer shadow-xs"
+              >
+                <span>상세 예보 보기</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            )}
             <button
               type="button"
               onClick={() => refetch()}
               disabled={refreshing}
               className="p-1.5 rounded-lg bg-white/80 dark:bg-slate-900/80 hover:bg-white dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 transition cursor-pointer"
-              title="Open-Meteo 실시간 기상 새로고침"
+              title="실시간 기상 새로고침"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin text-red-600' : ''}`} />
             </button>
@@ -128,20 +151,29 @@ export const WeatherWidget: React.FC<WeatherWidgetProps> = ({
           <span className="text-xs font-bold text-slate-900 dark:text-white">
             상산고 운동장 실시간 기상
           </span>
-          <span className="text-[10px] font-mono text-slate-400">
-            Open-Meteo
-          </span>
         </div>
-        <button
-          type="button"
-          onClick={() => refetch()}
-          disabled={refreshing}
-          className="flex items-center gap-1 text-[11px] text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition cursor-pointer"
-          title="날씨 실시간 새로고침"
-        >
-          <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin text-red-600' : ''}`} />
-          <span>{weather?.lastUpdated || '방금'}</span>
-        </button>
+        <div className="flex items-center gap-2">
+          {onOpenDetails && (
+            <button
+              type="button"
+              onClick={onOpenDetails}
+              className="text-[11px] font-bold text-red-600 dark:text-red-400 hover:underline flex items-center gap-0.5 cursor-pointer"
+            >
+              <span>자세히</span>
+              <ChevronRight className="w-3 h-3" />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => refetch()}
+            disabled={refreshing}
+            className="flex items-center gap-1 text-[11px] text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition cursor-pointer"
+            title="날씨 실시간 새로고침"
+          >
+            <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin text-red-600' : ''}`} />
+            <span>{weather?.lastUpdated || '방금'}</span>
+          </button>
+        </div>
       </div>
 
       <div className="flex items-center justify-between">
@@ -171,10 +203,24 @@ export const WeatherWidget: React.FC<WeatherWidgetProps> = ({
         </div>
       </div>
 
-      <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 text-[11px] text-slate-600 dark:text-slate-400 flex items-start gap-2">
-        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
-        <span>{weather?.statusText || '야외 경기 진행 최적 상태입니다.'}</span>
+      <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 text-[11px] text-slate-600 dark:text-slate-400 flex items-start justify-between gap-2">
+        <div className="flex items-start gap-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
+          <span>{weather?.statusText || '야외 경기 진행 최적 상태입니다.'}</span>
+        </div>
       </div>
+
+      {onOpenDetails && (
+        <button
+          type="button"
+          onClick={onOpenDetails}
+          className="w-full py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+        >
+          <span>시간대별 예보 및 기상 센터 열기</span>
+          <ChevronRight className="w-3.5 h-3.5" />
+        </button>
+      )}
     </div>
   );
 };
+

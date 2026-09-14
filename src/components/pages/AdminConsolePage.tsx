@@ -32,7 +32,8 @@ import {
   updateFestivalConfig,
   updateMatch,
   answerSuggestion,
-  sendNotice
+  sendNotice,
+  deleteNotice
 } from '../../services/firebaseService';
 import { AdminStudentRosterTab } from '../admin/AdminStudentRosterTab';
 import { AdminBracketManagerTab } from '../admin/AdminBracketManagerTab';
@@ -137,7 +138,10 @@ export const AdminConsolePage: React.FC<AdminConsolePageProps> = ({
   // 2. Emergency Control Handlers
   const handleStopAllMatches = async () => {
     try {
-      await updateFestivalConfig({ isEmergencyActive: true });
+      await updateFestivalConfig({ 
+        isEmergencyActive: true,
+        emergencyReason: '안전 점검 및 긴급 상황 대응'
+      });
       // Pause any LIVE matches
       const liveMatches = matches.filter(m => m.status === 'LIVE');
       for (const lm of liveMatches) {
@@ -154,7 +158,9 @@ export const AdminConsolePage: React.FC<AdminConsolePageProps> = ({
         authorRole: 'admin',
         authorId: 'sshsgym',
         important: true,
-        type: 'global'
+        type: 'global',
+        category: 'urgent',
+        tag: 'emergency_stop'
       });
       handleNotice('대회 전체 비상 정지가 발령되었습니다.');
     } catch (e) {
@@ -165,17 +171,38 @@ export const AdminConsolePage: React.FC<AdminConsolePageProps> = ({
 
   const handleResumeAllMatches = async () => {
     try {
-      await updateFestivalConfig({ isEmergencyActive: false });
-      await sendNotice({
-        title: '📢 [공지] 체육대회 전 경기 정상 재개 안내',
-        content: '안전 점검이 완료되어 일시 정지되었던 전 경기가 정상 재개됩니다.',
-        authorName: '총괄본부',
-        authorRole: 'admin',
-        authorId: 'sshsgym',
-        important: true,
-        type: 'global'
+      await updateFestivalConfig({ 
+        isEmergencyActive: false,
+        emergencyReason: ''
       });
-      handleNotice('대회 비상 정지가 해제되어 정상 상태로 복구되었습니다.');
+
+      // 1. 중단 공지 삭제 (일시정지/긴급중단 관련 공지 일괄 정리)
+      const stopNotices = (notices || []).filter(n => 
+        n.tag === 'emergency_stop' || 
+        n.title.includes('비상 일시정지') || 
+        n.title.includes('일시정지') ||
+        n.title.includes('긴급 중단') ||
+        n.title.includes('비상 정지')
+      );
+      for (const sn of stopNotices) {
+        try {
+          await deleteNotice(sn.id);
+        } catch (delErr) {
+          console.error(`중단 공지 삭제 실패 (${sn.id}):`, delErr);
+        }
+      }
+
+      // 2. 일시정지(PAUSED)되었던 경기 재개
+      const pausedMatches = matches.filter(m => m.status === 'PAUSED');
+      for (const pm of pausedMatches) {
+        await updateMatch(pm.id, {
+          status: 'LIVE',
+          timerRunning: true,
+          period: '경기 재개'
+        });
+      }
+
+      handleNotice('대회 비상 정지가 해제되었으며, 이전 중단 공지가 자동으로 삭제되었습니다.');
     } catch (e) {
       console.error(e);
       handleNotice('비상 정지 해제 중 오류가 발생했습니다.');
@@ -184,10 +211,18 @@ export const AdminConsolePage: React.FC<AdminConsolePageProps> = ({
 
   const handleSwitchToIndoor = async () => {
     try {
-      const outdoorMatches = matches.filter(m => m.status !== 'FINISHED');
-      for (const om of outdoorMatches) {
-        const newCourt = om.court?.includes('농구') ? '본관 체육관 B' : '본관 체육관 A';
-        await updateMatch(om.id, { court: newCourt });
+      await updateFestivalConfig({ isIndoorMode: true });
+      const activeMatches = matches.filter(m => m.status !== 'FINISHED');
+      for (const om of activeMatches) {
+        // 기존 경기장을 originalCourt에 보존 백업
+        const originalCourt = om.originalCourt || om.court;
+        const newCourt = (om.court?.includes('농구') || om.sport === 'basketball') 
+          ? '본관 체육관 B' 
+          : '본관 체육관 A';
+        await updateMatch(om.id, { 
+          court: newCourt,
+          originalCourt: originalCourt
+        });
       }
       await sendNotice({
         title: '☔ [기상 대응] 전 경기 실내 체육관 경기장으로 일괄 대체 배정',
@@ -196,12 +231,55 @@ export const AdminConsolePage: React.FC<AdminConsolePageProps> = ({
         authorRole: 'admin',
         authorId: 'sshsgym',
         important: true,
-        type: 'global'
+        type: 'global',
+        category: 'urgent',
+        tag: 'indoor_switch'
       });
       handleNotice('전 경기 실내 체육관 대체 배정이 완료되었습니다.');
     } catch (e) {
       console.error(e);
       handleNotice('경기장 일괄 대체 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleSwitchToOutdoor = async () => {
+    try {
+      await updateFestivalConfig({ isIndoorMode: false });
+
+      // 1. 실내 전환 공지 삭제
+      const indoorNotices = (notices || []).filter(n => 
+        n.tag === 'indoor_switch' || 
+        n.title.includes('실내 체육관') || 
+        n.title.includes('대체 배정')
+      );
+      for (const inDoc of indoorNotices) {
+        try {
+          await deleteNotice(inDoc.id);
+        } catch (delErr) {
+          console.error(`실내 공지 삭제 실패 (${inDoc.id}):`, delErr);
+        }
+      }
+
+      // 2. 경기장을 원래 실외 코트로 원복
+      const activeMatches = matches.filter(m => m.status !== 'FINISHED');
+      for (const m of activeMatches) {
+        let fallbackCourt = '대운동장 A';
+        if (m.sport === 'basketball') fallbackCourt = '야외 농구장';
+        else if (m.sport === 'dodgeball') fallbackCourt = '우레탄 구장';
+        else if (m.sport === 'relay_male' || m.sport === 'relay_female') fallbackCourt = '대운동장 트랙';
+        else if (m.sport === 'group_rope' || m.sport === 'tug_of_war') fallbackCourt = '대운동장 메인';
+
+        const restoredCourt = m.originalCourt || fallbackCourt;
+        await updateMatch(m.id, {
+          court: restoredCourt,
+          originalCourt: ''
+        });
+      }
+
+      handleNotice('모든 경기가 원래 실외 경기장으로 원복되었으며, 실내 대체 공지가 자동으로 삭제되었습니다.');
+    } catch (e) {
+      console.error(e);
+      handleNotice('실외 복귀 전환 중 오류가 발생했습니다.');
     }
   };
 
@@ -345,9 +423,11 @@ export const AdminConsolePage: React.FC<AdminConsolePageProps> = ({
             <div className="lg:col-span-4 space-y-6">
               <AdminEmergencyControlCard 
                 isEmergencyActive={festivalConfig?.isEmergencyActive || false}
+                isIndoorMode={festivalConfig?.isIndoorMode || false}
                 onStopAllMatches={handleStopAllMatches}
                 onResumeAllMatches={handleResumeAllMatches}
                 onSwitchToIndoor={handleSwitchToIndoor}
+                onSwitchToOutdoor={handleSwitchToOutdoor}
               />
             </div>
           </div>
