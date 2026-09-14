@@ -172,6 +172,16 @@ export async function updateMatch(matchId: string, partial: Partial<MatchItem>):
   }
 }
 
+export async function deleteMatch(matchId: string): Promise<void> {
+  try {
+    const docRef = doc(db, 'matches', matchId);
+    await deleteDoc(docRef);
+  } catch (e) {
+    console.error('[Firebase] deleteMatch error:', e);
+    throw e;
+  }
+}
+
 export async function updateScoreWithAudit(
   match: MatchItem,
   newHomeScore: number,
@@ -307,16 +317,6 @@ export function listenMessages(userClass: string, isLeaderOrTeacher: boolean, ca
     callback([]);
     return () => {};
   }
-}
-
-export async function sendDirectMessage(msg: Omit<DirectMessage, 'id' | 'createdAt'>): Promise<void> {
-  const id = `msg-${Date.now()}`;
-  const docRef = doc(db, 'messages', id);
-  await setDoc(docRef, {
-    ...msg,
-    id,
-    createdAt: new Date().toISOString()
-  });
 }
 
 // -------------------------------------------------------------
@@ -693,4 +693,51 @@ export function listenUserReminders(studentId: string, callback: (reminders: Mat
     return () => {};
   }
 }
+
+// -------------------------------------------------------------
+// Direct Messages (쪽지 시스템)
+// -------------------------------------------------------------
+export async function sendDirectMessage(msg: Omit<DirectMessage, 'id' | 'createdAt'>): Promise<string> {
+  try {
+    await ensureFirebaseAuth();
+    const docRef = doc(collection(db, 'direct_messages'));
+    const fullMsg: DirectMessage = {
+      id: docRef.id,
+      ...msg,
+      createdAt: new Date().toISOString()
+    };
+    await setDoc(docRef, fullMsg);
+    return docRef.id;
+  } catch (e) {
+    console.error('[Firebase] sendDirectMessage error:', e);
+    throw e;
+  }
+}
+
+export function listenAllDirectMessages(callback: (messages: DirectMessage[]) => void): () => void {
+  try {
+    const q = collection(db, 'direct_messages');
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const list: DirectMessage[] = [];
+      snapshot.forEach((d) => list.push(d.data() as DirectMessage));
+      list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      callback(list);
+    }, () => callback([]));
+    return unsubscribe;
+  } catch (e) {
+    callback([]);
+    return () => {};
+  }
+}
+
+export async function deleteDirectMessage(id: string): Promise<void> {
+  try {
+    const docRef = doc(db, 'direct_messages', id);
+    await deleteDoc(docRef);
+  } catch (e) {
+    console.error('[Firebase] deleteDirectMessage error:', e);
+    throw e;
+  }
+}
+
 

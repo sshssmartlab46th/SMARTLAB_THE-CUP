@@ -13,6 +13,7 @@ import {
 } from './types';
 import { 
   Navbar, 
+  MobileBottomNav,
   MainNavTab, 
   NoticeTickerBanner, 
   NoticeModal,
@@ -45,6 +46,7 @@ import {
   SettingsPage,
   FormationInputPage,
   AdminConsolePage,
+  MessagesPage,
   // Role Dashboard cards
   ClassScopeNoticeCard,
   ClassRosterManagerCard,
@@ -308,32 +310,87 @@ export default function App() {
     }
   };
 
-  // Calculated Standings
+  // Calculated Standings (36 classes: 12 classes * 3 grades)
   const calculatedStandings = useMemo<ClassStandingItem[]>(() => {
-    const classMap: Record<string, { totalPoints: number; wins: number; draws: number; losses: number }> = {};
-    const defaultClasses = [
-      '101', '102', '103', '104', '105', '106', '107', '108',
-      '201', '202', '203', '204', '205', '206', '207', '208',
-      '301', '302', '303', '304', '305', '306', '307', '308'
-    ];
-    defaultClasses.forEach(c => {
-      classMap[c] = { totalPoints: 0, wins: 0, draws: 0, losses: 0 };
-    });
+    const classMap: Record<string, { totalPoints: number; wins: number; draws: number; losses: number; gold: number; silver: number }> = {};
+    
+    // Sangsan High School 12 classes per grade (101~112, 201~212, 301~312)
+    for (let g = 1; g <= 3; g++) {
+      for (let c = 1; c <= 12; c++) {
+        const classCode = `${g}${String(c).padStart(2, '0')}`;
+        classMap[classCode] = { totalPoints: 0, wins: 0, draws: 0, losses: 0, gold: 0, silver: 0 };
+      }
+    }
+
+    // Load custom points config if saved by admin
+    let pointsConfigMap: Record<string, { champion: number; runnerUp: number; winPerMatch: number; drawPerMatch: number; participation: number }> = {};
+    try {
+      const savedConfig = localStorage.getItem('sangsan_sport_points_config');
+      if (savedConfig) {
+        const parsedList = JSON.parse(savedConfig);
+        parsedList.forEach((cfg: any) => {
+          pointsConfigMap[cfg.sport] = cfg;
+        });
+      }
+    } catch {
+      // fallback
+    }
 
     matches.forEach(m => {
-      if (m.status === 'FINISHED' && m.winnerClass) {
-        if (!classMap[m.winnerClass]) {
-          classMap[m.winnerClass] = { totalPoints: 0, wins: 0, draws: 0, losses: 0 };
-        }
-        classMap[m.winnerClass].totalPoints += 300;
-        classMap[m.winnerClass].wins += 1;
+      const sportCfg = pointsConfigMap[m.sport] || {
+        champion: 500,
+        runnerUp: 300,
+        winPerMatch: 100,
+        drawPerMatch: 50,
+        participation: 50
+      };
 
-        const loserClass = m.homeClass === m.winnerClass ? m.awayClass : m.homeClass;
-        if (loserClass) {
-          if (!classMap[loserClass]) {
-            classMap[loserClass] = { totalPoints: 0, wins: 0, draws: 0, losses: 0 };
+      // Add participation points if match is scheduled or finished
+      if (m.homeClass && classMap[m.homeClass]) {
+        classMap[m.homeClass].totalPoints += sportCfg.participation || 0;
+      }
+      if (m.awayClass && classMap[m.awayClass]) {
+        classMap[m.awayClass].totalPoints += sportCfg.participation || 0;
+      }
+
+      if (m.status === 'FINISHED') {
+        const isFinal = m.round?.includes('결승') || m.title?.includes('결승');
+        if (m.homeScore > m.awayScore) {
+          if (m.homeClass && classMap[m.homeClass]) {
+            classMap[m.homeClass].wins += 1;
+            classMap[m.homeClass].totalPoints += isFinal ? sportCfg.champion : sportCfg.winPerMatch;
+            if (isFinal) classMap[m.homeClass].gold += 1;
           }
-          classMap[loserClass].losses += 1;
+          if (m.awayClass && classMap[m.awayClass]) {
+            classMap[m.awayClass].losses += 1;
+            if (isFinal) {
+              classMap[m.awayClass].totalPoints += sportCfg.runnerUp;
+              classMap[m.awayClass].silver += 1;
+            }
+          }
+        } else if (m.awayScore > m.homeScore) {
+          if (m.awayClass && classMap[m.awayClass]) {
+            classMap[m.awayClass].wins += 1;
+            classMap[m.awayClass].totalPoints += isFinal ? sportCfg.champion : sportCfg.winPerMatch;
+            if (isFinal) classMap[m.awayClass].gold += 1;
+          }
+          if (m.homeClass && classMap[m.homeClass]) {
+            classMap[m.homeClass].losses += 1;
+            if (isFinal) {
+              classMap[m.homeClass].totalPoints += sportCfg.runnerUp;
+              classMap[m.homeClass].silver += 1;
+            }
+          }
+        } else {
+          // Draw
+          if (m.homeClass && classMap[m.homeClass]) {
+            classMap[m.homeClass].draws += 1;
+            classMap[m.homeClass].totalPoints += sportCfg.drawPerMatch;
+          }
+          if (m.awayClass && classMap[m.awayClass]) {
+            classMap[m.awayClass].draws += 1;
+            classMap[m.awayClass].totalPoints += sportCfg.drawPerMatch;
+          }
         }
       }
     });
@@ -355,8 +412,8 @@ export default function App() {
         wins: stats.wins,
         draws: stats.draws,
         losses: stats.losses,
-        goldCount: stats.wins,
-        silverCount: 0,
+        goldCount: stats.gold,
+        silverCount: stats.silver,
         bronzeCount: 0
       } as unknown as ClassStandingItem;
     });
@@ -372,7 +429,7 @@ export default function App() {
   // Currently live or next upcoming match
   const currentLiveMatch = useMemo(() => {
     if (activeMatchForLive) return activeMatchForLive;
-    const inProgress = matches.find((m) => m.status === 'IN_PROGRESS');
+    const inProgress = matches.find((m) => m.status === 'LIVE' || m.status === 'PAUSED');
     if (inProgress) return inProgress;
     return matches.find((m) => m.status === 'SCHEDULED') || matches[0] || null;
   }, [matches, activeMatchForLive]);
@@ -431,7 +488,7 @@ export default function App() {
           if (!currentUser) {
             setActiveTab('login');
           } else {
-            setShowDirectMessageModal(true);
+            setActiveTab('messages');
           }
         }}
         onOpenSuggestions={() => setActiveTab('suggestions')}
@@ -449,7 +506,7 @@ export default function App() {
       )}
 
       {/* 3. Main Content Rendering */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6 pb-20 md:pb-6">
         {/* INDEPENDENT PAGES ROUTING */}
         {activeTab === 'login' && (
           <LoginPage
@@ -507,6 +564,13 @@ export default function App() {
           <FormationInputPage
             matches={matches}
             userClass={currentUser?.grade && currentUser?.classNum ? `${currentUser.grade}${currentUser.classNum.padStart(2, '0')}` : '302'}
+          />
+        )}
+
+        {activeTab === 'messages' && (
+          <MessagesPage
+            currentUser={currentUser}
+            onOpenLogin={() => setActiveTab('login')}
           />
         )}
 
@@ -691,7 +755,14 @@ export default function App() {
       {/* 4. Footer with required made by SMARTLAB 김태호 */}
       <Footer links={footerLinks} customCredit="made by SMARTLAB 김태호" />
 
-      {/* 5. Notice Popup Modal (User request: 공지의 경우 팝업이 떠야 함) */}
+      {/* 5. Mobile Bottom Navigation */}
+      <MobileBottomNav
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        userProfile={currentUser}
+      />
+
+      {/* 6. Notice Popup Modal (User request: 공지의 경우 팝업이 떠야 함) */}
       {selectedNoticeForPopup && (
         <NoticeModal
           notice={selectedNoticeForPopup}

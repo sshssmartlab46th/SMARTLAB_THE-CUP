@@ -40,6 +40,18 @@ export interface FormationSlot {
 
 export type SportType = 'soccer' | 'basketball' | 'dodgeball' | 'relay_male' | 'relay_female' | 'tug_of_war' | 'group_rope';
 
+export interface SportPointsConfig {
+  sport: SportType;
+  label: string;
+  gender: 'male' | 'female' | 'mixed';
+  champion: number; // 우승 점수
+  runnerUp: number; // 준우승 점수
+  thirdPlace: number; // 3위 점수
+  winPerMatch: number; // 단일 매치 승리 점수
+  drawPerMatch: number; // 무승부 점수
+  participation: number; // 참가 기본 점수
+}
+
 export type MatchType = 'tournament' | 'relay_group' | 'relay_final';
 
 export type MatchStatus = 'SCHEDULED' | 'LIVE' | 'PAUSED' | 'FINISHED';

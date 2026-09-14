@@ -39,6 +39,7 @@ export type MainNavTab =
   | 'contact' 
   | 'injury' 
   | 'suggestions' 
+  | 'messages'
   | 'settings' 
   | 'formation' 
   | 'admin';
@@ -310,12 +311,16 @@ export const Navbar: React.FC<NavbarProps> = ({
             <HelpCircle className="w-4 h-4" />
           </button>
 
-          {['class_president', 'student_council', 'admin', 'teacher'].includes(currentRole) && (
+          {['class_president', 'student_council', 'admin', 'teacher', 'student'].includes(currentRole) && (
             <button
               type="button"
-              onClick={onOpenMessages}
-              title="비상 쪽지"
-              className="p-1.5 rounded-lg border border-red-200 dark:border-red-900/60 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition cursor-pointer"
+              onClick={() => onTabChange('messages')}
+              title="실시간 쪽지함"
+              className={`p-1.5 rounded-lg border transition cursor-pointer ${
+                activeTab === 'messages'
+                  ? 'bg-red-50 dark:bg-red-950/40 border-red-500 text-red-600 dark:text-red-400'
+                  : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-red-600'
+              }`}
             >
               <MessageSquare className="w-4 h-4" />
             </button>

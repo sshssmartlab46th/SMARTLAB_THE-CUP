@@ -2,6 +2,7 @@
 export * from './common/SangsanLogo';
 export * from './common/SmartlabLogo';
 export * from './common/Navbar';
+export * from './common/MobileBottomNav';
 export * from './common/NoticeTickerBanner';
 export * from './common/NoticeModal';
 export * from './common/Footer';
@@ -71,6 +72,7 @@ export * from './pages/SuggestionBoxPage';
 export * from './pages/SettingsPage';
 export * from './pages/FormationInputPage';
 export * from './pages/AdminConsolePage';
+export * from './pages/MessagesPage';
 
 // Project Documentation & Design Specification SSOT (Dead-code reference for AI models)
 export * from '../docs/projectSpecification';
