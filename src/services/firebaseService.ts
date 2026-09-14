@@ -318,6 +318,16 @@ export async function createNotice(notice: Omit<NoticeItem, 'id' | 'createdAt'>)
   });
 }
 
+export async function deleteNotice(noticeId: string): Promise<void> {
+  try {
+    const docRef = doc(db, 'notices', noticeId);
+    await deleteDoc(docRef);
+  } catch (e) {
+    console.error('[Firebase] deleteNotice error:', e);
+    throw e;
+  }
+}
+
 // -------------------------------------------------------------
 // Lineups
 // -------------------------------------------------------------

@@ -134,6 +134,9 @@ export interface NoticeItem {
   authorId: string;
   important: boolean;
   createdAt: string;
+  linkUrl?: string;
+  linkLabel?: string;
+  category?: 'tournament' | 'festival' | 'urgent' | 'general';
 }
 
 export interface DirectMessage {

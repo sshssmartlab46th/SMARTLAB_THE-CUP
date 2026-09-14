@@ -59,6 +59,7 @@ export * from './matches/TournamentBracketView';
 export * from './matches/LiveMatchStatusView';
 export * from './matches/StandingsView';
 export * from './admin/AdminDashboardModal';
+export * from './admin/AdminNoticeManagerTab';
 
 // Dedicated Standalone Pages
 export * from './pages/LoginPage';

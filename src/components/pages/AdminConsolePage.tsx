@@ -19,15 +19,19 @@ import {
   Trophy, 
   CheckCircle2, 
   History,
-  LayoutDashboard
+  LayoutDashboard,
+  Bell
 } from 'lucide-react';
 import { listenAllUsers } from '../../services/firebaseService';
 import { AdminStudentRosterTab } from '../admin/AdminStudentRosterTab';
 import { AdminBracketManagerTab } from '../admin/AdminBracketManagerTab';
 import { AdminPointsConfigTab } from '../admin/AdminPointsConfigTab';
+import { AdminNoticeManagerTab } from '../admin/AdminNoticeManagerTab';
+import { NoticeItem } from '../../types';
 
 interface AdminConsolePageProps {
   matches: MatchItem[];
+  notices?: NoticeItem[];
   auditLogs: AuditLogEntry[];
   inquiries: SuggestionItem[];
   festivalConfig: FestivalConfig | null;
@@ -36,11 +40,12 @@ interface AdminConsolePageProps {
 
 export const AdminConsolePage: React.FC<AdminConsolePageProps> = ({
   matches,
+  notices = [],
   auditLogs,
   inquiries,
   festivalConfig
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'overview' | 'roster' | 'brackets' | 'points' | 'audit'>('roster');
+  const [activeSubTab, setActiveSubTab] = useState<'overview' | 'roster' | 'brackets' | 'notices' | 'points' | 'audit'>('roster');
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
   const [noticeMessage, setNoticeMessage] = useState<string | null>(null);
 
@@ -80,6 +85,7 @@ export const AdminConsolePage: React.FC<AdminConsolePageProps> = ({
           {[
             { key: 'roster', label: '반별 학생 명단 & 엑셀', icon: Users },
             { key: 'brackets', label: '대진표 관리 (남녀 구분)', icon: Trophy },
+            { key: 'notices', label: '전교 공지사항 관리', icon: Bell },
             { key: 'points', label: '종목별 배점 설정', icon: Trophy },
             { key: 'overview', label: '종합 관제', icon: LayoutDashboard },
             { key: 'audit', label: '감사 로그', icon: History }
@@ -128,7 +134,15 @@ export const AdminConsolePage: React.FC<AdminConsolePageProps> = ({
         />
       )}
 
-      {/* 3. Points Subtab: Sport-specific Scoring Criteria */}
+      {/* 3. Notices Subtab: School-wide Announcements Manager */}
+      {activeSubTab === 'notices' && (
+        <AdminNoticeManagerTab
+          notices={notices}
+          onNotice={handleNotice}
+        />
+      )}
+
+      {/* 4. Points Subtab: Sport-specific Scoring Criteria */}
       {activeSubTab === 'points' && (
         <AdminPointsConfigTab
           onNotice={handleNotice}

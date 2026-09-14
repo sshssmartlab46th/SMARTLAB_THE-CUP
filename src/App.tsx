@@ -312,6 +312,10 @@ export default function App() {
 
   // Calculated Standings (36 classes: 12 classes * 3 grades)
   const calculatedStandings = useMemo<ClassStandingItem[]>(() => {
+    if (matches.length === 0) {
+      return [];
+    }
+
     const classMap: Record<string, { totalPoints: number; wins: number; draws: number; losses: number; gold: number; silver: number }> = {};
     
     // Sangsan High School 12 classes per grade (101~112, 201~212, 301~312)
@@ -577,6 +581,7 @@ export default function App() {
         {activeTab === 'admin' && (
           <AdminConsolePage
             matches={matches}
+            notices={notices}
             auditLogs={auditLogs}
             inquiries={inquiries}
             festivalConfig={festivalConfig}
