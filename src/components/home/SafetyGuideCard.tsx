@@ -7,33 +7,33 @@ export interface SafetyGuideCardProps {
   onItemClick?: (item: SafetyGuideItem) => void;
 }
 
-const DEFAULT_GUIDES: SafetyGuideItem[] = [
+const OFFICIAL_SAFETY_PRINCIPLES: SafetyGuideItem[] = [
   {
-    id: 'guide-1',
+    id: 'principle-1',
     order: 1,
-    title: '충분한 수분 섭취',
-    content: '탈수 방지를 위해 운동장 뒤편 급수대를 수시로 이용하세요.'
+    title: 'RICE 응급처치 기본 원칙 준수',
+    content: '부상 발생 시 Rest(안정), Ice(냉찜질), Compression(압박), Elevation(거상) 원칙을 즉시 적용합니다.'
   },
   {
-    id: 'guide-2',
+    id: 'principle-2',
     order: 2,
-    title: '부상 즉시 의무실 방문',
-    content: '본관 1층 보건실 및 체육관 앞 간이 의무실 상시 운영 중.'
+    title: '충분한 수분 섭취 및 준비운동',
+    content: '탈수 예방을 위해 수분을 수시로 섭취하고 경기 전후 가벼운 스트레칭을 실시합니다.'
   },
   {
-    id: 'guide-3',
+    id: 'principle-3',
     order: 3,
-    title: '지나친 경쟁 응원 자제',
-    content: '동료 학우를 존중하는 격려와 매너 있는 응원을 보여주세요.'
+    title: '부상 발생 즉시 의무팀 안내',
+    content: '신체 접촉 부상 및 탈진 징후 발생 시 심판진 및 의무 지원팀에 즉시 보고합니다.'
   }
 ];
 
 export const SafetyGuideCard: React.FC<SafetyGuideCardProps> = ({
   items = [],
-  title = '실시간 안도 가이드',
+  title = '실시간 안전 가이드',
   onItemClick
 }) => {
-  const displayItems = items.length > 0 ? items : DEFAULT_GUIDES;
+  const displayItems = items.length > 0 ? items : OFFICIAL_SAFETY_PRINCIPLES;
 
   return (
     <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-xs transition-all">

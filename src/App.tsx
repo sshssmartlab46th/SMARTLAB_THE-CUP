@@ -481,7 +481,7 @@ export default function App() {
                   />
                   <LiveCheersFeedCard
                     cheers={cheersFeed}
-                    totalCount={cheersFeed.length > 0 ? cheersFeed.length : 24}
+                    totalCount={cheersFeed.length}
                     onSubmitCheer={handleSubmitCheerMessage}
                     isSubmitting={isSubmittingCheer}
                   />
@@ -497,7 +497,7 @@ export default function App() {
                       CLASS LEADER
                     </span>
                     <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                      {currentUser?.classNum ? `${currentUser.grade}학년 ${currentUser.classNum}반` : '3학년 2반'} 전용 채널
+                      {currentUser?.classNum ? `${currentUser.grade}학년 ${currentUser.classNum}반` : '소속 학급'} 전용 채널
                     </span>
                   </div>
                   <button
@@ -513,7 +513,7 @@ export default function App() {
                   {/* Left Column */}
                   <div className="lg:col-span-3 space-y-4">
                     <ClassScopeNoticeCard 
-                      allowedScopeText={currentUser?.classNum ? `${currentUser.grade}학년 ${currentUser.classNum}반` : '3학년 2반'} 
+                      allowedScopeText={currentUser?.classNum ? `${currentUser.grade}학년 ${currentUser.classNum}반` : '소속 학급'} 
                     />
                   </div>
 
@@ -525,7 +525,7 @@ export default function App() {
                     <ClassLeaderSpecialActionsCard
                       onRequestCheers={() => {
                         if (currentLiveMatch) {
-                          sendCheer(currentLiveMatch.id, 'home', '👏 2반 힘내자!');
+                          sendCheer(currentLiveMatch.id, 'home', `👏 ${currentUser?.classNum ? `${currentUser.classNum}반` : '우리 반'} 힘내자!`);
                         }
                       }}
                       onCallAttendance={() => {
@@ -543,7 +543,12 @@ export default function App() {
                       urgentNotice={activeNotice}
                       classSchedules={matches}
                       onSubmitInquiry={async (msg) => {
-                        await sendInquiry('class_leader', '3학년 2반 반장', '3-2', msg);
+                        await sendInquiry(
+                          'class_leader',
+                          currentUser?.name ? `${currentUser.name} (반장)` : '학급 반장',
+                          currentUser?.studentId || (currentUser?.classNum ? `${currentUser.grade}-${currentUser.classNum}` : '반장'),
+                          msg
+                        );
                       }}
                     />
                   </div>

@@ -17,11 +17,11 @@ export const TodayScheduleCard: React.FC<TodayScheduleCardProps> = ({
   onToggleReminder
 }) => {
   const formatTime = (timeStr?: string) => {
-    if (!timeStr) return '15:00';
+    if (!timeStr) return '-';
     if (timeStr.includes(':') && timeStr.length <= 5) return timeStr;
     try {
       const d = new Date(timeStr);
-      return d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
+      return isNaN(d.getTime()) ? timeStr : d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
     } catch {
       return timeStr;
     }
@@ -71,7 +71,8 @@ export const TodayScheduleCard: React.FC<TodayScheduleCardProps> = ({
                     {item.title} {item.round ? `(${item.round})` : ''}
                   </div>
                   <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                    {item.homeTeam || item.homeClass} vs {item.awayTeam || item.awayClass} · {item.court || '대운동장'}
+                    {item.homeTeam || item.homeClass || '홈팀'} vs {item.awayTeam || item.awayClass || '원정팀'}
+                    {(item.court || item.location) ? ` · ${item.court || item.location}` : ''}
                   </div>
                 </div>
 

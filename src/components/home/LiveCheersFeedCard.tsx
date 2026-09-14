@@ -10,32 +10,15 @@ export interface LiveCheersFeedCardProps {
   isSubmitting?: boolean;
 }
 
-const DEFAULT_CHEERS: CheerMessageItem[] = [
-  {
-    id: 'c-1',
-    authorMasked: '김*서 (3-2)',
-    classLabel: '3-2',
-    message: '2반 우승 가자! 축구 역대급 경기네 👏👏',
-    createdAt: '방금 전'
-  },
-  {
-    id: 'c-2',
-    authorMasked: '박*혁 (3-5)',
-    classLabel: '3-5',
-    message: '5반 포기하지 말자! 후반 뒤집을 수 있어! 🔥',
-    createdAt: '2분 전'
-  }
-];
-
 export const LiveCheersFeedCard: React.FC<LiveCheersFeedCardProps> = ({
   cheers = [],
-  totalCount = 24,
+  totalCount,
   onViewMore,
   onSubmitCheer,
   isSubmitting = false
 }) => {
   const [inputMsg, setInputMsg] = useState('');
-  const displayCheers = cheers.length > 0 ? cheers : DEFAULT_CHEERS;
+  const count = totalCount !== undefined ? totalCount : cheers.length;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,27 +34,35 @@ export const LiveCheersFeedCard: React.FC<LiveCheersFeedCardProps> = ({
           <h2 className="font-bold text-sm sm:text-base text-slate-900 dark:text-white tracking-tight">
             실시간 한줄 응원
           </h2>
-          <button
-            type="button"
-            onClick={onViewMore}
-            className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition"
-          >
-            {totalCount}개 글 더보기
-          </button>
+          {count > 0 && onViewMore && (
+            <button
+              type="button"
+              onClick={onViewMore}
+              className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition cursor-pointer"
+            >
+              {count}개 글 더보기
+            </button>
+          )}
         </div>
 
-        <div className="space-y-3.5 mb-4">
-          {displayCheers.slice(0, 3).map((c) => (
-            <div key={c.id} className="space-y-0.5">
-              <div className="font-bold text-xs sm:text-[13px] text-slate-900 dark:text-white">
-                {c.authorMasked}
+        {cheers.length === 0 ? (
+          <div className="py-6 text-center text-xs text-slate-400">
+            등록된 응원 메시지가 없습니다. 첫 번째 응원을 남겨보세요!
+          </div>
+        ) : (
+          <div className="space-y-3.5 mb-4">
+            {cheers.slice(0, 3).map((c) => (
+              <div key={c.id} className="space-y-0.5">
+                <div className="font-bold text-xs sm:text-[13px] text-slate-900 dark:text-white">
+                  {c.authorMasked}
+                </div>
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                  {c.message}
+                </p>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                {c.message}
-              </p>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Input bar */}
@@ -89,7 +80,7 @@ export const LiveCheersFeedCard: React.FC<LiveCheersFeedCardProps> = ({
             <button
               type="submit"
               disabled={!inputMsg.trim() || isSubmitting}
-              className="px-3 py-2 bg-red-600 dark:bg-emerald-500 hover:bg-red-700 dark:hover:bg-emerald-400 text-white dark:text-slate-950 rounded-xl text-xs font-bold transition disabled:opacity-40 flex items-center justify-center shrink-0"
+              className="px-3 py-2 bg-red-600 dark:bg-emerald-500 hover:bg-red-700 dark:hover:bg-emerald-400 text-white dark:text-slate-950 rounded-xl text-xs font-bold transition disabled:opacity-40 flex items-center justify-center shrink-0 cursor-pointer"
             >
               <Send className="w-3.5 h-3.5" />
             </button>

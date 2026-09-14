@@ -13,7 +13,8 @@ import {
   orderBy, 
   limit,
   serverTimestamp,
-  getDocFromServer 
+  getDocFromServer,
+  increment 
 } from 'firebase/firestore';
 import { signInAnonymously, onAuthStateChanged, User } from 'firebase/auth';
 import { auth, db } from '../lib/firebase';
@@ -298,12 +299,12 @@ export function listenCheers(matchId: string, callback: (cheer: CheerCount) => v
       if (snapshot.exists()) {
         callback(snapshot.data() as CheerCount);
       } else {
-        callback({ matchId, homeCheers: 124, awayCheers: 98 });
+        callback({ matchId, homeCheers: 0, awayCheers: 0 });
       }
-    }, () => callback({ matchId, homeCheers: 124, awayCheers: 98 }));
+    }, () => callback({ matchId, homeCheers: 0, awayCheers: 0 }));
     return unsubscribe;
   } catch (e) {
-    callback({ matchId, homeCheers: 124, awayCheers: 98 });
+    callback({ matchId, homeCheers: 0, awayCheers: 0 });
     return () => {};
   }
 }
@@ -311,11 +312,9 @@ export function listenCheers(matchId: string, callback: (cheer: CheerCount) => v
 export async function sendCheer(matchId: string, team: 'home' | 'away', emoji: string): Promise<void> {
   try {
     const docRef = doc(db, 'cheers', matchId);
-    const snap = await getDocs(query(collection(db, 'cheers'), limit(1))); // warmth check
-    // Simple optimistic local + firestore update
     await setDoc(docRef, {
       matchId,
-      [team === 'home' ? 'homeCheers' : 'awayCheers']: Math.floor(Math.random() * 5 + 1),
+      [team === 'home' ? 'homeCheers' : 'awayCheers']: increment(1),
       lastEmoji: emoji
     }, { merge: true });
   } catch (e) {

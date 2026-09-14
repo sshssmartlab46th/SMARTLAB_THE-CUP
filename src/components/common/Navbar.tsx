@@ -54,7 +54,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           title: 'SYSTEM ADMINISTRATOR (총괄 관리자)',
           badgeColor: 'bg-red-600 text-white font-bold',
           scope: '접근 권한: 전체 시스템 제어 & 전교 데이터',
-          lastActive: '방금 전 (14:24)'
+          lastActive: '실시간 연결'
         };
       case 'class_president':
         return {
@@ -62,29 +62,29 @@ export const Navbar: React.FC<NavbarProps> = ({
           badgeColor: 'bg-amber-500 text-slate-950 font-bold',
           scope: userProfile?.grade && userProfile?.classNum
             ? `접근 권한: ${userProfile.grade}학년 ${userProfile.classNum}반 전용 채널`
-            : '접근 권한: 3학년 2반 전용 채널',
-          lastActive: '5분 전 (14:19)'
+            : '접근 권한: 소속 학급 전용 채널',
+          lastActive: '실시간 연결'
         };
       case 'student_council':
         return {
           title: 'STUDENT COUNCIL & SPORTS COMMITTEE (학생회 / 체육부)',
           badgeColor: 'bg-amber-600 text-white font-bold',
           scope: '접근 권한: 대회 현장 운영 & 자원 배치',
-          lastActive: '3분 전 (14:21)'
+          lastActive: '실시간 연결'
         };
       case 'teacher':
         return {
           title: 'MATCH OPERATOR (심판 · 기록원)',
           badgeColor: 'bg-red-600 text-white font-bold',
           scope: '경기 권한: 배정 경기 득점 및 로스터 제어',
-          lastActive: '방금 전 (15:02)'
+          lastActive: '실시간 연결'
         };
       case 'health_officer':
         return {
           title: 'SAFETY & MEDICAL OFFICER (보건 안전 의무 본부)',
           badgeColor: 'bg-sky-600 text-white font-bold',
           scope: '의무 권한: 전교 부상자 발생 접수, 환자 이송 및 연락 제어',
-          lastActive: '방금 전 (15:03)'
+          lastActive: '실시간 연결'
         };
       default:
         return null;

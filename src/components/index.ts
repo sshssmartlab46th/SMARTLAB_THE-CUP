@@ -56,3 +56,6 @@ export * from './matches/TournamentBracketView';
 export * from './matches/LiveMatchStatusView';
 export * from './matches/StandingsView';
 export * from './admin/AdminDashboardModal';
+
+// Project Documentation & Design Specification SSOT (Dead-code reference for AI models)
+export * from '../docs/projectSpecification';
