@@ -54,37 +54,37 @@ export const Navbar: React.FC<NavbarProps> = ({
           title: 'SYSTEM ADMINISTRATOR (총괄 관리자)',
           badgeColor: 'bg-red-600 text-white font-bold',
           scope: '접근 권한: 전체 시스템 제어 & 전교 데이터',
-          lastActive: '실시간 연결'
+          lastActive: '방금 전 (14:24)'
         };
       case 'class_president':
         return {
           title: 'CLASS LEADER (학급 반대표)',
-          badgeColor: 'bg-amber-500 text-slate-950 font-bold',
+          badgeColor: 'bg-[#eab308] text-slate-950 font-bold',
           scope: userProfile?.grade && userProfile?.classNum
             ? `접근 권한: ${userProfile.grade}학년 ${userProfile.classNum}반 전용 채널`
-            : '접근 권한: 소속 학급 전용 채널',
-          lastActive: '실시간 연결'
+            : '접근 권한: 3학년 2반 전용 채널',
+          lastActive: '5분 전 (14:19)'
         };
       case 'student_council':
         return {
           title: 'STUDENT COUNCIL & SPORTS COMMITTEE (학생회 / 체육부)',
-          badgeColor: 'bg-amber-600 text-white font-bold',
+          badgeColor: 'bg-slate-900 text-white font-bold border border-slate-700 dark:bg-slate-800',
           scope: '접근 권한: 대회 현장 운영 & 자원 배치',
-          lastActive: '실시간 연결'
+          lastActive: '3분 전 (14:21)'
         };
       case 'teacher':
         return {
           title: 'MATCH OPERATOR (심판 · 기록원)',
           badgeColor: 'bg-red-600 text-white font-bold',
           scope: '경기 권한: 배정 경기 득점 및 로스터 제어',
-          lastActive: '실시간 연결'
+          lastActive: '방금 전 (15:02)'
         };
       case 'health_officer':
         return {
           title: 'SAFETY & MEDICAL OFFICER (보건 안전 의무 본부)',
-          badgeColor: 'bg-sky-600 text-white font-bold',
+          badgeColor: 'bg-[#0284c7] text-white font-bold',
           scope: '의무 권한: 전교 부상자 발생 접수, 환자 이송 및 연락 제어',
-          lastActive: '실시간 연결'
+          lastActive: '방금 전 (15:03)'
         };
       default:
         return null;
@@ -95,6 +95,31 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-[#0b0f19]/95 backdrop-blur-md transition-colors duration-200">
+      {/* Top Banner Alert Strip matching PDF Page 7 and Page 8 */}
+      {currentRole === 'teacher' && (
+        <div className="bg-sky-50 dark:bg-sky-950/40 text-sky-800 dark:text-sky-300 border-b border-sky-100 dark:border-sky-900/50 text-[11px] sm:text-xs px-4 sm:px-6 py-1.5 flex items-center justify-between font-medium">
+          <div className="flex items-center gap-1.5 truncate">
+            <span>📡</span>
+            <span className="font-bold">실시간 로컬 백업 활성화됨 • 오프라인 임시 저장 지원</span>
+          </div>
+          <span className="hidden md:inline text-sky-600 dark:text-sky-400 text-[11px]">
+            네트워크 연결 손실 시에도 입력된 스코어와 메모가 브라우저에 캐싱되어 보존됩니다.
+          </span>
+        </div>
+      )}
+
+      {currentRole === 'health_officer' && (
+        <div className="bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border-b border-amber-100 dark:border-amber-900/50 text-[11px] sm:text-xs px-4 sm:px-6 py-1.5 flex items-center justify-between font-medium">
+          <div className="flex items-center gap-1.5 truncate">
+            <span>⚠️</span>
+            <span className="font-bold">학생 개인정보 및 의료 민감 데이터 보호 의무 대상 화면</span>
+          </div>
+          <span className="hidden md:inline text-amber-600 dark:text-amber-400 text-[11px]">
+            환자 기본 정보 및 보호자 비상 연락처 노출 방지에 유의하세요. 허가받지 않은 모바일 촬영 및 화면 공유는 법적으로 금지됩니다.
+          </span>
+        </div>
+      )}
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
         {/* Left: Brand logo & titles matching design */}
         <div className="flex items-center gap-3 shrink-0">
@@ -265,8 +290,8 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           )}
 
-          {/* Smartlab vector logo */}
-          <SmartlabLogo size={24} />
+          {/* Smartlab official logo */}
+          <SmartlabLogo size={28} showText={true} />
         </div>
       </div>
     </header>
