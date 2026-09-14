@@ -18,7 +18,10 @@ import {
   Medal,
   CheckSquare,
   Square,
-  Sparkles
+  Sparkles,
+  Play,
+  Pause,
+  PlayCircle
 } from 'lucide-react';
 import { 
   createMatch, 
@@ -28,7 +31,19 @@ import {
   advanceTournamentRound, 
   syncAllTournamentAdvancements,
   getMatchTournamentSlot,
-  getMatchGrade
+  getMatchGrade,
+  startMatch,
+  pauseMatch,
+  resumeMatch,
+  finishMatch,
+  autoStartDueMatches,
+  parseMatchStartTime,
+  toKSTIsoString,
+  parseKSTDateAndTime,
+  formatKSTTime,
+  formatKSTDate,
+  formatKSTDateTime,
+  getKSTNowParts
 } from '../../services/firebaseService';
 
 interface AdminBracketManagerTabProps {
@@ -63,12 +78,13 @@ export const AdminBracketManagerTab: React.FC<AdminBracketManagerTabProps> = ({
   const [selectedGenderForBoth, setSelectedGenderForBoth] = useState<'male' | 'female'>('male');
   
   // Manual match fields
+  const initialKST = getKSTNowParts();
   const [homeClassNum, setHomeClassNum] = useState<string>('1');
   const [awayClassNum, setAwayClassNum] = useState<string>('2');
   const [roundName, setRoundName] = useState<string>('8강 1경기');
   const [courtName, setCourtName] = useState<string>('대운동장 A');
-  const [matchDate, setMatchDate] = useState<string>('2026-09-14');
-  const [matchTime, setMatchTime] = useState<string>('10:00');
+  const [matchDate, setMatchDate] = useState<string>(initialKST.dateStr);
+  const [matchTime, setMatchTime] = useState<string>(initialKST.timeStr);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   // Selected matches for batch operations
@@ -157,7 +173,7 @@ export const AdminBracketManagerTab: React.FC<AdminBracketManagerTabProps> = ({
       const awayTeamLabel = `${targetGrade}-${awayClassNum}반`;
       const homeClassCode = `${targetGrade}${homeClassNum.padStart(2, '0')}`;
       const awayClassCode = `${targetGrade}${awayClassNum.padStart(2, '0')}`;
-      const startDateTime = new Date(`${matchDate}T${matchTime}:00`).toISOString();
+      const startDateTime = toKSTIsoString(matchDate, matchTime);
 
       await createMatch({
         sport: targetSport,
@@ -200,7 +216,7 @@ export const AdminBracketManagerTab: React.FC<AdminBracketManagerTabProps> = ({
           const away = shuffled[i * 2 + 1];
           const qfHour = 9 + Math.floor(i * 50 / 60);
           const qfMin = (i * 50) % 60;
-          const matchStartTime = new Date(`${matchDate}T${String(qfHour).padStart(2, '0')}:${String(qfMin).padStart(2, '0')}:00`).toISOString();
+          const matchStartTime = toKSTIsoString(matchDate, `${String(qfHour).padStart(2, '0')}:${String(qfMin).padStart(2, '0')}`);
 
           await createMatch({
             sport: targetSport,
@@ -221,7 +237,7 @@ export const AdminBracketManagerTab: React.FC<AdminBracketManagerTabProps> = ({
 
         // 2) 4강전 2경기 (준결승)
         // SF1: QF1 승자 vs QF2 승자
-        const sf1Time = new Date(`${matchDate}T13:30:00`).toISOString();
+        const sf1Time = toKSTIsoString(matchDate, '13:30');
         await createMatch({
           sport: targetSport,
           matchType: 'tournament',
@@ -239,7 +255,7 @@ export const AdminBracketManagerTab: React.FC<AdminBracketManagerTabProps> = ({
         });
 
         // SF2: QF3 승자 vs QF4 승자
-        const sf2Time = new Date(`${matchDate}T14:30:00`).toISOString();
+        const sf2Time = toKSTIsoString(matchDate, '14:30');
         await createMatch({
           sport: targetSport,
           matchType: 'tournament',
@@ -257,7 +273,7 @@ export const AdminBracketManagerTab: React.FC<AdminBracketManagerTabProps> = ({
         });
 
         // 3) 3·4위전 (4강 1G 패자 vs 4강 2G 패자)
-        const bronzeTime = new Date(`${matchDate}T15:30:00`).toISOString();
+        const bronzeTime = toKSTIsoString(matchDate, '15:30');
         await createMatch({
           sport: targetSport,
           matchType: 'tournament',
@@ -275,7 +291,7 @@ export const AdminBracketManagerTab: React.FC<AdminBracketManagerTabProps> = ({
         });
 
         // 4) 결승전 (4강 1G 승자 vs 4강 2G 승자)
-        const finalTime = new Date(`${matchDate}T16:30:00`).toISOString();
+        const finalTime = toKSTIsoString(matchDate, '16:30');
         await createMatch({
           sport: targetSport,
           matchType: 'tournament',
@@ -299,7 +315,7 @@ export const AdminBracketManagerTab: React.FC<AdminBracketManagerTabProps> = ({
         for (let i = 0; i < 2; i++) {
           const home = shuffled[i * 2];
           const away = shuffled[i * 2 + 1];
-          const matchStartTime = new Date(`${matchDate}T${String(10 + i)}:00:00`).toISOString();
+          const matchStartTime = toKSTIsoString(matchDate, `${String(10 + i).padStart(2, '0')}:00`);
 
           await createMatch({
             sport: targetSport,
@@ -319,7 +335,7 @@ export const AdminBracketManagerTab: React.FC<AdminBracketManagerTabProps> = ({
         }
 
         // 2) 3·4위전
-        const bronzeTime = new Date(`${matchDate}T13:30:00`).toISOString();
+        const bronzeTime = toKSTIsoString(matchDate, '13:30');
         await createMatch({
           sport: targetSport,
           matchType: 'tournament',
@@ -337,7 +353,7 @@ export const AdminBracketManagerTab: React.FC<AdminBracketManagerTabProps> = ({
         });
 
         // 3) 결승전
-        const finalTime = new Date(`${matchDate}T14:30:00`).toISOString();
+        const finalTime = toKSTIsoString(matchDate, '14:30');
         await createMatch({
           sport: targetSport,
           matchType: 'tournament',
@@ -529,14 +545,80 @@ export const AdminBracketManagerTab: React.FC<AdminBracketManagerTabProps> = ({
     }
   };
 
+  // Match Status Actions
+  const handleStartMatch = async (matchId: string, sport?: SportType) => {
+    setIsSubmitting(true);
+    try {
+      await startMatch(matchId, sport);
+      onNotice('경기가 성공적으로 시작되었습니다. (LIVE 상태로 전환)');
+    } catch (e) {
+      console.error(e);
+      onNotice('경기 시작 중 오류가 발생했습니다.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handlePauseMatch = async (matchId: string) => {
+    setIsSubmitting(true);
+    try {
+      await pauseMatch(matchId);
+      onNotice('경기가 일시정지되었습니다.');
+    } catch (e) {
+      console.error(e);
+      onNotice('경기 일시정지 중 오류가 발생했습니다.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleResumeMatch = async (matchId: string) => {
+    setIsSubmitting(true);
+    try {
+      await resumeMatch(matchId);
+      onNotice('경기가 재개되었습니다.');
+    } catch (e) {
+      console.error(e);
+      onNotice('경기 재개 중 오류가 발생했습니다.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleFinishMatch = async (matchId: string) => {
+    setIsSubmitting(true);
+    try {
+      await finishMatch(matchId);
+      onNotice('경기가 공식 종료되었습니다.');
+    } catch (e) {
+      console.error(e);
+      onNotice('경기 종료 중 오류가 발생했습니다.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleBatchStartDueMatches = async () => {
+    setIsSubmitting(true);
+    try {
+      const started = await autoStartDueMatches(matches);
+      if (started.length > 0) {
+        onNotice(`시작 시각이 도달한 ${started.length}개 경기를 일괄 LIVE로 전환했습니다.`);
+      } else {
+        onNotice('현재 시작 시각이 경과한 대기 경기가 없거나, 이전 라운드 승자가 미정입니다.');
+      }
+    } catch (e) {
+      console.error(e);
+      onNotice('일괄 시작 처리 중 오류가 발생했습니다.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   // 8. Open Edit Modal
   const handleOpenEdit = (m: MatchItem) => {
     setEditingMatch(m);
-    const startDate = m.startTime ? new Date(m.startTime) : new Date();
-    const dateStr = !isNaN(startDate.getTime()) ? startDate.toISOString().split('T')[0] : '2026-09-14';
-    const timeStr = !isNaN(startDate.getTime()) 
-      ? `${String(startDate.getHours()).padStart(2, '0')}:${String(startDate.getMinutes()).padStart(2, '0')}`
-      : '10:00';
+    const { date: dateStr, time: timeStr } = parseKSTDateAndTime(m.startTime);
 
     setEditForm({
       title: m.title || '',
@@ -561,7 +643,7 @@ export const AdminBracketManagerTab: React.FC<AdminBracketManagerTabProps> = ({
     if (!editingMatch) return;
     setIsSubmitting(true);
     try {
-      const startDateTime = new Date(`${editForm.date}T${editForm.time}:00`).toISOString();
+      const startDateTime = toKSTIsoString(editForm.date, editForm.time);
       const updatedPayload: Partial<MatchItem> = {
         title: editForm.title,
         round: editForm.round,
@@ -912,6 +994,50 @@ export const AdminBracketManagerTab: React.FC<AdminBracketManagerTabProps> = ({
           </div>
         </div>
 
+        {/* Real-time Match State & Auto-Start Status Bar */}
+        {(() => {
+          const nowEpoch = Date.now();
+          const liveMatchesCount = matches.filter(m => m.status === 'LIVE').length;
+          const dueMatches = matches.filter(m => {
+            if (m.status !== 'SCHEDULED') return false;
+            const epoch = parseMatchStartTime(m.startTime);
+            return Boolean(epoch && epoch <= nowEpoch && !m.homeTeam?.includes('승자') && !m.awayTeam?.includes('승자') && m.homeTeam !== 'TBD' && m.awayTeam !== 'TBD');
+          });
+
+          return (
+            <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200">
+                  <span className="w-2 h-2 rounded-full bg-red-600 animate-pulse" />
+                  실시간 진행 중: <strong className="text-red-600 dark:text-red-400">{liveMatchesCount}</strong>경기
+                </span>
+                <span className="text-slate-300 dark:text-slate-700">|</span>
+                <span className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200">
+                  <span className={`w-2 h-2 rounded-full ${dueMatches.length > 0 ? 'bg-amber-500 animate-pulse' : 'bg-slate-400'}`} />
+                  시작 시각 도달 대기: <strong className={dueMatches.length > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-600'}>{dueMatches.length}</strong>경기
+                </span>
+                <span className="text-slate-300 dark:text-slate-700">|</span>
+                <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5 text-slate-400" />
+                  설정 시각 도달 시 자동 LIVE 전환 활성화됨
+                </span>
+              </div>
+
+              {dueMatches.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleBatchStartDueMatches}
+                  disabled={isSubmitting}
+                  className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-xs animate-pulse"
+                >
+                  <Play className="w-3.5 h-3.5 fill-current" />
+                  <span>시작 시각 도달 {dueMatches.length}경기 일괄 LIVE 시작</span>
+                </button>
+              )}
+            </div>
+          );
+        })()}
+
         {matches.length === 0 ? (
           <div className="py-12 text-center text-xs text-slate-400">
             등록된 경기가 없습니다. 상단의 원클릭 자동 추첨 또는 수동 등록으로 대진을 생성하세요.
@@ -1002,21 +1128,94 @@ export const AdminBracketManagerTab: React.FC<AdminBracketManagerTabProps> = ({
                         )}
                       </td>
                       <td className="py-3 px-3 text-slate-500 dark:text-slate-400">
-                        <div>{m.startTime ? new Date(m.startTime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false }) : '-'}</div>
+                        <div>{formatKSTTime(m.startTime)}</div>
                         <div className="text-[11px] text-slate-400">{m.court}</div>
                       </td>
                       <td className="py-3 px-3">
-                        <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
-                          m.status === 'LIVE' ? 'bg-red-600 text-white animate-pulse' :
-                          m.status === 'FINISHED' ? 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300' :
-                          m.status === 'PAUSED' ? 'bg-amber-100 text-amber-800' :
-                          'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300'
-                        }`}>
-                          {m.status === 'LIVE' ? '진행중' : m.status === 'FINISHED' ? '종료' : m.status === 'PAUSED' ? '일시중지' : '예정'}
-                        </span>
+                        <div className="flex flex-col items-start gap-1">
+                          <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
+                            m.status === 'LIVE' ? 'bg-red-600 text-white animate-pulse' :
+                            m.status === 'FINISHED' ? 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300' :
+                            m.status === 'PAUSED' ? 'bg-amber-100 text-amber-800' :
+                            'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300'
+                          }`}>
+                            {m.status === 'LIVE' ? '진행중' : m.status === 'FINISHED' ? '종료' : m.status === 'PAUSED' ? '일시중지' : '예정'}
+                          </span>
+                          {m.status === 'SCHEDULED' && (() => {
+                            const ep = parseMatchStartTime(m.startTime);
+                            if (ep && ep <= Date.now()) {
+                              return (
+                                <span className="px-1.5 py-0.2 rounded bg-amber-500 text-white text-[9px] font-black animate-pulse">
+                                  시각도달
+                                </span>
+                              );
+                            }
+                            return null;
+                          })()}
+                        </div>
                       </td>
                       <td className="py-3 px-3 text-right">
                         <div className="flex items-center justify-end gap-1.5">
+                          {/* Quick Lifecycle Buttons */}
+                          {m.status === 'SCHEDULED' && (
+                            <button
+                              type="button"
+                              onClick={() => handleStartMatch(m.id, m.sport)}
+                              disabled={isSubmitting}
+                              className="px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1 transition cursor-pointer shadow-xs disabled:opacity-50"
+                              title="즉시 LIVE 경기 시작"
+                            >
+                              <Play className="w-3 h-3 fill-current" />
+                              <span>시작</span>
+                            </button>
+                          )}
+                          {m.status === 'LIVE' && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handlePauseMatch(m.id)}
+                                disabled={isSubmitting}
+                                className="px-2 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs flex items-center gap-1 transition cursor-pointer shadow-xs disabled:opacity-50"
+                                title="경기 일시정지"
+                              >
+                                <Pause className="w-3 h-3" />
+                                <span>정지</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleFinishMatch(m.id)}
+                                disabled={isSubmitting}
+                                className="px-2 py-1 rounded-lg bg-slate-700 hover:bg-slate-800 text-white font-bold text-xs flex items-center gap-1 transition cursor-pointer shadow-xs disabled:opacity-50"
+                                title="경기 공식 종료"
+                              >
+                                <span>종료</span>
+                              </button>
+                            </>
+                          )}
+                          {m.status === 'PAUSED' && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handleResumeMatch(m.id)}
+                                disabled={isSubmitting}
+                                className="px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1 transition cursor-pointer shadow-xs disabled:opacity-50"
+                                title="경기 재개"
+                              >
+                                <Play className="w-3 h-3 fill-current" />
+                                <span>재개</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleFinishMatch(m.id)}
+                                disabled={isSubmitting}
+                                className="px-2 py-1 rounded-lg bg-slate-700 hover:bg-slate-800 text-white font-bold text-xs flex items-center gap-1 transition cursor-pointer shadow-xs disabled:opacity-50"
+                                title="경기 공식 종료"
+                              >
+                                <span>종료</span>
+                              </button>
+                            </>
+                          )}
+
                           <button
                             type="button"
                             onClick={() => handleOpenEdit(m)}

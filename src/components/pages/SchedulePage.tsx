@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { MatchItem, SportType } from '../../types';
 import { Calendar, Clock, MapPin, Bell, BellRing, Filter, Search } from 'lucide-react';
 import { WeatherWidget } from '../common/WeatherWidget';
+import { parseMatchStartTime, formatKSTTime } from '../../services/firebaseService';
 
 interface SchedulePageProps {
   matches: MatchItem[];
@@ -43,12 +44,7 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({
   const formatTime = (timeStr?: string) => {
     if (!timeStr) return '-';
     if (timeStr.includes(':') && timeStr.length <= 5) return timeStr;
-    try {
-      const d = new Date(timeStr);
-      return isNaN(d.getTime()) ? timeStr : d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
-    } catch {
-      return timeStr;
-    }
+    return formatKSTTime(timeStr);
   };
 
   return (
@@ -110,6 +106,8 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({
             const hasReminder = userReminders.includes(m.id);
             const isLive = m.status === 'LIVE';
             const isFinished = m.status === 'FINISHED';
+            const startTimeEpoch = parseMatchStartTime(m.startTime);
+            const isDue = m.status === 'SCHEDULED' && Boolean(startTimeEpoch && startTimeEpoch <= Date.now());
 
             return (
               <div
@@ -117,6 +115,8 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({
                 className={`p-4 rounded-2xl border transition bg-white dark:bg-slate-900 shadow-xs flex flex-col justify-between ${
                   isLive
                     ? 'border-2 border-red-500 dark:border-emerald-500'
+                    : isDue
+                    ? 'border-2 border-amber-400 dark:border-amber-600'
                     : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
                 }`}
               >
@@ -129,11 +129,13 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                       isLive
                         ? 'bg-red-600 text-white animate-pulse'
+                        : isDue
+                        ? 'bg-amber-500 text-white animate-pulse'
                         : isFinished
                         ? 'bg-slate-100 dark:bg-slate-800 text-slate-500'
                         : 'bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400'
                     }`}>
-                      {isLive ? '진행중' : isFinished ? '완료' : '예정'}
+                      {isLive ? '진행중' : isDue ? '시각도달' : isFinished ? '완료' : '예정'}
                     </span>
                   </div>
 

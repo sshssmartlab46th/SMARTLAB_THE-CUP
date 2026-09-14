@@ -87,7 +87,9 @@ import {
   updateFestivalConfig,
   answerSuggestion,
   updateMatch,
-  updateScoreWithAudit
+  updateScoreWithAudit,
+  autoStartDueMatches,
+  startMatch
 } from './services/firebaseService';
 import { parseStudentId } from './utils/studentIdParser';
 import { filterProfanity } from './utils/profanityFilter';
@@ -200,6 +202,29 @@ export default function App() {
       unsubInquiries();
     };
   }, []);
+
+  // Automatically transition scheduled matches whose scheduled start time has arrived to 'LIVE'
+  useEffect(() => {
+    if (matches.length === 0) return;
+
+    const triggerAutoStart = async () => {
+      try {
+        const started = await autoStartDueMatches(matches);
+        if (started.length > 0) {
+          console.log(`[AutoStart] Started ${started.length} due match(es):`, started.map(m => m.title));
+        }
+      } catch (e) {
+        console.error('[AutoStart] error:', e);
+      }
+    };
+
+    // Run check upon matches receipt
+    triggerAutoStart();
+
+    // Check periodically every 15 seconds
+    const interval = setInterval(triggerAutoStart, 15000);
+    return () => clearInterval(interval);
+  }, [matches]);
 
   // Popup important notice automatically on initial load if present
   useEffect(() => {

@@ -9,6 +9,7 @@ import {
   updateFestivalConfig
 } from '../../services/firebaseService';
 import { getRoleBadgeInfo } from '../../utils/studentIdParser';
+import { formatKSTDateTime } from '../../utils/kstTime';
 import { Shield, Users, FileText, ToggleLeft, ToggleRight, Trash2, Check, X, Search, ShieldAlert } from 'lucide-react';
 
 interface AdminDashboardModalProps {
@@ -321,7 +322,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                       </div>
                       <div className="text-right text-[11px] text-slate-400">
                         <div>수정자: {log.modifiedByName} ({log.modifiedBy})</div>
-                        <div>{log.timestamp ? new Date(log.timestamp).toLocaleString() : '-'}</div>
+                        <div>{log.timestamp ? formatKSTDateTime(log.timestamp) : '-'}</div>
                       </div>
                     </div>
                   ))

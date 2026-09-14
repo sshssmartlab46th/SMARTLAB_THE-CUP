@@ -5,7 +5,12 @@ import {
   quickAdjustScore,
   sendCheer, 
   listenLineups, 
-  listenCheers 
+  listenCheers,
+  startMatch,
+  pauseMatch,
+  resumeMatch,
+  finishMatch,
+  parseMatchStartTime
 } from '../../services/firebaseService';
 import { MVPVotingModal } from './MVPVotingModal';
 import { 
@@ -22,7 +27,10 @@ import {
   Minus,
   CheckCircle2,
   Sparkles,
-  ArrowLeft
+  ArrowLeft,
+  Play,
+  Pause,
+  Square
 } from 'lucide-react';
 
 interface LiveMatchStatusViewProps {
@@ -46,6 +54,7 @@ export const LiveMatchStatusView: React.FC<LiveMatchStatusViewProps> = ({
   const [newAwayScore, setNewAwayScore] = useState(match.awayScore ?? 0);
   const [editReason, setEditReason] = useState('');
   const [isSubmittingScore, setIsSubmittingScore] = useState(false);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Sync state whenever match score updates in real-time
@@ -119,6 +128,62 @@ export const LiveMatchStatusView: React.FC<LiveMatchStatusViewProps> = ({
       showToast('스코어 업데이트에 실패했습니다. 다시 시도해주세요.', 'error');
     } finally {
       setIsSubmittingScore(false);
+    }
+  };
+
+  const handleStartCurrentMatch = async () => {
+    if (!canEditScore || isUpdatingStatus) return;
+    setIsUpdatingStatus(true);
+    try {
+      await startMatch(match.id, match.sport);
+      showToast(`${match.title} 경기가 공식 시작되었습니다! (LIVE)`);
+    } catch (err) {
+      console.error(err);
+      showToast('경기 시작 처리 중 오류가 발생했습니다.', 'error');
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
+
+  const handlePauseCurrentMatch = async () => {
+    if (!canEditScore || isUpdatingStatus) return;
+    setIsUpdatingStatus(true);
+    try {
+      await pauseMatch(match.id);
+      showToast(`${match.title} 경기가 일시정지되었습니다.`);
+    } catch (err) {
+      console.error(err);
+      showToast('일시정지 중 오류가 발생했습니다.', 'error');
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
+
+  const handleResumeCurrentMatch = async () => {
+    if (!canEditScore || isUpdatingStatus) return;
+    setIsUpdatingStatus(true);
+    try {
+      await resumeMatch(match.id);
+      showToast(`${match.title} 경기가 재개되었습니다.`);
+    } catch (err) {
+      console.error(err);
+      showToast('경기 재개 중 오류가 발생했습니다.', 'error');
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
+
+  const handleFinishCurrentMatch = async () => {
+    if (!canEditScore || isUpdatingStatus) return;
+    setIsUpdatingStatus(true);
+    try {
+      await finishMatch(match.id);
+      showToast(`${match.title} 경기가 공식 종료되었습니다.`);
+    } catch (err) {
+      console.error(err);
+      showToast('경기 종료 중 오류가 발생했습니다.', 'error');
+    } finally {
+      setIsUpdatingStatus(false);
     }
   };
 
@@ -230,6 +295,71 @@ export const LiveMatchStatusView: React.FC<LiveMatchStatusViewProps> = ({
             </span>
           </div>
         </div>
+
+        {/* Scheduled Status Banner */}
+        {match.status === 'SCHEDULED' && (() => {
+          const epoch = parseMatchStartTime(match.startTime);
+          const isDue = epoch && epoch <= Date.now();
+          return (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-xl">
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                <span className="text-xs sm:text-sm font-semibold text-amber-900 dark:text-amber-200">
+                  {isDue
+                    ? `🕒 시작 시각(${match.startTime})이 경과했습니다. 대기 중인 경기를 즉시 시작할 수 있습니다.`
+                    : `🕒 경기 시작 예정 시각: ${match.startTime || '시간 미정'}`}
+                </span>
+              </div>
+              {canEditScore && (
+                <button
+                  type="button"
+                  onClick={handleStartCurrentMatch}
+                  disabled={isUpdatingStatus}
+                  className="w-full sm:w-auto px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition active:scale-95 cursor-pointer disabled:opacity-50"
+                >
+                  <Play className="w-3.5 h-3.5 fill-current" />
+                  <span>공식 경기 시작하기 (LIVE)</span>
+                </button>
+              )}
+            </div>
+          );
+        })()}
+
+        {/* Live & Paused Status Controls for Officials */}
+        {canEditScore && (match.status === 'LIVE' || match.status === 'PAUSED') && (
+          <div className="flex items-center justify-end gap-2 pt-1 pb-1">
+            {match.status === 'LIVE' ? (
+              <button
+                type="button"
+                onClick={handlePauseCurrentMatch}
+                disabled={isUpdatingStatus}
+                className="px-3 py-1.5 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 text-xs font-bold flex items-center gap-1 hover:bg-amber-100 transition cursor-pointer"
+              >
+                <Pause className="w-3.5 h-3.5" />
+                <span>경기 일시정지</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleResumeCurrentMatch}
+                disabled={isUpdatingStatus}
+                className="px-3 py-1.5 rounded-lg border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 text-xs font-bold flex items-center gap-1 hover:bg-emerald-100 transition cursor-pointer"
+              >
+                <Play className="w-3.5 h-3.5 fill-current" />
+                <span>경기 재개</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleFinishCurrentMatch}
+              disabled={isUpdatingStatus}
+              className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold flex items-center gap-1 hover:bg-slate-200 transition cursor-pointer"
+            >
+              <Square className="w-3.5 h-3.5" />
+              <span>경기 공식 종료</span>
+            </button>
+          </div>
+        )}
 
         {/* Big Teams & Scoreboard */}
         <div className="grid grid-cols-3 items-center text-center py-4 border-y border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 rounded-xl px-2 sm:px-4">

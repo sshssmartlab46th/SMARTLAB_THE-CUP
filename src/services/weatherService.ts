@@ -1,4 +1,5 @@
 import { WeatherInfo } from '../types';
+import { formatKSTTime } from '../utils/kstTime';
 
 /**
  * Open-Meteo Free Weather API Client
@@ -155,7 +156,7 @@ export async function fetchLiveOpenMeteoWeather(): Promise<WeatherInfo> {
     const assessment = evaluateFestivalOutdoorStatus(temp, rainProb, precipMm, windSpeed);
 
     const now = new Date();
-    const lastUpdated = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+    const lastUpdated = formatKSTTime(now);
 
     return {
       temperature: temp,
@@ -186,7 +187,7 @@ export async function fetchLiveOpenMeteoWeather(): Promise<WeatherInfo> {
       weatherCode: 0,
       isDay: true,
       statusText: '야외 체육활동 최적: 대운동장 및 농구장 경기 진행에 완벽한 날씨입니다',
-      lastUpdated: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      lastUpdated: formatKSTTime(new Date()),
       uvIndex: '보통'
     };
   }

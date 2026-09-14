@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { MatchItem, UserProfile } from '../../types';
-import { Heart, Flame, ChevronRight, Volume2, Sparkles } from 'lucide-react';
-import { listenCheers, sendCheer, sendLiveReaction } from '../../services/firebaseService';
+import { Heart, Flame, ChevronRight, Volume2, Sparkles, Play, Clock } from 'lucide-react';
+import { listenCheers, sendCheer, sendLiveReaction, startMatch, parseMatchStartTime, formatKSTTime } from '../../services/firebaseService';
 
 export interface LiveMatchHeroCardProps {
   match?: MatchItem | null;
@@ -32,6 +32,7 @@ export const LiveMatchHeroCard: React.FC<LiveMatchHeroCardProps> = ({
   const [isCheering, setIsCheering] = useState(false);
   const [cheeredMessage, setCheeredMessage] = useState<string | null>(null);
   const [particles, setParticles] = useState<FloatingParticle[]>([]);
+  const [isStarting, setIsStarting] = useState(false);
 
   // Listen to live cheer counts from Firebase
   useEffect(() => {
@@ -61,6 +62,28 @@ export const LiveMatchHeroCard: React.FC<LiveMatchHeroCardProps> = ({
   const matchPeriod = match.period || '';
   const matchCourt = match.court || match.location || '';
   const matchRound = match.round || match.title || '';
+
+  const isLive = match.status === 'LIVE';
+  const isPaused = match.status === 'PAUSED';
+  const isScheduled = match.status === 'SCHEDULED';
+  const startTimeEpoch = parseMatchStartTime(match.startTime);
+  const isTimeArrived = Boolean(startTimeEpoch && startTimeEpoch <= Date.now());
+
+  const canStartMatch = Boolean(
+    isScheduled && currentUser && ['admin', 'referee', 'student_council'].includes(currentUser.role)
+  );
+
+  const handleStartThisMatch = async () => {
+    if (!match?.id || isStarting) return;
+    setIsStarting(true);
+    try {
+      await startMatch(match.id, match.sport);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsStarting(false);
+    }
+  };
 
   // Determine user class affinity
   const userClassNum = currentUser?.classNum;
@@ -145,9 +168,13 @@ export const LiveMatchHeroCard: React.FC<LiveMatchHeroCardProps> = ({
       {/* Header bar */}
       <div className="flex items-center justify-between gap-2 mb-3">
         <div className="flex items-center gap-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-red-600 dark:bg-emerald-500 inline-block animate-pulse" />
+          <span className={`w-2.5 h-2.5 rounded-full inline-block ${
+            isLive ? 'bg-red-600 dark:bg-emerald-500 animate-pulse' :
+            isTimeArrived ? 'bg-amber-500 animate-pulse' :
+            isPaused ? 'bg-amber-400' : 'bg-blue-500'
+          }`} />
           <span className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
-            진행 중인 실시간 경기
+            {isLive ? '진행 중인 실시간 경기' : isTimeArrived ? '시작 시간 도달 경기 (대기중)' : isPaused ? '일시중지된 경기' : '다음 예정 경기'}
             {match.sport && (
               <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-[10px] text-slate-600 dark:text-slate-300 font-semibold">
                 {match.sport}
@@ -157,8 +184,16 @@ export const LiveMatchHeroCard: React.FC<LiveMatchHeroCardProps> = ({
         </div>
 
         <div className="flex items-center gap-1.5">
-          <span className="px-2.5 py-0.5 rounded-sm bg-red-600 dark:bg-emerald-500 text-white dark:text-slate-950 text-[11px] font-black tracking-wider uppercase">
-            LIVE
+          <span className={`px-2.5 py-0.5 rounded-sm text-[11px] font-black tracking-wider uppercase ${
+            isLive
+              ? 'bg-red-600 dark:bg-emerald-500 text-white dark:text-slate-950'
+              : isTimeArrived
+              ? 'bg-amber-500 text-white animate-pulse'
+              : isPaused
+              ? 'bg-amber-100 text-amber-800'
+              : 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300'
+          }`}>
+            {isLive ? 'LIVE' : isTimeArrived ? '시간 도달' : isPaused ? 'PAUSED' : 'SCHEDULED'}
           </span>
         </div>
       </div>
@@ -195,6 +230,11 @@ export const LiveMatchHeroCard: React.FC<LiveMatchHeroCardProps> = ({
           {matchPeriod ? (
             <div className="text-xs font-bold text-red-600 dark:text-emerald-400 bg-red-100/60 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full inline-block">
               {matchPeriod}
+            </div>
+          ) : isScheduled ? (
+            <div className="text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+              <Clock className="w-3 h-3" />
+              <span>{match.startTime ? formatKSTTime(match.startTime) : '시작 전'}</span>
             </div>
           ) : (
             <div className="text-xs font-bold text-slate-500">
@@ -249,6 +289,26 @@ export const LiveMatchHeroCard: React.FC<LiveMatchHeroCardProps> = ({
 
       {/* Primary Action: 우리 학급 실시간 응원하기 Button */}
       <div className="space-y-2 mt-4">
+        {canStartMatch && (
+          <button
+            type="button"
+            onClick={handleStartThisMatch}
+            disabled={isStarting}
+            className={`w-full py-2.5 px-4 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md transition active:scale-98 cursor-pointer ${
+              isTimeArrived
+                ? 'bg-amber-500 hover:bg-amber-600 text-white animate-pulse'
+                : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+            }`}
+          >
+            <Play className="w-4 h-4 fill-current" />
+            <span>
+              {isTimeArrived
+                ? '▶ 시작 시각 도달! 공식 경기 즉시 시작 (LIVE 전환)'
+                : '▶ 공식 경기 지금 시작하기 (LIVE 전환)'}
+            </span>
+          </button>
+        )}
+
         <button
           type="button"
           onClick={(e) => handleCheer(preferredTeam, e)}

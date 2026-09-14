@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { MatchItem, SportType } from '../../types';
 import { Trophy, Clock, MapPin, Bell, BellRing, ChevronRight, Activity, Flame, Filter, GitMerge, LayoutList, Medal, Crown } from 'lucide-react';
-import { getMatchTournamentSlot } from '../../services/firebaseService';
+import { getMatchTournamentSlot, formatKSTTime } from '../../services/firebaseService';
 
 interface TournamentBracketViewProps {
   matches: MatchItem[];
@@ -140,7 +140,7 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
 
         <div className="pt-1.5 mt-1 border-t border-slate-50 dark:border-slate-800/80 flex items-center justify-between text-[10px] text-slate-400">
           <span>{m.court || '경기장'}</span>
-          <span>{m.startTime ? new Date(m.startTime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false }) : ''}</span>
+          <span>{m.startTime ? formatKSTTime(m.startTime) : ''}</span>
         </div>
       </div>
     );
@@ -303,7 +303,7 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
                     <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
                       <span className="flex items-center gap-1">
                         <Clock className="w-3.5 h-3.5 text-slate-400" />
-                        {m.startTime ? new Date(m.startTime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false }) : '-'}
+                        {m.startTime ? formatKSTTime(m.startTime) : '-'}
                       </span>
                       <span className="flex items-center gap-1">
                         <MapPin className="w-3.5 h-3.5 text-slate-400" />
@@ -506,7 +506,7 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
 
                     <div className="flex items-center justify-between text-[11px] text-slate-400">
                       <span>
-                        {m.startTime ? new Date(m.startTime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false }) : '-'} · {m.court}
+                        {m.startTime ? `${formatKSTTime(m.startTime)} · ` : ''}{m.court}
                       </span>
                       <span className="text-red-600 dark:text-red-400 font-semibold flex items-center">
                         상세보기 <ChevronRight className="w-3 h-3" />

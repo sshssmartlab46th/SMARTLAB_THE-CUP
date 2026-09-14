@@ -232,6 +232,139 @@ export async function updateMatch(matchId: string, partial: Partial<MatchItem>):
   }
 }
 
+import {
+  KST_TIMEZONE,
+  parseMatchStartTimeKST,
+  formatKSTTime,
+  formatKSTDate,
+  formatKSTDateTime,
+  toKSTIsoString,
+  parseKSTDateAndTime,
+  getKSTNowParts
+} from '../utils/kstTime';
+
+export {
+  KST_TIMEZONE,
+  formatKSTTime,
+  formatKSTDate,
+  formatKSTDateTime,
+  toKSTIsoString,
+  parseKSTDateAndTime,
+  getKSTNowParts
+};
+
+/**
+ * Parse any format of match start time into epoch milliseconds anchored strictly in KST (UTC+9)
+ */
+export function parseMatchStartTime(startTimeStr?: string | null): number | null {
+  return parseMatchStartTimeKST(startTimeStr);
+}
+
+/**
+ * Returns sport-specific starting period name
+ */
+export function getInitialPeriodForSport(sport?: string): string {
+  switch (sport) {
+    case 'soccer':
+      return '전반전';
+    case 'basketball':
+      return '1쿼터';
+    case 'dodgeball':
+      return '1세트';
+    case 'relay_male':
+    case 'relay_female':
+      return '레이스 진행중';
+    case 'tug_of_war':
+      return '1세트';
+    default:
+      return '전반전';
+  }
+}
+
+/**
+ * Start a scheduled match: transitions to LIVE and starts the official timer
+ */
+export async function startMatch(matchId: string, sport?: string): Promise<void> {
+  if (!matchId) return;
+  const initialPeriod = getInitialPeriodForSport(sport);
+  await updateMatch(matchId, {
+    status: 'LIVE',
+    period: initialPeriod,
+    timerRunning: true,
+    lastTimerStartedAt: Date.now()
+  });
+}
+
+/**
+ * Pause an active match
+ */
+export async function pauseMatch(matchId: string): Promise<void> {
+  if (!matchId) return;
+  await updateMatch(matchId, {
+    status: 'PAUSED',
+    timerRunning: false
+  });
+}
+
+/**
+ * Resume a paused match
+ */
+export async function resumeMatch(matchId: string): Promise<void> {
+  if (!matchId) return;
+  await updateMatch(matchId, {
+    status: 'LIVE',
+    timerRunning: true,
+    lastTimerStartedAt: Date.now()
+  });
+}
+
+/**
+ * Mark a match as finished
+ */
+export async function finishMatch(matchId: string): Promise<void> {
+  if (!matchId) return;
+  await updateMatch(matchId, {
+    status: 'FINISHED',
+    period: '경기 종료',
+    timerRunning: false
+  });
+}
+
+/**
+ * Automatically inspects scheduled matches and transitions those whose scheduled start
+ * time has arrived or elapsed to 'LIVE' status with their initial period and clock.
+ * Ignores placeholder matches (e.g. '8강 1G 승자' / 'TBD').
+ */
+export async function autoStartDueMatches(matches: MatchItem[]): Promise<MatchItem[]> {
+  const now = Date.now();
+  const startedMatches: MatchItem[] = [];
+
+  for (const m of matches) {
+    if (!m.id || m.status !== 'SCHEDULED' || !m.startTime) continue;
+
+    const timeEpoch = parseMatchStartTime(m.startTime);
+    if (!timeEpoch || timeEpoch > now) continue;
+
+    // Skip if teams are still waiting for previous rounds (TBD / 승자 / 패자)
+    const isWaitingForPrior = 
+      (m.homeTeam && (m.homeTeam.includes('승자') || m.homeTeam.includes('패자'))) ||
+      (m.awayTeam && (m.awayTeam.includes('승자') || m.awayTeam.includes('패자'))) ||
+      m.homeClass === 'TBD' ||
+      m.awayClass === 'TBD';
+
+    if (isWaitingForPrior) continue;
+
+    try {
+      await startMatch(m.id, m.sport);
+      startedMatches.push(m);
+    } catch (err) {
+      console.error(`[Firebase] autoStartDueMatches failed for match ${m.id}:`, err);
+    }
+  }
+
+  return startedMatches;
+}
+
 export async function deleteMatch(matchId: string): Promise<void> {
   if (!matchId) {
     console.warn('[Firebase] deleteMatch called with empty matchId');
@@ -652,7 +785,7 @@ export async function sendCheerMessage(
       authorMasked,
       classLabel,
       message,
-      createdAt: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
+      createdAt: formatKSTTime(new Date())
     };
     await setDoc(docRef, item);
   } catch (e) {

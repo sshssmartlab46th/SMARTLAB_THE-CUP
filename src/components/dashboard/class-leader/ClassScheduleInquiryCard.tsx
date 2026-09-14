@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { MatchItem, NoticeItem } from '../../../types';
 import { Megaphone, Calendar, Send, AlertTriangle } from 'lucide-react';
+import { formatKSTTime } from '../../../utils/kstTime';
 
 export interface ClassScheduleInquiryCardProps {
   urgentNotice?: NoticeItem | null;
@@ -84,7 +85,7 @@ export const ClassScheduleInquiryCard: React.FC<ClassScheduleInquiryCardProps> =
               <div key={m.id} className="pt-2.5 first:pt-0 flex items-center justify-between gap-2 text-xs">
                 <div className="space-y-0.5 min-w-0">
                   <div className="text-[11px] font-mono font-bold text-slate-500 dark:text-slate-400">
-                    {m.startTime ? new Date(m.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '경기'}
+                    {m.startTime ? formatKSTTime(m.startTime) : '경기'}
                   </div>
                   <div className="font-bold text-slate-900 dark:text-white truncate">
                     {m.title}

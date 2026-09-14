@@ -12,6 +12,7 @@ import {
   UserCheck,
   AlertCircle
 } from 'lucide-react';
+import { formatKSTTime } from '../../utils/kstTime';
 import { 
   ClassScopeNoticeCard, 
   ClassRosterManagerCard, 
@@ -393,7 +394,7 @@ export const RoleDashboardPage: React.FC<RoleDashboardPageProps> = ({
                   id: m.id,
                   title: m.title,
                   sport: m.sport,
-                  time: m.startTime ? new Date(m.startTime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false }) : '14:00',
+                  time: m.startTime ? formatKSTTime(m.startTime) : '14:00',
                   court: m.court || '대운동장 A',
                   isCompleted: m.status === 'FINISHED',
                   statusLabel: m.status === 'LIVE' ? '진행중' : m.status === 'FINISHED' ? '종료' : '배정 대기'

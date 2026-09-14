@@ -1,6 +1,7 @@
 import React from 'react';
 import { MatchItem } from '../../types';
 import { WeatherWidget } from '../common/WeatherWidget';
+import { formatKSTTime } from '../../utils/kstTime';
 
 export interface TodayScheduleCardProps {
   schedules?: MatchItem[];
@@ -23,12 +24,7 @@ export const TodayScheduleCard: React.FC<TodayScheduleCardProps> = ({
   const formatTime = (timeStr?: string) => {
     if (!timeStr) return '-';
     if (timeStr.includes(':') && timeStr.length <= 5) return timeStr;
-    try {
-      const d = new Date(timeStr);
-      return isNaN(d.getTime()) ? timeStr : d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
-    } catch {
-      return timeStr;
-    }
+    return formatKSTTime(timeStr);
   };
 
   return (

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { UserProfile, SuggestionItem } from '../../types';
 import { listenSuggestions, submitSuggestion, answerSuggestion } from '../../services/firebaseService';
+import { formatKSTDate } from '../../utils/kstTime';
 import { 
   HelpCircle, 
   X, 
@@ -246,7 +247,7 @@ export const SuggestionModal: React.FC<SuggestionModalProps> = ({
                       )}
                     </div>
                     <span className="text-[11px] text-slate-400">
-                      {item.authorStudentId} {item.authorName} · {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ''}
+                      {item.authorStudentId} {item.authorName} · {item.createdAt ? formatKSTDate(item.createdAt) : ''}
                     </span>
                   </div>
 
@@ -282,7 +283,7 @@ export const SuggestionModal: React.FC<SuggestionModalProps> = ({
                           답변자: {item.answeredBy}
                         </span>
                         {item.answeredAt && (
-                          <span>{new Date(item.answeredAt).toLocaleDateString()}</span>
+                          <span>{formatKSTDate(item.answeredAt)}</span>
                         )}
                       </div>
                       <p className="text-slate-800 dark:text-slate-200 leading-relaxed">

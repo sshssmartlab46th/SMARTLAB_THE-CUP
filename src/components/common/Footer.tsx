@@ -13,7 +13,6 @@ export interface FooterProps {
 
 const DEFAULT_LINKS: FooterLink[] = [
   { label: '개인정보처리방침' },
-  { label: '체육대회 규정집' },
   { label: '스마트랩 소개' },
   { label: '문의하기' }
 ];

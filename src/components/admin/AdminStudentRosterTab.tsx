@@ -11,6 +11,7 @@ import {
   GraduationCap
 } from 'lucide-react';
 import { updateUserRole, deleteUser } from '../../services/firebaseService';
+import { formatKSTDateTime } from '../../utils/kstTime';
 
 interface AdminStudentRosterTabProps {
   allUsers: UserProfile[];
@@ -114,7 +115,7 @@ export const AdminStudentRosterTab: React.FC<AdminStudentRosterTabProps> = ({
       const numLabel = u.role === 'admin' || u.isTeacher ? '-' : `${u.studentNum}번`;
       const gender = getGenderLabel(u.grade, u.classNum, u.isTeacher, u.role);
       const role = getRoleLabel(u.role);
-      const date = u.createdAt ? new Date(u.createdAt).toLocaleString('ko-KR') : '-';
+      const date = u.createdAt ? formatKSTDateTime(u.createdAt) : '-';
 
       return [
         `"${gLabel}"`,

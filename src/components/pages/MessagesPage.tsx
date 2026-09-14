@@ -24,6 +24,7 @@ import {
   listenAllDirectMessages, 
   deleteDirectMessage 
 } from '../../services/firebaseService';
+import { formatKSTDateTime } from '../../utils/kstTime';
 import { compressImageFile } from '../../utils/imageCompressor';
 import { ImageLightboxModal } from '../common/ImageLightboxModal';
 
@@ -304,7 +305,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                       </div>
                       <span className="text-[11px] text-slate-400 flex items-center gap-1 mt-0.5">
                         <Clock className="w-3 h-3" />
-                        {msg.createdAt ? new Date(msg.createdAt).toLocaleString('ko-KR') : ''}
+                        {msg.createdAt ? formatKSTDateTime(msg.createdAt) : ''}
                       </span>
                     </div>
                   </div>
@@ -381,7 +382,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                       수신: {msg.toClass === 'all' ? '전체 대상' : msg.toClass === 'teacher' ? '교사 전체' : `${msg.toClass} (${msg.toRole})`}
                     </span>
                     <span className="text-slate-400 text-[11px] block mt-0.5">
-                      {msg.createdAt ? new Date(msg.createdAt).toLocaleString('ko-KR') : ''}
+                      {msg.createdAt ? formatKSTDateTime(msg.createdAt) : ''}
                     </span>
                   </div>
 

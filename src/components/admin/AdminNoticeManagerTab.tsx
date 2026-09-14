@@ -10,6 +10,7 @@ import {
   Pin 
 } from 'lucide-react';
 import { createNotice, deleteNotice } from '../../services/firebaseService';
+import { formatKSTDateTime } from '../../utils/kstTime';
 
 interface AdminNoticeManagerTabProps {
   notices: NoticeItem[];
@@ -252,7 +253,7 @@ export const AdminNoticeManagerTab: React.FC<AdminNoticeManagerTabProps> = ({
                   )}
 
                   <div className="text-[10px] text-slate-400 font-mono">
-                    작성자: {n.authorName || '관리자'} · {new Date(n.createdAt).toLocaleString('ko-KR')}
+                    작성자: {n.authorName || '관리자'} · {formatKSTDateTime(n.createdAt)}
                   </div>
                 </div>
 
