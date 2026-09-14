@@ -5,6 +5,9 @@ import {
   setDoc, 
   updateDoc, 
   getDocs, 
+  getDoc,
+  deleteDoc,
+  where,
   addDoc, 
   query, 
   orderBy, 
@@ -23,7 +26,12 @@ import {
   ClassLineup, 
   DirectMessage, 
   CheerCount, 
-  UserProfile 
+  UserProfile,
+  FestivalConfig,
+  MVPVote,
+  MatchReminderItem,
+  UserRole,
+  CheerMessageItem
 } from '../types';
 
 // Ensure Firebase Anonymous Auth for Firestore security rules
@@ -315,6 +323,44 @@ export async function sendCheer(matchId: string, team: 'home' | 'away', emoji: s
   }
 }
 
+export function listenCheersFeed(callback: (cheers: CheerMessageItem[]) => void): () => void {
+  try {
+    const q = query(collection(db, 'cheer_messages'), orderBy('createdAt', 'desc'), limit(30));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const list: CheerMessageItem[] = [];
+      snapshot.forEach((d) => list.push(d.data() as CheerMessageItem));
+      callback(list);
+    }, () => callback([]));
+    return unsubscribe;
+  } catch (e) {
+    callback([]);
+    return () => {};
+  }
+}
+
+export async function sendCheerMessage(
+  studentId: string,
+  authorMasked: string,
+  classLabel: string,
+  message: string
+): Promise<void> {
+  try {
+    await ensureFirebaseAuth();
+    const docRef = doc(collection(db, 'cheer_messages'));
+    const item: CheerMessageItem = {
+      id: docRef.id,
+      authorMasked,
+      classLabel,
+      message,
+      createdAt: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
+    };
+    await setDoc(docRef, item);
+  } catch (e) {
+    console.error('[Firebase] sendCheerMessage error:', e);
+  }
+}
+
+
 // -------------------------------------------------------------
 // Injury Encyclopedia
 // -------------------------------------------------------------
@@ -403,3 +449,206 @@ export function listenAuditLogs(callback: (logs: AuditLogEntry[]) => void): () =
     return () => {};
   }
 }
+
+// -------------------------------------------------------------
+// Festival Config (대회 탭 개폐 및 행사 설정)
+// -------------------------------------------------------------
+export function listenFestivalConfig(callback: (config: FestivalConfig | null) => void): () => void {
+  try {
+    const docRef = doc(db, 'system', 'festival');
+    const unsubscribe = onSnapshot(docRef, (snapshot) => {
+      if (snapshot.exists()) {
+        callback(snapshot.data() as FestivalConfig);
+      } else {
+        // Default opened state
+        callback({
+          isOpen: true,
+          name: '2026 상산고등학교 체육대회',
+          description: '상산고등학교 체육대회 및 축제 실시간 플랫폼'
+        });
+      }
+    }, () => {
+      callback({
+        isOpen: true,
+        name: '2026 상산고등학교 체육대회',
+        description: '상산고등학교 체육대회 및 축제 실시간 플랫폼'
+      });
+    });
+    return unsubscribe;
+  } catch (e) {
+    callback({
+      isOpen: true,
+      name: '2026 상산고등학교 체육대회',
+      description: '상산고등학교 체육대회 및 축제 실시간 플랫폼'
+    });
+    return () => {};
+  }
+}
+
+export async function updateFestivalConfig(config: Partial<FestivalConfig>): Promise<void> {
+  const docRef = doc(db, 'system', 'festival');
+  await setDoc(docRef, {
+    ...config,
+    updatedAt: new Date().toISOString()
+  }, { merge: true });
+}
+
+// -------------------------------------------------------------
+// User Management & Duplicate Student ID Check
+// -------------------------------------------------------------
+export async function checkStudentIdExists(studentId: string): Promise<boolean> {
+  try {
+    await ensureFirebaseAuth();
+    const docRef = doc(db, 'users', studentId);
+    const snap = await getDoc(docRef);
+    return snap.exists();
+  } catch (e) {
+    console.warn('[Firebase] checkStudentIdExists error:', e);
+    return false;
+  }
+}
+
+export async function getUserProfile(studentId: string): Promise<UserProfile | null> {
+  try {
+    await ensureFirebaseAuth();
+    const docRef = doc(db, 'users', studentId);
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      return snap.data() as UserProfile;
+    }
+    return null;
+  } catch (e) {
+    console.warn('[Firebase] getUserProfile error:', e);
+    return null;
+  }
+}
+
+export async function createAccount(profile: UserProfile): Promise<boolean> {
+  try {
+    await ensureFirebaseAuth();
+    const exists = await checkStudentIdExists(profile.studentId);
+    if (exists) {
+      return false; // Duplicate
+    }
+    const docRef = doc(db, 'users', profile.studentId);
+    await setDoc(docRef, {
+      ...profile,
+      createdAt: new Date().toISOString(),
+      lastLogin: new Date().toISOString()
+    });
+    return true;
+  } catch (e) {
+    console.error('[Firebase] createAccount error:', e);
+    throw e;
+  }
+}
+
+export async function deleteUser(studentId: string): Promise<void> {
+  try {
+    await ensureFirebaseAuth();
+    const docRef = doc(db, 'users', studentId);
+    await deleteDoc(docRef);
+  } catch (e) {
+    console.error('[Firebase] deleteUser error:', e);
+    throw e;
+  }
+}
+
+export function listenAllUsers(callback: (users: UserProfile[]) => void): () => void {
+  try {
+    const q = collection(db, 'users');
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const list: UserProfile[] = [];
+      snapshot.forEach((d) => list.push(d.data() as UserProfile));
+      callback(list);
+    }, () => callback([]));
+    return unsubscribe;
+  } catch (e) {
+    callback([]);
+    return () => {};
+  }
+}
+
+export async function updateUserRole(studentId: string, role: UserRole, canAnswerSuggestion?: boolean): Promise<void> {
+  try {
+    const docRef = doc(db, 'users', studentId);
+    const payload: Partial<UserProfile> = { role };
+    if (canAnswerSuggestion !== undefined) {
+      payload.canAnswerSuggestion = canAnswerSuggestion;
+    }
+    await updateDoc(docRef, payload);
+  } catch (e) {
+    console.error('[Firebase] updateUserRole error:', e);
+    throw e;
+  }
+}
+
+// -------------------------------------------------------------
+// MVP Voting System (1분간 투표)
+// -------------------------------------------------------------
+export async function submitMVPVote(vote: MVPVote): Promise<void> {
+  try {
+    await ensureFirebaseAuth();
+    const voteDocRef = doc(db, 'mvp_votes', `${vote.matchId}_${vote.voterStudentId}`);
+    await setDoc(voteDocRef, {
+      ...vote,
+      createdAt: new Date().toISOString()
+    });
+  } catch (e) {
+    console.error('[Firebase] submitMVPVote error:', e);
+    throw e;
+  }
+}
+
+export function listenMVPVotes(matchId: string, callback: (votes: MVPVote[]) => void): () => void {
+  try {
+    const q = query(collection(db, 'mvp_votes'), where('matchId', '==', matchId));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const list: MVPVote[] = [];
+      snapshot.forEach((d) => list.push(d.data() as MVPVote));
+      callback(list);
+    }, () => callback([]));
+    return unsubscribe;
+  } catch (e) {
+    callback([]);
+    return () => {};
+  }
+}
+
+// -------------------------------------------------------------
+// Match Reminders
+// -------------------------------------------------------------
+export async function setMatchReminder(reminder: MatchReminderItem): Promise<void> {
+  try {
+    await ensureFirebaseAuth();
+    const docRef = doc(db, 'reminders', `${reminder.studentId}_${reminder.matchId}`);
+    await setDoc(docRef, reminder);
+  } catch (e) {
+    console.error('[Firebase] setMatchReminder error:', e);
+  }
+}
+
+export async function removeMatchReminder(studentId: string, matchId: string): Promise<void> {
+  try {
+    const docRef = doc(db, 'reminders', `${studentId}_${matchId}`);
+    await deleteDoc(docRef);
+  } catch (e) {
+    console.error('[Firebase] removeMatchReminder error:', e);
+  }
+}
+
+export function listenUserReminders(studentId: string, callback: (reminders: MatchReminderItem[]) => void): () => void {
+  try {
+    const q = query(collection(db, 'reminders'), where('studentId', '==', studentId));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const list: MatchReminderItem[] = [];
+      snapshot.forEach((d) => list.push(d.data() as MatchReminderItem));
+      callback(list);
+    }, () => callback([]));
+    return unsubscribe;
+  } catch (e) {
+    callback([]);
+    return () => {};
+  }
+}
+

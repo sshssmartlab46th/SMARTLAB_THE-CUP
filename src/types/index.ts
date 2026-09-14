@@ -16,11 +16,29 @@ export interface UserProfile {
   studentNum: string;// '01' ~ '35' (or '00' for teacher)
   gender: 'male' | 'female' | 'other';
   isTeacher: boolean;
+  canAnswerSuggestion?: boolean;
+  assignedMatchId?: string;
   createdAt: string;
   lastLogin: string;
 }
 
-export type SportType = 'soccer' | 'basketball' | 'dodgeball' | 'relay_male' | 'relay_female';
+export interface FestivalConfig {
+  isOpen: boolean;
+  name: string;
+  description?: string;
+  updatedAt?: string;
+  updatedBy?: string;
+}
+
+export interface FormationSlot {
+  slotId: string;
+  roleName: string; // 'GK', 'DF', 'MF', 'FW'
+  x: number; // % coordinates
+  y: number; // % coordinates
+  player?: string; // e.g. '20305 김민준'
+}
+
+export type SportType = 'soccer' | 'basketball' | 'dodgeball' | 'relay_male' | 'relay_female' | 'tug_of_war' | 'group_rope';
 
 export type MatchType = 'tournament' | 'relay_group' | 'relay_final';
 
@@ -55,6 +73,11 @@ export interface MatchItem {
   lastTimerStartedAt?: number;
   startTime: string; // ISO String (e.g. '2026-09-08T10:00:00Z')
   court: string; // '대운동장 A', '체육관 1층'
+  assignedRefereeId?: string;
+  assignedRefereeName?: string;
+  mvpCandidateIds?: string[];
+  mvpWinner?: string;
+  mvpVotingClosedAt?: string;
   events: TimelineEvent[];
   updatedAt: string;
 }
@@ -64,11 +87,28 @@ export interface ClassLineup {
   matchId: string;
   classId: string; // e.g. '203'
   sport: SportType;
-  starterPlayers: string[]; // e.g. ['20305 김민준 (FW)', '20311 박서준 (MF)']
+  formation?: '4-4-2' | '4-3-3' | '3-5-2';
+  formationSlots?: FormationSlot[];
+  starterPlayers: string[]; // e.g. ['20305 김민준', '20311 박서준']
   substitutePlayers: string[];
   runningOrder?: string[]; // For Relay (1번주자 ~ 4번주자)
   submittedBy: string;
   submittedAt: string;
+}
+
+export interface MVPVote {
+  id: string;
+  matchId: string;
+  voterStudentId: string;
+  candidateName: string;
+  createdAt: string;
+}
+
+export interface MatchReminderItem {
+  id: string;
+  matchId: string;
+  studentId: string;
+  leadMinutes: 5 | 10;
 }
 
 export interface NoticeItem {
@@ -137,4 +177,144 @@ export interface AuditLogEntry {
   oldValue: string;
   newValue: string;
   timestamp: string;
+  venue?: string;
+}
+
+// -------------------------------------------------------------
+// Generalized interfaces for festival board & role dashboards
+// -------------------------------------------------------------
+
+export interface WeatherInfo {
+  temperature: string;
+  condition: string;
+  precipitation: string;
+  uvIndex?: string;
+}
+
+export interface SafetyGuideItem {
+  id: string;
+  order: number;
+  title: string;
+  content: string;
+  category?: 'hydration' | 'injury' | 'sportsmanship' | 'general';
+}
+
+export interface ClassStandingItem {
+  id: string;
+  rank: number;
+  classLabel: string; // e.g., '3-2반' or '3학년 2반'
+  points: number;
+  grade: string;
+  classNum: string;
+  goldCount?: number;
+  silverCount?: number;
+  bronzeCount?: number;
+}
+
+export interface CheerMessageItem {
+  id: string;
+  authorMasked: string; // e.g., '김*서 (3-2)'
+  classLabel: string;
+  message: string;
+  createdAt: string;
+}
+
+export interface TournamentMatchItem {
+  id: string;
+  roundName: string; // '준결승 1 (종료)', '결승전 진행중'
+  stage: 'semifinal_1' | 'semifinal_2' | 'final';
+  sport: SportType;
+  gender: 'male' | 'female';
+  grade: string;
+  teamA: { name: string; score: number };
+  teamB: { name: string; score: number };
+  status: 'UPCOMING' | 'LIVE' | 'FINISHED';
+  venue: string;
+}
+
+export interface ScoreApprovalRequestItem {
+  id: string;
+  reqCode: string; // e.g., 'REQ-01'
+  matchId: string;
+  sport: SportType;
+  title: string;
+  homeTeam: string;
+  homeScore: number;
+  awayTeam: string;
+  awayScore: number;
+  reporterName: string;
+  reporterRole: string;
+  notes?: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  pointsToAward?: number;
+  createdAt: string;
+}
+
+export interface SupplyItem {
+  id: string;
+  name: string;
+  category: 'radios' | 'balls' | 'medical' | 'water' | 'general';
+  currentQty: number;
+  totalQty: number;
+  unit: string;
+  statusText?: string;
+  needsAttention?: boolean;
+}
+
+export interface FieldIncidentItem {
+  id: string;
+  location: string;
+  issueDescription: string;
+  reportedAgo: string;
+  status: 'REPORTED' | 'DISPATCHED' | 'RESOLVED';
+  statusLabel: string;
+}
+
+export interface MedicalIncidentQueueItem {
+  id: string;
+  severity: 'CRITICAL' | 'MODERATE' | 'MILD';
+  severityLabel: string; // 'CRITICAL (중상)', 'MODERATE (경상)'
+  patientName: string;
+  patientClass: string; // '3학년 5반'
+  description: string;
+  location: string;
+  assignedStaff: string;
+  reportedAgo: string;
+  reportedTime: string;
+  status: 'PENDING' | 'IN_TREATMENT' | 'TRANSFERRED' | 'RESOLVED';
+}
+
+export interface HospitalTransferItem {
+  id: string;
+  hospitalName: string;
+  patientName: string;
+  patientClass: string;
+  reason: string;
+  transferTime: string;
+}
+
+export interface MedicalTimelineItem {
+  id: string;
+  time: string;
+  activity: string;
+  status?: 'COMPLETED' | 'IN_PROGRESS' | 'PENDING';
+}
+
+export interface SubstitutionRecord {
+  id: string;
+  timeLabel: string; // '후반 12분 적용'
+  classLabel: string; // '3-2반'
+  playerOut: { name: string; position: string };
+  playerIn: { name: string; position: string };
+  reason?: string;
+}
+
+export interface AssignedRefereeMatch {
+  id: string;
+  timeLabel: string;
+  sport: SportType;
+  title: string;
+  teams: string;
+  status: 'LIVE' | 'SCHEDULED' | 'FINISHED';
+  isCurrentAssigned: boolean;
 }

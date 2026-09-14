@@ -12,10 +12,6 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-
     // Connection testing endpoint
     match /test/{docId} {
       allow read, write: if true;
@@ -48,13 +44,13 @@ service cloud.firestore {
     // Messages (쪽지) Collection
     match /messages/{messageId} {
       allow read: if isSignedIn();
-      allow write: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn();
     }
 
     // Cheers (실시간 응원) Collection
     match /cheers/{cheerId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn();
+      allow read, write: if isSignedIn();
     }
 
     // Injury Encyclopedia (부상 지식백과) Collection
@@ -63,16 +59,37 @@ service cloud.firestore {
       allow write: if isSignedIn();
     }
 
-    // Suggestions (학생회 건의함) Collection
+    // Suggestions (실명 건의함) Collection
     match /suggestions/{suggestionId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn();
+    }
+
+    // Audit Logs (스코어 수정 감사 로그 - 절대 불변/삭제 불가)
+    match /audit_logs/{logId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      // Enforce strict immutability: no updates or deletes permitted
+      allow update, delete: if false;
+    }
+
+    // System & Festival Config Collection
+    match /system/{docId} {
       allow read: if isSignedIn();
       allow write: if isSignedIn();
     }
 
-    // Audit Logs (스코어 수정 감사 로그) Collection
-    match /audit_logs/{logId} {
+    // MVP Votes Collection (투표 1회 작성 후 수정 불가)
+    match /mvp_votes/{voteId} {
       allow read: if isSignedIn();
-      allow write: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn();
+    }
+
+    // Match Reminders Collection
+    match /reminders/{reminderId} {
+      allow read, write: if isSignedIn();
     }
 
     // Workspace Integrations
