@@ -647,16 +647,19 @@ export default function App() {
                     currentUser.role === 'student_council' ? 'bg-blue-600 text-white' :
                     currentUser.role === 'class_president' ? 'bg-emerald-600 text-white' :
                     currentUser.role === 'teacher' ? 'bg-purple-600 text-white' :
+                    currentUser.role === 'referee' ? 'bg-amber-600 text-white' :
+                    currentUser.role === 'health_officer' ? 'bg-rose-600 text-white' :
                     'bg-slate-700 text-white'
                   }`}>
                     {currentUser.role === 'admin' ? '총괄 관리자' :
                      currentUser.role === 'student_council' ? '학생회 / 체육부' :
                      currentUser.role === 'class_president' ? '학급 반장' :
-                     currentUser.role === 'teacher' ? '교사 / 심판' :
+                     currentUser.role === 'teacher' ? '선생님 (지도교사)' :
+                     currentUser.role === 'referee' ? '공식 심판 · 기록원' :
                      currentUser.role === 'health_officer' ? '보건 담당' : '특수 권한'}
                   </span>
                   <span className="font-medium text-slate-800 dark:text-slate-200">
-                    <strong>{currentUser.name}</strong> ({currentUser.role === 'admin' ? '총괄본부' : currentUser.isTeacher ? '교사' : `${currentUser.grade}-${currentUser.classNum}`}) 계정으로 인증되었습니다.
+                    <strong>{currentUser.name}</strong> ({currentUser.role === 'admin' ? '총괄본부' : currentUser.role === 'teacher' ? '교원(교사)' : currentUser.role === 'referee' ? '심판진' : `${currentUser.grade}-${currentUser.classNum}`}) 계정으로 인증되었습니다.
                   </span>
                 </div>
 
@@ -682,6 +685,15 @@ export default function App() {
                   {currentUser.role === 'teacher' && (
                     <button
                       type="button"
+                      onClick={() => setActiveTab('schedule')}
+                      className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl transition cursor-pointer shadow-xs"
+                    >
+                      학급 대진 및 경기 참관
+                    </button>
+                  )}
+                  {(currentUser.role === 'referee' || currentUser.role === 'student_council') && (
+                    <button
+                      type="button"
                       onClick={() => {
                         if (currentLiveMatch) {
                           setActiveMatchForLive(currentLiveMatch);
@@ -690,9 +702,9 @@ export default function App() {
                           setActiveTab('schedule');
                         }
                       }}
-                      className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl transition cursor-pointer shadow-xs"
+                      className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl transition cursor-pointer shadow-xs"
                     >
-                      실시간 스코어 기록
+                      실시간 스코어보드 제어 (+1/-1)
                     </button>
                   )}
                 </div>
@@ -721,6 +733,7 @@ export default function App() {
               <div className="lg:col-span-6 space-y-5">
                 <LiveMatchHeroCard
                   match={currentLiveMatch}
+                  currentUser={currentUser}
                   onOpenLiveScore={() => {
                     if (currentLiveMatch) {
                       setActiveMatchForLive(currentLiveMatch);

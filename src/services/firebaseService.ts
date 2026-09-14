@@ -208,9 +208,17 @@ export async function createMatch(matchData: Partial<MatchItem>): Promise<string
 
 export async function updateMatch(matchId: string, partial: Partial<MatchItem>): Promise<void> {
   try {
+    await ensureFirebaseAuth();
     const docRef = doc(db, 'matches', matchId);
+    // Sanitize partial payload to avoid Firestore undefined errors
+    const sanitized: Record<string, any> = {};
+    for (const [k, v] of Object.entries(partial)) {
+      if (v !== undefined) {
+        sanitized[k] = v;
+      }
+    }
     await updateDoc(docRef, {
-      ...partial,
+      ...sanitized,
       updatedAt: new Date().toISOString()
     });
   } catch (e) {
@@ -221,6 +229,7 @@ export async function updateMatch(matchId: string, partial: Partial<MatchItem>):
 
 export async function deleteMatch(matchId: string): Promise<void> {
   try {
+    await ensureFirebaseAuth();
     const docRef = doc(db, 'matches', matchId);
     await deleteDoc(docRef);
   } catch (e) {
@@ -237,19 +246,21 @@ export async function updateScoreWithAudit(
   operator: { id: string; name: string; role: string },
   newEventDesc?: string
 ): Promise<void> {
-  const oldScoreStr = `${match.homeScore} : ${match.awayScore}`;
+  await ensureFirebaseAuth();
+  const oldScoreStr = `${match.homeScore ?? 0} : ${match.awayScore ?? 0}`;
   const newScoreStr = `${newHomeScore} : ${newAwayScore}`;
 
-  const isRollback = newHomeScore < match.homeScore || newAwayScore < match.awayScore;
+  const isRollback = newHomeScore < (match.homeScore ?? 0) || newAwayScore < (match.awayScore ?? 0);
   const actionType = isRollback ? 'SCORE_ROLLBACK' : 'SCORE_UPDATE';
 
   const updatedEvents = [...(match.events || [])];
   if (newEventDesc) {
+    const elapsedSec = Number(match.elapsedSeconds) || 0;
     updatedEvents.unshift({
       id: `evt-${Date.now()}`,
-      minute: Math.max(1, Math.floor(match.elapsedSeconds / 60)),
-      type: newHomeScore > match.homeScore ? 'GOAL' : 'POINT_2',
-      team: newHomeScore > match.homeScore ? 'home' : 'away',
+      minute: Math.max(1, Math.floor(elapsedSec / 60)),
+      type: newHomeScore > (match.homeScore ?? 0) ? 'GOAL' : 'POINT_2',
+      team: newHomeScore > (match.homeScore ?? 0) ? 'home' : 'away',
       player: operator.name,
       description: newEventDesc,
       timestamp: new Date().toISOString()
@@ -258,8 +269,8 @@ export async function updateScoreWithAudit(
 
   // 1. Update Match Doc
   await updateMatch(match.id, {
-    homeScore: newHomeScore,
-    awayScore: newAwayScore,
+    homeScore: Math.max(0, newHomeScore),
+    awayScore: Math.max(0, newAwayScore),
     events: updatedEvents
   });
 
@@ -274,7 +285,7 @@ export async function updateScoreWithAudit(
       matchId: match.id,
       matchTitle: match.title,
       action: actionType,
-      reason,
+      reason: reason || (isRollback ? '실시간 점수 정정 (-1)' : '실시간 득점 기록 (+1)'),
       oldValue: oldScoreStr,
       newValue: newScoreStr,
       timestamp: new Date().toISOString()
@@ -283,6 +294,37 @@ export async function updateScoreWithAudit(
   } catch (err) {
     console.warn('[Firebase Audit] Failed to record audit log:', err);
   }
+}
+
+/**
+ * Quick score step adjustment (+1, -1, +2, +3) with instant audit log
+ */
+export async function quickAdjustScore(
+  match: MatchItem,
+  team: 'home' | 'away',
+  delta: number,
+  operator: { id: string; name: string; role: string },
+  customReason?: string
+): Promise<void> {
+  const currentHome = match.homeScore ?? 0;
+  const currentAway = match.awayScore ?? 0;
+  const newHome = team === 'home' ? Math.max(0, currentHome + delta) : currentHome;
+  const newAway = team === 'away' ? Math.max(0, currentAway + delta) : currentAway;
+
+  const teamName = team === 'home' ? (match.homeTeam || '홈팀') : (match.awayTeam || '원정팀');
+  const deltaStr = delta > 0 ? `+${delta}` : `${delta}`;
+  const defaultReason = delta > 0 
+    ? `[실시간 득점] ${teamName} ${deltaStr}점 기록` 
+    : `[점수 정정] ${teamName} ${deltaStr}점 차감/정정`;
+
+  await updateScoreWithAudit(
+    match,
+    newHome,
+    newAway,
+    customReason?.trim() || defaultReason,
+    operator,
+    `${teamName} ${deltaStr}점 (${delta > 0 ? '득점' : '정정'})`
+  );
 }
 
 // -------------------------------------------------------------
@@ -398,6 +440,7 @@ export function listenCheers(matchId: string, callback: (cheer: CheerCount) => v
 
 export async function sendCheer(matchId: string, team: 'home' | 'away', emoji: string): Promise<void> {
   try {
+    await ensureFirebaseAuth();
     const docRef = doc(db, 'cheers', matchId);
     await setDoc(docRef, {
       matchId,

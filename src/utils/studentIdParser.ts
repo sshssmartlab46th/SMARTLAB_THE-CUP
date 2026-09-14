@@ -144,9 +144,11 @@ export function getRoleBadgeInfo(role: UserRole): { label: string; color: string
     case 'class_president':
       return { label: '반장', color: 'text-blue-400 border-blue-500/50', bgColor: 'bg-blue-950/60' };
     case 'teacher':
-      return { label: '선생님', color: 'text-emerald-400 border-emerald-500/50', bgColor: 'bg-emerald-950/60' };
+      return { label: '선생님', color: 'text-purple-400 border-purple-500/50', bgColor: 'bg-purple-950/60' };
+    case 'referee':
+      return { label: '심판/기록원', color: 'text-amber-400 border-amber-500/50', bgColor: 'bg-amber-950/60' };
     case 'health_officer':
-      return { label: '보건 담당', color: 'text-purple-400 border-purple-500/50', bgColor: 'bg-purple-950/60' };
+      return { label: '보건 담당', color: 'text-rose-400 border-rose-500/50', bgColor: 'bg-rose-950/60' };
     case 'student':
     default:
       return { label: '학생', color: 'text-slate-400 border-slate-700', bgColor: 'bg-slate-800/60' };

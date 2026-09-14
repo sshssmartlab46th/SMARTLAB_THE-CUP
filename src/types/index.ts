@@ -4,6 +4,7 @@ export type UserRole =
   | 'class_president' 
   | 'student_council' 
   | 'health_officer' 
+  | 'referee'
   | 'admin';
 
 export interface UserProfile {

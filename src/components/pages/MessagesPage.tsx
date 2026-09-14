@@ -157,6 +157,9 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
       } else if (targetType === 'teachers') {
         finalToClass = 'teacher';
         finalToRole = 'teacher';
+      } else if (targetType === 'referees') {
+        finalToClass = 'all';
+        finalToRole = 'referee';
       } else if (targetType === 'council') {
         finalToClass = 'all';
         finalToRole = 'student_council';
@@ -439,7 +442,8 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {[
                   { key: 'class', label: '특정 학급 (반장/담임)' },
-                  { key: 'teachers', label: '교사 / 교무실 전체' },
+                  { key: 'teachers', label: '교사 (선생님) 전체' },
+                  { key: 'referees', label: '심판 / 기록원 전체' },
                   { key: 'council', label: '학생회 / 체육부' },
                   { key: 'all', label: '전체 공지 (공통)' }
                 ].map(t => (

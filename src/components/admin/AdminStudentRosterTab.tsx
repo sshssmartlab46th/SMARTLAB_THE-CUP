@@ -42,7 +42,8 @@ export const AdminStudentRosterTab: React.FC<AdminStudentRosterTabProps> = ({
       case 'admin': return '총괄 관리자';
       case 'student_council': return '학생회';
       case 'class_president': return '반장';
-      case 'teacher': return '교사 / 심판';
+      case 'teacher': return '선생님 (지도교사)';
+      case 'referee': return '공식 심판 / 기록원';
       case 'health_officer': return '보건담당';
       case 'student': return '일반 학생';
       default: return role;
@@ -252,8 +253,11 @@ export const AdminStudentRosterTab: React.FC<AdminStudentRosterTabProps> = ({
           <span className="px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300">
             여자반 인원: {sortedUsers.filter(u => !u.isTeacher && getGenderLabel(u.grade, u.classNum).includes('여')).length}명
           </span>
-          <span className="px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300">
-            교사/심판: {sortedUsers.filter(u => u.isTeacher).length}명
+          <span className="px-2.5 py-1 rounded-lg bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300">
+            교사: {sortedUsers.filter(u => u.role === 'teacher').length}명
+          </span>
+          <span className="px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300">
+            심판/기록원: {sortedUsers.filter(u => u.role === 'referee').length}명
           </span>
           <span className="px-2.5 py-1 rounded-lg bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300">
             총괄본부: {sortedUsers.filter(u => u.role === 'admin').length}명
@@ -329,6 +333,7 @@ export const AdminStudentRosterTab: React.FC<AdminStudentRosterTabProps> = ({
                           u.role === 'student_council' ? 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300' :
                           u.role === 'class_president' ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300' :
                           u.role === 'teacher' ? 'bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300' :
+                          u.role === 'referee' ? 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300' :
                           'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
                         }`}>
                           {getRoleLabel(u.role)}
@@ -343,7 +348,8 @@ export const AdminStudentRosterTab: React.FC<AdminStudentRosterTabProps> = ({
                           <option value="student">일반 학생</option>
                           <option value="class_president">학급 반장</option>
                           <option value="student_council">학생회</option>
-                          <option value="teacher">교사 / 심판</option>
+                          <option value="teacher">선생님 (지도교사)</option>
+                          <option value="referee">공식 심판 / 기록원</option>
                           <option value="health_officer">보건담당</option>
                           <option value="admin">총괄 관리자</option>
                         </select>

@@ -1,26 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { MatchItem, UserProfile, ClassLineup, CheerCount } from '../../types';
+import { MatchItem, UserProfile, ClassLineup } from '../../types';
 import { 
   updateScoreWithAudit,
+  quickAdjustScore,
   sendCheer, 
   listenLineups, 
   listenCheers 
 } from '../../services/firebaseService';
 import { MVPVotingModal } from './MVPVotingModal';
-import { SoccerFormationBuilder } from '../lineup/SoccerFormationBuilder';
 import { 
   Flame, 
   Heart, 
   Trophy, 
   Clock, 
   MapPin, 
-  Shield, 
-  Award, 
   Lock, 
   Edit3, 
-  Check, 
   AlertCircle,
-  Users
+  Users,
+  Plus,
+  Minus,
+  CheckCircle2,
+  Sparkles,
+  ArrowLeft
 } from 'lucide-react';
 
 interface LiveMatchStatusViewProps {
@@ -39,16 +41,23 @@ export const LiveMatchStatusView: React.FC<LiveMatchStatusViewProps> = ({
   const [showMvpModal, setShowMvpModal] = useState(false);
   const [showScoreEditor, setShowScoreEditor] = useState(false);
 
-  // Score modification fields (Audit log enforced)
-  const [newHomeScore, setNewHomeScore] = useState(match.homeScore);
-  const [newAwayScore, setNewAwayScore] = useState(match.awayScore);
+  // Stepper score modification state
+  const [newHomeScore, setNewHomeScore] = useState(match.homeScore ?? 0);
+  const [newAwayScore, setNewAwayScore] = useState(match.awayScore ?? 0);
   const [editReason, setEditReason] = useState('');
   const [isSubmittingScore, setIsSubmittingScore] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Sync state whenever match score updates in real-time
+  useEffect(() => {
+    setNewHomeScore(match.homeScore ?? 0);
+    setNewAwayScore(match.awayScore ?? 0);
+  }, [match.homeScore, match.awayScore]);
 
   // Listen to cheers & lineups
   useEffect(() => {
     const unsubCheer = listenCheers(match.id, (c) => {
-      setCheerCounts({ home: c.homeCheers, away: c.awayCheers });
+      setCheerCounts({ home: c.homeCheers ?? 0, away: c.awayCheers ?? 0 });
     });
 
     const unsubLineup = listenLineups((lList) => {
@@ -62,47 +71,97 @@ export const LiveMatchStatusView: React.FC<LiveMatchStatusViewProps> = ({
     };
   }, [match.id]);
 
-  const canEditScore = ['admin', 'student_council', 'teacher'].includes(currentUser.role);
+  // Authorized score editors: Admin, Student Council, Referee/Scorekeeper, Teacher
+  const canEditScore = ['admin', 'student_council', 'referee', 'teacher'].includes(currentUser.role);
+
+  const showToast = (text: string, type: 'success' | 'error' = 'success') => {
+    setStatusMessage({ type, text });
+    setTimeout(() => setStatusMessage(null), 3000);
+  };
 
   const handleCheer = async (team: 'home' | 'away') => {
     try {
+      if (navigator.vibrate) {
+        try { navigator.vibrate(30); } catch { /* ignore */ }
+      }
       await sendCheer(match.id, team, team === 'home' ? '❤️' : '🔥');
     } catch (e) {
       console.error(e);
     }
   };
 
-  const handleSaveScore = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editReason.trim()) {
-      alert('기획서 규정에 따라 스코어 수정 사유를 반드시 입력해야 합니다.');
-      return;
+  // Instant one-click +1 / -1 adjustment directly from scoreboard
+  const handleQuickDelta = async (team: 'home' | 'away', delta: number) => {
+    if (!canEditScore || isSubmittingScore) return;
+    setIsSubmittingScore(true);
+
+    const teamName = team === 'home' ? match.homeTeam : match.awayTeam;
+    const deltaLabel = delta > 0 ? `+${delta}` : `${delta}`;
+
+    if (navigator.vibrate) {
+      try { navigator.vibrate(40); } catch { /* ignore */ }
     }
 
-    setIsSubmittingScore(true);
     try {
-      await updateScoreWithAudit(
+      await quickAdjustScore(
         match,
-        newHomeScore,
-        newAwayScore,
-        editReason.trim(),
+        team,
+        delta,
         {
           id: currentUser.studentId,
           name: currentUser.name,
           role: currentUser.role
         }
       );
-      setShowScoreEditor(false);
-      setEditReason('');
-    } catch (e) {
-      console.error(e);
+      showToast(`${teamName} ${deltaLabel}점 변경 완료! (감사 로그 자동 기록)`);
+    } catch (err) {
+      console.error('Failed to quick adjust score:', err);
+      showToast('스코어 업데이트에 실패했습니다. 다시 시도해주세요.', 'error');
     } finally {
       setIsSubmittingScore(false);
     }
   };
 
+  // Detailed Modal Save
+  const handleSaveDetailedScore = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setIsSubmittingScore(true);
+
+    const effectiveReason = editReason.trim() || `스코어 조정 (${newHomeScore} : ${newAwayScore})`;
+
+    try {
+      await updateScoreWithAudit(
+        match,
+        newHomeScore,
+        newAwayScore,
+        effectiveReason,
+        {
+          id: currentUser.studentId,
+          name: currentUser.name,
+          role: currentUser.role
+        },
+        `스코어 변경: ${newHomeScore} : ${newAwayScore}`
+      );
+      showToast(`스코어가 ${newHomeScore} : ${newAwayScore}(으)로 성공적으로 반영되었습니다.`);
+      setShowScoreEditor(false);
+      setEditReason('');
+    } catch (err) {
+      console.error('Detailed score save error:', err);
+      showToast('점수 저장 중 오류가 발생했습니다.', 'error');
+    } finally {
+      setIsSubmittingScore(false);
+    }
+  };
+
+  const presetReasons = [
+    '실시간 정규 득점 (+1)',
+    '심판 오심 정정',
+    '기록원 오기 수정',
+    '경기 규칙 위반/페널티 감점',
+    '비디오 판독(VAR) 결과 반영'
+  ];
+
   // 5-minute lineup reveal policy check
-  // For demo/real-time: if match is LIVE or FINISHED, lineups are revealed. If SCHEDULED, check 5-minute pre-match.
   const isLineupRevealed = match.status === 'LIVE' || match.status === 'FINISHED' || currentUser.role === 'admin';
 
   return (
@@ -111,22 +170,44 @@ export const LiveMatchStatusView: React.FC<LiveMatchStatusViewProps> = ({
         <button
           type="button"
           onClick={onBack}
-          className="text-xs text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 font-semibold"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition cursor-pointer shadow-2xs"
         >
-          ← 경기 목록으로 돌아가기
+          <ArrowLeft className="w-3.5 h-3.5" />
+          <span>경기 목록으로 돌아가기</span>
         </button>
       )}
 
-      {/* Main Scoreboard Card */}
-      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm space-y-6">
-        {/* Header Badges */}
-        <div className="flex items-center justify-between">
+      {/* Toast notification */}
+      {statusMessage && (
+        <div className={`p-3 rounded-xl text-xs font-bold flex items-center justify-between gap-2 shadow-md animate-fade-in ${
+          statusMessage.type === 'success'
+            ? 'bg-emerald-600 text-white'
+            : 'bg-red-600 text-white'
+        }`}>
           <div className="flex items-center gap-2">
-            <span className="px-2.5 py-1 rounded-full text-xs font-bold uppercase bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-              {match.sport}
+            {statusMessage.type === 'success' ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertCircle className="w-4 h-4 shrink-0" />}
+            <span>{statusMessage.text}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setStatusMessage(null)}
+            className="text-white/80 hover:text-white text-sm"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* Live Match Card */}
+      <div className="rounded-2xl border-2 border-red-500/80 dark:border-emerald-500 bg-white dark:bg-slate-900 p-5 sm:p-6 shadow-sm space-y-4">
+        {/* Match Header */}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-sm sm:text-base text-slate-900 dark:text-white">
+              {match.title}
             </span>
             <span
-              className={`px-3 py-1 rounded-full text-xs font-bold ${
+              className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
                 match.status === 'LIVE'
                   ? 'bg-red-600 text-white animate-pulse'
                   : match.status === 'FINISHED'
@@ -141,68 +222,124 @@ export const LiveMatchStatusView: React.FC<LiveMatchStatusViewProps> = ({
           <div className="flex items-center gap-3 text-xs text-slate-500">
             <span className="flex items-center gap-1">
               <Clock className="w-3.5 h-3.5 text-slate-400" />
-              {match.scheduledTime}
+              {match.scheduledTime || match.startTime || '시간 미정'}
             </span>
             <span className="flex items-center gap-1">
               <MapPin className="w-3.5 h-3.5 text-slate-400" />
-              {match.location}
+              {match.location || match.court || '대운동장'}
             </span>
           </div>
         </div>
 
         {/* Big Teams & Scoreboard */}
-        <div className="grid grid-cols-3 items-center text-center py-4 border-y border-slate-100 dark:border-slate-800">
+        <div className="grid grid-cols-3 items-center text-center py-4 border-y border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 rounded-xl px-2 sm:px-4">
           {/* Home Team */}
           <div className="space-y-3">
-            <div className="text-base sm:text-xl font-black text-slate-900 dark:text-white">
+            <div className="text-base sm:text-xl font-black text-slate-900 dark:text-white truncate">
               {match.homeTeam}
             </div>
+
+            {/* Quick Score Adjustment Buttons for Authorized Users */}
+            {canEditScore ? (
+              <div className="flex items-center justify-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => handleQuickDelta('home', -1)}
+                  disabled={isSubmittingScore || (match.homeScore ?? 0) <= 0}
+                  className="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-red-100 dark:hover:bg-red-950 text-slate-700 dark:text-slate-200 hover:text-red-600 font-black text-sm flex items-center justify-center transition active:scale-95 disabled:opacity-30 cursor-pointer shadow-2xs"
+                  title="홈팀 -1점"
+                >
+                  <Minus className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleQuickDelta('home', 1)}
+                  disabled={isSubmittingScore}
+                  className="px-3 h-8 rounded-lg bg-red-600 hover:bg-red-700 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-1 transition active:scale-95 disabled:opacity-50 cursor-pointer shadow-xs"
+                  title="홈팀 +1점 득점"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>1</span>
+                </button>
+              </div>
+            ) : null}
+
             <button
               type="button"
               onClick={() => handleCheer('home')}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-red-50 dark:bg-red-950/50 hover:bg-red-100 border border-red-200 dark:border-red-900/60 text-red-600 dark:text-red-400 text-xs font-bold transition active:scale-95"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-red-50 dark:bg-red-950/50 hover:bg-red-100 dark:hover:bg-red-900/60 border border-red-200 dark:border-red-900/60 text-red-600 dark:text-red-400 text-xs font-bold transition active:scale-95 cursor-pointer"
             >
               <Heart className="w-3.5 h-3.5 fill-current" />
-              <span>응원 {cheerCounts.home}</span>
+              <span>응원 {cheerCounts.home.toLocaleString()}</span>
             </button>
           </div>
 
           {/* Central Score */}
           <div className="space-y-1">
-            <div className="text-3xl sm:text-5xl font-black font-mono tracking-tight text-slate-900 dark:text-white">
-              {match.homeScore} : {match.awayScore}
+            <div className="text-4xl sm:text-6xl font-black font-mono tracking-tight text-slate-900 dark:text-white">
+              {match.homeScore ?? 0} : {match.awayScore ?? 0}
             </div>
             <div className="text-[11px] font-semibold text-slate-400">
-              {match.round || '정규 경기'}
+              {match.round || match.period || '정규 경기'}
             </div>
           </div>
 
           {/* Away Team */}
           <div className="space-y-3">
-            <div className="text-base sm:text-xl font-black text-slate-900 dark:text-white">
+            <div className="text-base sm:text-xl font-black text-slate-900 dark:text-white truncate">
               {match.awayTeam}
             </div>
+
+            {/* Quick Score Adjustment Buttons for Authorized Users */}
+            {canEditScore ? (
+              <div className="flex items-center justify-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => handleQuickDelta('away', -1)}
+                  disabled={isSubmittingScore || (match.awayScore ?? 0) <= 0}
+                  className="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-950 text-slate-700 dark:text-slate-200 hover:text-blue-600 font-black text-sm flex items-center justify-center transition active:scale-95 disabled:opacity-30 cursor-pointer shadow-2xs"
+                  title="원정팀 -1점"
+                >
+                  <Minus className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleQuickDelta('away', 1)}
+                  disabled={isSubmittingScore}
+                  className="px-3 h-8 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-1 transition active:scale-95 disabled:opacity-50 cursor-pointer shadow-xs"
+                  title="원정팀 +1점 득점"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>1</span>
+                </button>
+              </div>
+            ) : null}
+
             <button
               type="button"
               onClick={() => handleCheer('away')}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 border border-blue-200 dark:border-blue-900/60 text-blue-600 dark:text-blue-400 text-xs font-bold transition active:scale-95"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/60 border border-blue-200 dark:border-blue-900/60 text-blue-600 dark:text-blue-400 text-xs font-bold transition active:scale-95 cursor-pointer"
             >
               <Flame className="w-3.5 h-3.5 fill-current" />
-              <span>응원 {cheerCounts.away}</span>
+              <span>응원 {cheerCounts.away.toLocaleString()}</span>
             </button>
           </div>
         </div>
 
         {/* Action bar (Score Edit & MVP Vote) */}
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
           {canEditScore && (
             <button
               type="button"
-              onClick={() => setShowScoreEditor(!showScoreEditor)}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 flex items-center gap-1.5 transition"
+              onClick={() => {
+                setNewHomeScore(match.homeScore ?? 0);
+                setNewAwayScore(match.awayScore ?? 0);
+                setShowScoreEditor(!showScoreEditor);
+              }}
+              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 hover:bg-amber-100 text-amber-900 dark:text-amber-200 flex items-center gap-1.5 transition cursor-pointer"
             >
-              <Edit3 className="w-3.5 h-3.5" />
-              <span>스코어 수정 (감사로그 기록)</span>
+              <Edit3 className="w-3.5 h-3.5 text-amber-600" />
+              <span>정밀 스코어 편집 및 감사로그 작성 (+1/-1 스텝퍼)</span>
             </button>
           )}
 
@@ -210,7 +347,7 @@ export const LiveMatchStatusView: React.FC<LiveMatchStatusViewProps> = ({
             <button
               type="button"
               onClick={() => setShowMvpModal(true)}
-              className="px-4 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white flex items-center gap-1.5 transition shadow-xs ml-auto"
+              className="px-4 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white flex items-center gap-1.5 transition shadow-xs ml-auto cursor-pointer"
             >
               <Trophy className="w-4 h-4" />
               <span>{match.mvpWinner ? `MVP: ${match.mvpWinner}` : '실시간 MVP 투표 참여'}</span>
@@ -218,74 +355,149 @@ export const LiveMatchStatusView: React.FC<LiveMatchStatusViewProps> = ({
           )}
         </div>
 
-        {/* Score Editor with Mandatory Reason Input (Section 8 Audit Log) */}
+        {/* Interactive Score Stepper Editor (NO raw typing required) */}
         {showScoreEditor && (
-          <form
-            onSubmit={handleSaveScore}
-            className="p-4 rounded-xl border border-amber-300 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/30 space-y-3 text-xs"
-          >
-            <div className="flex items-center gap-2 font-bold text-amber-900 dark:text-amber-200">
-              <AlertCircle className="w-4 h-4 text-amber-600" />
-              <span>스코어 수정 및 감사 로그(Audit Log) 등록</span>
-            </div>
-            <p className="text-[11px] text-amber-700 dark:text-amber-400">
-              점수 수정 시 수정자(학번 및 이름), 수정 전후 점수, 수정 사유가 감사 로그 컬렉션에 영구 보관됩니다.
-            </p>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-slate-600 mb-1">{match.homeTeam} 점수</label>
-                <input
-                  type="number"
-                  min={0}
-                  value={newHomeScore}
-                  onChange={(e) => setNewHomeScore(parseInt(e.target.value, 10) || 0)}
-                  className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-mono font-bold"
-                  required
-                />
+          <div className="p-4 rounded-xl border border-amber-300 dark:border-amber-800 bg-amber-50/70 dark:bg-amber-950/30 space-y-4 text-xs">
+            <div className="flex items-center justify-between border-b border-amber-200 dark:border-amber-900 pb-2">
+              <div className="flex items-center gap-2 font-bold text-amber-900 dark:text-amber-200">
+                <AlertCircle className="w-4 h-4 text-amber-600" />
+                <span>심판 및 기록원 전용 스코어보드 제어 (감사로그 자동 기록)</span>
               </div>
-              <div>
-                <label className="block text-slate-600 mb-1">{match.awayTeam} 점수</label>
-                <input
-                  type="number"
-                  min={0}
-                  value={newAwayScore}
-                  onChange={(e) => setNewAwayScore(parseInt(e.target.value, 10) || 0)}
-                  className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-mono font-bold"
-                  required
-                />
-              </div>
+              <span className="text-[11px] text-slate-500">
+                조작자: <strong>{currentUser.name}</strong> ({currentUser.role === 'referee' ? '심판/기록원' : currentUser.role === 'teacher' ? '선생님' : '관리자'})
+              </span>
             </div>
 
-            <div>
-              <label className="block text-slate-600 mb-1">수정 사유 (필수 작성)</label>
+            {/* Stepper Controls for Home & Away */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Home Team Stepper */}
+              <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-900 dark:text-white truncate">
+                    {match.homeTeam} (홈)
+                  </span>
+                  <span className="text-2xl font-black font-mono text-red-600 dark:text-red-400">
+                    {newHomeScore}점
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setNewHomeScore((s) => Math.max(0, s - 1))}
+                    disabled={newHomeScore <= 0}
+                    className="flex-1 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-800 dark:text-slate-200 font-bold flex items-center justify-center gap-1 disabled:opacity-40 cursor-pointer"
+                  >
+                    <Minus className="w-3.5 h-3.5" />
+                    <span>-1</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewHomeScore((s) => s + 1)}
+                    className="flex-1 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold flex items-center justify-center gap-1 cursor-pointer shadow-xs"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>+1</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewHomeScore((s) => s + 2)}
+                    className="py-2 px-2.5 rounded-lg bg-red-100 dark:bg-red-950/60 hover:bg-red-200 text-red-700 dark:text-red-300 font-bold cursor-pointer"
+                    title="+2점"
+                  >
+                    +2
+                  </button>
+                </div>
+              </div>
+
+              {/* Away Team Stepper */}
+              <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-900 dark:text-white truncate">
+                    {match.awayTeam} (원정)
+                  </span>
+                  <span className="text-2xl font-black font-mono text-blue-600 dark:text-blue-400">
+                    {newAwayScore}점
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setNewAwayScore((s) => Math.max(0, s - 1))}
+                    disabled={newAwayScore <= 0}
+                    className="flex-1 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-800 dark:text-slate-200 font-bold flex items-center justify-center gap-1 disabled:opacity-40 cursor-pointer"
+                  >
+                    <Minus className="w-3.5 h-3.5" />
+                    <span>-1</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewAwayScore((s) => s + 1)}
+                    className="flex-1 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold flex items-center justify-center gap-1 cursor-pointer shadow-xs"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>+1</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewAwayScore((s) => s + 2)}
+                    className="py-2 px-2.5 rounded-lg bg-blue-100 dark:bg-blue-950/60 hover:bg-blue-200 text-blue-700 dark:text-blue-300 font-bold cursor-pointer"
+                    title="+2점"
+                  >
+                    +2
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Reason Chips */}
+            <div className="space-y-1.5">
+              <label className="block font-semibold text-slate-700 dark:text-slate-300">
+                수정 사유 선택 (원클릭 태그)
+              </label>
+              <div className="flex flex-wrap gap-1.5">
+                {presetReasons.map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => setEditReason(preset)}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer ${
+                      editReason === preset
+                        ? 'bg-amber-600 text-white shadow-2xs'
+                        : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100'
+                    }`}
+                  >
+                    {preset}
+                  </button>
+                ))}
+              </div>
               <input
                 type="text"
                 value={editReason}
                 onChange={(e) => setEditReason(e.target.value)}
-                placeholder="예: 심판 오심 정정 / 집계 기록원 오기 수정"
-                className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                required
+                placeholder="직접 입력하거나 위 태그를 누르세요 (미입력 시 기본 사유 자동 적용)"
+                className="w-full mt-1.5 p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
               />
             </div>
 
-            <div className="flex gap-2 justify-end">
+            {/* Modal Actions */}
+            <div className="flex items-center justify-end gap-2 pt-2">
               <button
                 type="button"
                 onClick={() => setShowScoreEditor(false)}
-                className="px-3 py-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg text-slate-700 dark:text-slate-300"
+                className="px-3.5 py-2 bg-slate-200 dark:bg-slate-800 rounded-xl text-slate-700 dark:text-slate-300 font-bold cursor-pointer hover:bg-slate-300"
               >
-                취소
+                닫기
               </button>
               <button
-                type="submit"
-                disabled={isSubmittingScore || !editReason.trim()}
-                className="px-4 py-1.5 bg-amber-600 text-white rounded-lg font-bold"
+                type="button"
+                onClick={() => handleSaveDetailedScore()}
+                disabled={isSubmittingScore}
+                className="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold flex items-center gap-1.5 cursor-pointer shadow-md disabled:opacity-50"
               >
-                {isSubmittingScore ? '저장 중...' : '감사 로그와 함께 점수 확정'}
+                {isSubmittingScore ? '반영 중...' : '점수 확정 및 감사로그 등록'}
               </button>
             </div>
-          </form>
+          </div>
         )}
       </div>
 
@@ -314,7 +526,7 @@ export const LiveMatchStatusView: React.FC<LiveMatchStatusViewProps> = ({
                   <span className="font-semibold text-slate-900 dark:text-white">
                     {evt.player} ({evt.team})
                   </span>
-                  <span className="text-slate-500">{evt.detail}</span>
+                  <span className="text-slate-500">{evt.detail || evt.description}</span>
                 </div>
                 <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
                   {evt.type}

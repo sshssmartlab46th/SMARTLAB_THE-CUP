@@ -28,7 +28,7 @@ export const DirectMessageModal: React.FC<DirectMessageModalProps> = ({
 }) => {
   const [messages, setMessages] = useState<DirectMessage[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
-  const [activeCategory, setActiveCategory] = useState<'class_president' | 'student_council' | 'admin' | 'teacher'>('class_president');
+  const [activeCategory, setActiveCategory] = useState<'class_president' | 'student_council' | 'admin' | 'teacher' | 'referee'>('class_president');
   const [selectedRecipient, setSelectedRecipient] = useState<string>('ALL'); // 'ALL' or specific user studentId
   const [messageText, setMessageText] = useState('');
   const [attachedImage, setAttachedImage] = useState<string | null>(null);
@@ -39,15 +39,15 @@ export const DirectMessageModal: React.FC<DirectMessageModalProps> = ({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Check if role is authorized (반장, 학생회, 관리자, 선생님만 가능)
-  const isAuthorized = ['class_president', 'student_council', 'admin', 'teacher'].includes(currentUser.role);
+  // Check if role is authorized (반장, 학생회, 관리자, 선생님, 심판)
+  const isAuthorized = ['class_president', 'student_council', 'admin', 'teacher', 'referee'].includes(currentUser.role);
 
   useEffect(() => {
     if (!isOpen) return;
 
     const unMessages = listenMessages(
       currentUser.classNum,
-      ['class_president', 'teacher', 'student_council', 'admin'].includes(currentUser.role),
+      ['class_president', 'teacher', 'student_council', 'admin', 'referee'].includes(currentUser.role),
       (list) => setMessages(list)
     );
 
@@ -155,10 +155,11 @@ export const DirectMessageModal: React.FC<DirectMessageModalProps> = ({
         {/* Category Tabs: 반장 / 학생회 / 관리자 / 선생님 */}
         <div className="p-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center gap-1.5 overflow-x-auto text-xs">
           {[
-            { key: 'class_president', label: '반장' },
+            { key: 'class_president', label: '학급 반장' },
             { key: 'student_council', label: '학생회' },
-            { key: 'admin', label: '관리자' },
-            { key: 'teacher', label: '선생님' }
+            { key: 'teacher', label: '선생님 (지도교사)' },
+            { key: 'referee', label: '심판 / 기록원' },
+            { key: 'admin', label: '총괄 관리자' }
           ].map((cat) => (
             <button
               key={cat.key}
@@ -196,7 +197,7 @@ export const DirectMessageModal: React.FC<DirectMessageModalProps> = ({
                   : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300'
               }`}
             >
-              전체 발송 ({activeCategory === 'class_president' ? '모든 반장' : activeCategory === 'teacher' ? '모든 선생님' : activeCategory === 'student_council' ? '학생회 전체' : '관리자 전체'})
+              전체 발송 ({activeCategory === 'class_president' ? '모든 반장' : activeCategory === 'teacher' ? '모든 선생님' : activeCategory === 'referee' ? '심판/기록원 전체' : activeCategory === 'student_council' ? '학생회 전체' : '관리자 전체'})
             </button>
 
             {categoryUsers.length === 0 ? (

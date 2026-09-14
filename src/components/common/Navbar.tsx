@@ -134,9 +134,16 @@ export const Navbar: React.FC<NavbarProps> = ({
         };
       case 'teacher':
         return {
-          title: 'MATCH OPERATOR (심판 · 기록원)',
-          scope: '오프라인 캐싱 지원 배정 경기 기록',
-          badgeColor: 'bg-red-600 text-white font-bold',
+          title: 'FACULTY & ADVISOR (지도교사 · 교원)',
+          scope: '학급 경기 지도 및 학생 격려, 전교 일정 참관',
+          badgeColor: 'bg-purple-600 text-white font-bold',
+          lastActive: '방금 전'
+        };
+      case 'referee':
+        return {
+          title: 'MATCH OPERATOR (공식 심판 · 기록원)',
+          scope: '현장 실시간 스코어 기록(+1/-1), 판정 및 경기 운영',
+          badgeColor: 'bg-amber-600 text-white font-bold',
           lastActive: '1분 전'
         };
       case 'health_officer':
@@ -311,7 +318,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <HelpCircle className="w-4 h-4" />
           </button>
 
-          {['class_president', 'student_council', 'admin', 'teacher', 'student'].includes(currentRole) && (
+          {['class_president', 'student_council', 'admin', 'teacher', 'referee', 'student'].includes(currentRole) && (
             <button
               type="button"
               onClick={() => onTabChange('messages')}
@@ -335,6 +342,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   currentRole === 'student_council' ? 'bg-blue-600 text-white' :
                   currentRole === 'class_president' ? 'bg-emerald-600 text-white' :
                   currentRole === 'teacher' ? 'bg-purple-600 text-white' :
+                  currentRole === 'referee' ? 'bg-amber-600 text-white' :
                   currentRole === 'health_officer' ? 'bg-rose-600 text-white' :
                   'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
                 }`}>
@@ -342,6 +350,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                    currentRole === 'student_council' ? '학생회' :
                    currentRole === 'class_president' ? '반장' :
                    currentRole === 'teacher' ? '교사' :
+                   currentRole === 'referee' ? '심판/기록원' :
                    currentRole === 'health_officer' ? '보건담당' : '학생'}
                 </span>
                 <span className="text-xs font-bold text-slate-800 dark:text-slate-200 font-mono">

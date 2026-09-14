@@ -123,12 +123,13 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1">
             {[
-              { role: 'student', label: '학생 (일반 홈)' },
-              { role: 'class_president', label: '반대표 (포메이션)' },
-              { role: 'student_council', label: '학생회 (점수확정)' },
-              { role: 'teacher', label: '심판/기록원 (스코어보드)' },
+              { role: 'student', label: '일반 학생 (홈 피드)' },
+              { role: 'class_president', label: '학급 반장 (라인업/포메이션)' },
+              { role: 'student_council', label: '학생회 / 체육부 (경기지원)' },
+              { role: 'teacher', label: '선생님 (지도교사 · 교원)' },
+              { role: 'referee', label: '공식 심판/기록원 (스코어보드 +1/-1)' },
               { role: 'health_officer', label: '보건의무본부 (트리아지)' },
-              { role: 'admin', label: '총괄관리자 (어드민)' }
+              { role: 'admin', label: '총괄 관리자 (어드민 콘솔)' }
             ].map(r => (
               <button
                 key={r.role}
