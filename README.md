@@ -9,7 +9,7 @@
         <span style="font-size: 28px; font-weight: bold; color: #94a3b8;">✕</span>
       </td>
       <td align="center" width="200">
-        <img src="https://jetiytrryejszscyfquv.supabase.co/storage/v1/object/sign/drive/public/caea8060-a1e8-408b-971f-b77d7b2a940b.png?token=eyJraWQiOiIzY2RhODRkZC00NzFlLTRiNzQtYjJhZC05NTAxNGZjZTI5MmMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJkcml2ZS9wdWJsaWMvY2FlYTgwNjAtYTFlOC00MDhiLTk3MWYtYjc3ZDdiMmE5NDBiLnBuZyIsInNjb3BlIjoiZG93bmxvYWQiLCJpYXQiOjE3ODg3ODYyMzcsImV4cCI6MTc4ODc4OTgzN30._OThqkErl3VmWyJSXtOj0wqgKbuWytlLcgCiqUOwdFI" alt="SMARTLAB 공식 로고" width="150" />
+        <img src="https://jetiytrryejszscyfquv.supabase.co/storage/v1/object/sign/drive/public/caea8060-a1e8-408b-971f-b77d7b2a940b.png?token=eyJraWQiOiIzY2RhODRkZC00NzFlLTRiNzQtYjJhZC05NTAxNGZjZTI5MmMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJkcml2ZS9wdWJsaWMvY2FlYTgwNjAtYTFlOC00MDhiLTk3MWYtYjc3ZDdiMmE5NDBiLnBuZyIsInNjb3BlIjoiZG93bmxvYWQiLCJpYXQiOjE3ODk0NDg4MDMsImV4cCI6MTc4OTQ1MjQwM30.YYzvJhpuZs6KSMHUKUXZJWrhSzoWxYuaKrnGqzZdR04" alt="SMARTLAB 공식 로고" width="150" />
       </td>
     </tr>
   </table>
