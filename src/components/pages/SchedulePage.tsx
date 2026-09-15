@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { MatchItem, SportType } from '../../types';
 import { Calendar, Clock, MapPin, Bell, BellRing, Filter, Search } from 'lucide-react';
-import { WeatherWidget } from '../common/WeatherWidget';
 import { parseMatchStartTime, formatKSTTime } from '../../services/firebaseService';
 
 interface SchedulePageProps {
@@ -73,9 +72,6 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({
           <Search className="w-3.5 h-3.5 absolute left-2.5 top-2 text-slate-400" />
         </div>
       </div>
-
-      {/* Real-time Open-Meteo Weather Banner for Outdoor Sports */}
-      <WeatherWidget variant="banner" />
 
       {/* Sport Category Filter */}
       <div className="flex items-center gap-2 overflow-x-auto pb-2">

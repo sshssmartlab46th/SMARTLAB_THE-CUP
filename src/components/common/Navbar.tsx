@@ -1,8 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React from 'react';
 import { UserProfile, UserRole, WeatherInfo } from '../../types';
 import { SangsanLogo } from './SangsanLogo';
 import { SmartlabLogo } from './SmartlabLogo';
-import { useOpenMeteoWeather } from '../../hooks/useOpenMeteoWeather';
 import { 
   Sun, 
   Moon,
@@ -11,18 +10,8 @@ import {
   Activity,
   LogOut,
   Settings,
-  Calendar,
   LogIn,
-  Shield,
-  CloudRain,
-  CloudSun,
-  Droplets,
-  Wind,
-  Thermometer,
-  RefreshCw,
-  MapPin,
-  CheckCircle2,
-  AlertTriangle
+  Shield
 } from 'lucide-react';
 
 export type MainNavTab = 
@@ -77,38 +66,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   onLogout
 }) => {
   const isDashboardRole = currentRole !== 'student';
-  const { weather: liveWeather, refreshing: weatherRefreshing, refetch: refetchWeather } = useOpenMeteoWeather({
-    refreshIntervalMs: 60000 // Direct client-side refresh from Open-Meteo every 60s
-  });
-
-  const weather = liveWeather || propWeather || {
-    temp: 22,
-    temperature: 22,
-    condition: '맑음',
-    rainProb: 10,
-    precipitation: '10%',
-    apparentTemp: 22,
-    humidity: 55,
-    windSpeed: 8,
-    statusText: '야외 체육활동 및 경기 진행 최적'
-  };
-
-  const [showWeatherPopup, setShowWeatherPopup] = useState(false);
-  const weatherPopupRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (weatherPopupRef.current && !weatherPopupRef.current.contains(event.target as Node)) {
-        setShowWeatherPopup(false);
-      }
-    };
-    if (showWeatherPopup) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [showWeatherPopup]);
 
   const getRoleHeaderInfo = (role: UserRole) => {
     switch (role) {
@@ -226,82 +183,18 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Right Tools & Shortcuts */}
         <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
-          {/* Real-time Weather Badge & Popover */}
-          <div className="relative" ref={weatherPopupRef}>
+          {/* Simple Live Temperature Badge */}
+          {propWeather && (
             <button
               type="button"
-              onClick={() => setShowWeatherPopup(!showWeatherPopup)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
-              title="상산고 실시간 기상 정보"
+              onClick={() => onTabChange('weather')}
+              title="상산고 실시간 날씨 및 기상 센터 열기"
+              className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-mono font-bold text-slate-700 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition cursor-pointer border border-slate-200 dark:border-slate-700"
             >
-              <span className={`w-2 h-2 rounded-full inline-block ${weatherRefreshing ? 'bg-amber-400 animate-pulse' : 'bg-emerald-500'}`} />
-              <span className="hidden sm:inline font-semibold font-mono">{weather?.temp ?? 22}°C</span>
-              <span className="hidden md:inline text-slate-500 dark:text-slate-400">{weather?.condition ?? '맑음'}</span>
-              <span className="hidden lg:inline text-slate-400">(강수 {weather?.rainProb ?? 10}%)</span>
-              <RefreshCw className={`w-3 h-3 text-slate-400 ml-0.5 ${weatherRefreshing ? 'animate-spin text-red-600 dark:text-emerald-400' : ''}`} />
+              <Sun className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+              <span>{propWeather.temp}°C</span>
             </button>
-
-            {/* Weather Popover */}
-            {showWeatherPopup && (
-              <div className="absolute right-0 mt-2 w-72 sm:w-80 p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl z-50 animate-in fade-in zoom-in-95 duration-150">
-                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5 mb-3">
-                  <div className="flex items-center gap-1.5">
-                    <MapPin className="w-3.5 h-3.5 text-red-600 dark:text-emerald-400" />
-                    <div>
-                      <div className="text-xs font-bold text-slate-900 dark:text-white">상산고 실시간 기상</div>
-                      <div className="text-[10px] text-slate-400">전주시 완산구 효자동 상산고 운동장</div>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => refetchWeather()}
-                    disabled={weatherRefreshing}
-                    className="p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition cursor-pointer flex items-center gap-1 text-[11px]"
-                    title="기상 실시간 새로고침"
-                  >
-                    <RefreshCw className={`w-3 h-3 ${weatherRefreshing ? 'animate-spin text-red-600' : ''}`} />
-                    <span>{weather.lastUpdated ? `${weather.lastUpdated} 갱신` : '새로고침'}</span>
-                  </button>
-                </div>
-
-                <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <div className="text-3xl font-black font-mono text-slate-900 dark:text-white">
-                      {weather?.temp ?? 22}°C
-                    </div>
-                    <div className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-0.5">
-                      {weather?.condition ?? '맑음'} · 체감 {weather?.apparentTemp ?? 22}°C
-                    </div>
-                  </div>
-                  <div className="text-right space-y-1 text-[11px] font-mono">
-                    <div className="px-2 py-1 rounded bg-slate-50 dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-bold">
-                      강수확률 {weather?.rainProb ?? 10}%
-                    </div>
-                    <div className="px-2 py-0.5 rounded bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
-                      습도 {weather?.humidity ?? 55}% · 풍속 {weather?.windSpeed ?? 8}km/h
-                    </div>
-                  </div>
-                </div>
-
-                <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 text-xs text-slate-600 dark:text-slate-300 flex items-start gap-2">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 mt-0.5 shrink-0" />
-                  <span className="leading-snug text-[11px]">{weather?.statusText || '야외 체육활동 및 경기 진행에 적합한 날씨입니다.'}</span>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowWeatherPopup(false);
-                    onTabChange('weather');
-                  }}
-                  className="w-full mt-3 py-2 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
-                >
-                  <Calendar className="w-3.5 h-3.5 text-red-400 dark:text-emerald-400" />
-                  <span>상세 예보 & 날씨 센터 열기</span>
-                </button>
-              </div>
-            )}
-          </div>
+          )}
 
           {/* Quick Shortcuts */}
           <button

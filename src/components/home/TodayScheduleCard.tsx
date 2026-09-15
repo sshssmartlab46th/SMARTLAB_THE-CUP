@@ -1,6 +1,5 @@
 import React from 'react';
 import { MatchItem } from '../../types';
-import { WeatherWidget } from '../common/WeatherWidget';
 import { formatKSTTime } from '../../utils/kstTime';
 
 export interface TodayScheduleCardProps {

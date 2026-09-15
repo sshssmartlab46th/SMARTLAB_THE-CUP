@@ -522,10 +522,10 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col transition-colors">
-      {/* Site-Wide Atmospheric Weather Overlay (Snow, Rain, Fog, Sun, Clouds) */}
+      {/* Site-Wide Atmospheric Weather Overlay (Active only on Weather Tab) */}
       <WeatherAtmosphereOverlay
         weather={weather}
-        enabled={true}
+        enabled={activeTab === 'weather'}
       />
 
       {/* 1. Global Navigation Bar */}
@@ -535,6 +535,7 @@ export default function App() {
         onTabChange={setActiveTab}
         onRoleChange={setCurrentRole}
         userProfile={currentUser}
+        weather={weather}
         isDarkMode={isDarkMode}
         onToggleDarkMode={() => setIsDarkMode(!isDarkMode)}
         onOpenMessages={() => {
@@ -848,12 +849,6 @@ export default function App() {
                 </div>
               </div>
             )}
-
-            {/* Real-time Weather Banner with Direct Link to Dedicated Weather Page */}
-            <WeatherWidget
-              variant="banner"
-              onOpenDetails={() => setActiveTab('weather')}
-            />
 
             {/* 3-Column Layout Matching Reference Design (image.png) */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">

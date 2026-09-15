@@ -158,14 +158,25 @@ export const WeatherAtmosphereOverlay: React.FC<WeatherAtmosphereOverlayProps> =
     }
     const snowFlakes: SnowFlake[] = [];
 
-    // 3. Sunbeams & shimmering sunlight motes
-    interface SunRay {
-      angle: number;
-      angularSpeed: number;
-      length: number;
-      width: number;
+    // 3. Sunbeams & shimmering sunlight motes (Style 1: Natural Warm Sunlight & Cinematic Lens Flares)
+    interface SunFlareCircle {
+      distRatio: number; // along sun-to-center axis (0 = sun, 1 = center, 1.5 = opposite)
+      radius: number;
+      r: number;
+      g: number;
+      b: number;
       baseAlpha: number;
+      isRing?: boolean;
     }
+    const sunFlares: SunFlareCircle[] = [
+      { distRatio: 0.22, radius: 24, r: 254, g: 240, b: 138, baseAlpha: 0.14, isRing: false },
+      { distRatio: 0.38, radius: 42, r: 251, g: 191, b: 36, baseAlpha: 0.08, isRing: true },
+      { distRatio: 0.58, radius: 18, r: 253, g: 230, b: 138, baseAlpha: 0.16, isRing: false },
+      { distRatio: 0.78, radius: 65, r: 254, g: 215, b: 170, baseAlpha: 0.06, isRing: false },
+      { distRatio: 1.05, radius: 32, r: 252, g: 211, b: 77, baseAlpha: 0.09, isRing: false },
+      { distRatio: 1.25, radius: 88, r: 254, g: 243, b: 199, baseAlpha: 0.04, isRing: true }
+    ];
+
     interface SunMote {
       x: number;
       y: number;
@@ -175,7 +186,6 @@ export const WeatherAtmosphereOverlay: React.FC<WeatherAtmosphereOverlayProps> =
       alpha: number;
       phase: number;
     }
-    const sunRays: SunRay[] = [];
     const sunMotes: SunMote[] = [];
 
     // 4. Fog horizontal wave layers & creeping mist
@@ -248,27 +258,15 @@ export const WeatherAtmosphereOverlay: React.FC<WeatherAtmosphereOverlayProps> =
         });
       }
     } else if (activeEffect === 'sun') {
-      // 8~10 distinct radiant sunbeams
-      const rayCount = 8;
-      for (let i = 0; i < rayCount; i++) {
-        sunRays.push({
-          angle: (i * (Math.PI * 0.55)) / rayCount + 0.15,
-          angularSpeed: (Math.random() * 0.0008 + 0.0004) * (i % 2 === 0 ? 1 : -1),
-          length: Math.max(width, height) * 0.85,
-          width: 0.14 + Math.random() * 0.06,
-          baseAlpha: 0.065 + Math.random() * 0.03
-        });
-      }
-
-      // 32 golden sparkling sunlight motes floating in the air
-      for (let i = 0; i < 32; i++) {
+      // 24 soft golden sparkling sunlight motes floating gently in the sunlit air
+      for (let i = 0; i < 24; i++) {
         sunMotes.push({
           x: Math.random() * width,
           y: Math.random() * (height * 0.75),
-          radius: Math.random() * 1.8 + 1.0,
-          speedX: -(Math.random() * 0.4 + 0.1),
-          speedY: Math.random() * 0.5 + 0.2,
-          alpha: Math.random() * 0.5 + 0.3,
+          radius: Math.random() * 1.5 + 0.8,
+          speedX: -(Math.random() * 0.25 + 0.05),
+          speedY: Math.random() * 0.35 + 0.1,
+          alpha: Math.random() * 0.4 + 0.2,
           phase: Math.random() * Math.PI * 2
         });
       }
@@ -417,65 +415,73 @@ export const WeatherAtmosphereOverlay: React.FC<WeatherAtmosphereOverlayProps> =
       }
 
       // ===========================================================
-      // 3. SUN / CLEAR RENDERING (Brilliant Sun, Beams & Shimmering Dust)
+      // 3. SUN / CLEAR RENDERING (Style 1: Natural Warm Sunlight & Cinematic Lens Flares)
       // ===========================================================
       else if (activeEffect === 'sun') {
         if (isDay) {
-          const sunX = Math.min(width - 70, width * 0.88);
-          const sunY = 70;
-          const sunCoreRadius = 34;
+          // Sun positioned naturally near top-right corner
+          const sunX = Math.min(width - 50, width * 0.88);
+          const sunY = 45;
+          const pulse = Math.sin(tick * 0.015) * 0.03;
 
-          // A. Multi-layered Radiant Sun Halo & Ambient Glow
-          const pulse = Math.sin(tick * 0.03) * 0.04;
-
-          // Ambient wide sky warmth
-          const skyGlow = ctx.createRadialGradient(sunX, sunY, 15, sunX, sunY, 380);
-          skyGlow.addColorStop(0, `rgba(254, 240, 138, ${0.28 + pulse})`);
-          skyGlow.addColorStop(0.35, `rgba(251, 191, 36, ${0.12 + pulse})`);
-          skyGlow.addColorStop(0.7, 'rgba(253, 230, 138, 0.04)');
+          // A. Soft, Expansive Atmospheric Warm Sky Bloom
+          const skyGlow = ctx.createRadialGradient(sunX, sunY, 10, sunX, sunY, Math.min(width, 520));
+          skyGlow.addColorStop(0, `rgba(255, 248, 220, ${0.32 + pulse})`);
+          skyGlow.addColorStop(0.2, `rgba(254, 230, 138, ${0.18 + pulse})`);
+          skyGlow.addColorStop(0.5, `rgba(251, 191, 36, ${0.06 + pulse * 0.5})`);
+          skyGlow.addColorStop(0.8, 'rgba(253, 230, 138, 0.015)');
           skyGlow.addColorStop(1, 'rgba(255, 255, 255, 0)');
           ctx.fillStyle = skyGlow;
           ctx.beginPath();
-          ctx.arc(sunX, sunY, 380, 0, Math.PI * 2);
+          ctx.arc(sunX, sunY, Math.min(width, 520), 0, Math.PI * 2);
           ctx.fill();
 
-          // B. Streaming God Rays / Sunbeams
-          ctx.save();
-          ctx.translate(sunX, sunY);
-          for (const ray of sunRays) {
-            ray.angle += ray.angularSpeed;
-            const beamPulse = ray.baseAlpha + Math.sin(tick * 0.02 + ray.angle * 3) * 0.02;
-
-            const rayGrad = ctx.createRadialGradient(0, 0, 10, 0, 0, ray.length);
-            rayGrad.addColorStop(0, `rgba(254, 243, 199, ${beamPulse * 1.8})`);
-            rayGrad.addColorStop(0.4, `rgba(253, 224, 71, ${beamPulse})`);
-            rayGrad.addColorStop(1, 'rgba(255, 250, 200, 0)');
-
-            ctx.fillStyle = rayGrad;
-            ctx.beginPath();
-            ctx.moveTo(0, 0);
-            ctx.arc(0, 0, ray.length, ray.angle - ray.width * 0.5, ray.angle + ray.width * 0.5);
-            ctx.closePath();
-            ctx.fill();
-          }
-          ctx.restore();
-
-          // C. Luminous Sun Core Disc
-          const coreGrad = ctx.createRadialGradient(sunX, sunY, 4, sunX, sunY, sunCoreRadius);
-          coreGrad.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
-          coreGrad.addColorStop(0.4, 'rgba(254, 240, 138, 0.9)');
-          coreGrad.addColorStop(0.85, 'rgba(245, 158, 11, 0.75)');
-          coreGrad.addColorStop(1, 'rgba(217, 119, 6, 0)');
-          ctx.fillStyle = coreGrad;
+          // B. Silky Soft Sun Corona (Natural, feather-soft sun center without harsh edge lines)
+          const coronaGrad = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, 110);
+          coronaGrad.addColorStop(0, 'rgba(255, 255, 255, 0.92)');
+          coronaGrad.addColorStop(0.2, 'rgba(255, 250, 210, 0.75)');
+          coronaGrad.addColorStop(0.55, 'rgba(254, 225, 105, 0.28)');
+          coronaGrad.addColorStop(0.85, 'rgba(251, 191, 36, 0.08)');
+          coronaGrad.addColorStop(1, 'rgba(245, 158, 11, 0)');
+          ctx.fillStyle = coronaGrad;
           ctx.beginPath();
-          ctx.arc(sunX, sunY, sunCoreRadius, 0, Math.PI * 2);
+          ctx.arc(sunX, sunY, 110, 0, Math.PI * 2);
           ctx.fill();
 
-          // D. Floating Golden Sunlight Motes / Shimmering Dust
+          // C. Cinematic Lens Flare Discs & Bokeh Rings along the optical axis
+          // Optical vector from sun towards viewport center
+          const screenCenterX = width * 0.45;
+          const screenCenterY = height * 0.55;
+          const vecX = screenCenterX - sunX;
+          const vecY = screenCenterY - sunY;
+
+          for (const flare of sunFlares) {
+            const fx = sunX + vecX * flare.distRatio;
+            const fy = sunY + vecY * flare.distRatio;
+            const flarePulse = flare.baseAlpha + Math.sin(tick * 0.02 + flare.distRatio * 3) * (flare.baseAlpha * 0.25);
+
+            ctx.beginPath();
+            ctx.arc(fx, fy, flare.radius, 0, Math.PI * 2);
+
+            if (flare.isRing) {
+              ctx.strokeStyle = `rgba(${flare.r}, ${flare.g}, ${flare.b}, ${flarePulse})`;
+              ctx.lineWidth = 1.5;
+              ctx.stroke();
+            } else {
+              const fGrad = ctx.createRadialGradient(fx, fy, 0, fx, fy, flare.radius);
+              fGrad.addColorStop(0, `rgba(${flare.r}, ${flare.g}, ${flare.b}, ${flarePulse * 1.5})`);
+              fGrad.addColorStop(0.7, `rgba(${flare.r}, ${flare.g}, ${flare.b}, ${flarePulse * 0.7})`);
+              fGrad.addColorStop(1, `rgba(${flare.r}, ${flare.g}, ${flare.b}, 0)`);
+              ctx.fillStyle = fGrad;
+              ctx.fill();
+            }
+          }
+
+          // D. Floating Golden Sunlight Motes / Ambient Shimmering Dust
           for (const mote of sunMotes) {
             mote.y += mote.speedY;
             mote.x += mote.speedX;
-            mote.phase += 0.04;
+            mote.phase += 0.035;
 
             if (mote.y > height * 0.85) {
               mote.y = 0;
@@ -483,7 +489,7 @@ export const WeatherAtmosphereOverlay: React.FC<WeatherAtmosphereOverlayProps> =
             }
             if (mote.x < 0) mote.x = width;
 
-            const twinkle = Math.sin(mote.phase) * 0.3 + 0.7;
+            const twinkle = Math.sin(mote.phase) * 0.35 + 0.65;
             ctx.beginPath();
             ctx.arc(mote.x, mote.y, mote.radius, 0, Math.PI * 2);
             ctx.fillStyle = `rgba(252, 211, 77, ${mote.alpha * twinkle})`;
