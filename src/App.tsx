@@ -120,7 +120,7 @@ export default function App() {
   });
 
   // 2. Navigation & UI state: Show login page by default on first entry
-  const [activeTab, setActiveTab] = useState<MainNavTab>(() => {
+  const [activeTab, setActiveTabState] = useState<MainNavTab>(() => {
     try {
       const saved = localStorage.getItem('sangsan_current_user');
       return saved ? 'home' : 'login';
@@ -128,6 +128,31 @@ export default function App() {
       return 'login';
     }
   });
+
+  const protectedTabs = useMemo<Set<MainNavTab>>(() => new Set([
+    'home',
+    'bracket',
+    'live',
+    'standings',
+    'schedule',
+    'injury',
+    'suggestions',
+    'messages',
+    'settings',
+    'formation',
+    'admin',
+    'roledashboard',
+    'weather',
+    'contact'
+  ]), []);
+
+  const navigateTo = (tab: MainNavTab) => {
+    if (!currentUser && protectedTabs.has(tab)) {
+      setActiveTabState('login');
+      return;
+    }
+    setActiveTabState(tab);
+  };
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
     return document.documentElement.classList.contains('dark');
   });
@@ -175,6 +200,13 @@ export default function App() {
       setCurrentRole(currentUser.role);
     }
   }, [currentUser]);
+
+  // Never leave a protected dashboard route active after logout or session expiry.
+  useEffect(() => {
+    if (!currentUser && protectedTabs.has(activeTab)) {
+      setActiveTabState('login');
+    }
+  }, [activeTab, currentUser, protectedTabs]);
 
   // Setup Firebase Real-time listeners
   useEffect(() => {
@@ -273,20 +305,20 @@ export default function App() {
     setCurrentUser(user);
     setCurrentRole(user.role);
     localStorage.setItem('sangsan_current_user', JSON.stringify(user));
-    setActiveTab('home');
+    setActiveTabState('home');
   };
 
   const handleLogout = () => {
     localStorage.removeItem('sangsan_current_user');
     setCurrentUser(null);
     setCurrentRole('student');
-    setActiveTab('home');
+    setActiveTabState('login');
   };
 
   // Toggle 10-minute match reminder
   const handleToggleReminder = async (match: MatchItem) => {
     if (!currentUser) {
-      setActiveTab('login');
+      navigateTo('login');
       return;
     }
     const isCurrentlySet = userReminders.includes(match.id);
@@ -309,7 +341,7 @@ export default function App() {
   // 5-minute Cooldown Rule for Text Cheer Message with Auto-Profanity Filter
   const handleSubmitCheerMessage = async (msg: string) => {
     if (!currentUser) {
-      setActiveTab('login');
+      navigateTo('login');
       return;
     }
 
@@ -499,7 +531,7 @@ export default function App() {
           <div className="pt-4 border-t border-red-900/60 flex justify-center">
             <button
               type="button"
-              onClick={() => setActiveTab('login')}
+              onClick={() => navigateTo('login')}
               className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-2 cursor-pointer"
             >
               <LogIn className="w-4 h-4" />
@@ -514,10 +546,10 @@ export default function App() {
 
   // Footer Navigation links
   const footerLinks = [
-    { label: '개인정보처리방침', onClick: () => setActiveTab('privacy') },
-    { label: '체육대회 규정집', onClick: () => setActiveTab('rules') },
-    { label: '스마트랩 소개', onClick: () => setActiveTab('smartlab') },
-    { label: '문의하기', onClick: () => setActiveTab('contact') }
+    { label: '개인정보처리방침', onClick: () => navigateTo('privacy') },
+    { label: '체육대회 규정집', onClick: () => navigateTo('rules') },
+    { label: '스마트랩 소개', onClick: () => navigateTo('smartlab') },
+    { label: '문의하기', onClick: () => navigateTo('contact') }
   ];
 
   return (
@@ -532,7 +564,7 @@ export default function App() {
       <Navbar
         currentRole={currentRole}
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={navigateTo}
         onRoleChange={setCurrentRole}
         userProfile={currentUser}
         weather={weather}
@@ -540,14 +572,14 @@ export default function App() {
         onToggleDarkMode={() => setIsDarkMode(!isDarkMode)}
         onOpenMessages={() => {
           if (!currentUser) {
-            setActiveTab('login');
+            navigateTo('login');
           } else {
-            setActiveTab('messages');
+            navigateTo('messages');
           }
         }}
-        onOpenSuggestions={() => setActiveTab('suggestions')}
-        onOpenInjuries={() => setActiveTab('injury')}
-        onOpenAdminConsole={() => setActiveTab('admin')}
+        onOpenSuggestions={() => navigateTo('suggestions')}
+        onOpenInjuries={() => navigateTo('injury')}
+        onOpenAdminConsole={() => navigateTo('admin')}
         onLogout={handleLogout}
       />
 
@@ -565,8 +597,7 @@ export default function App() {
         {activeTab === 'login' && (
           <LoginPage
             onSuccess={handleLoginSuccess}
-            onCancel={() => setActiveTab('home')}
-            onContinueAsGuest={() => setActiveTab('home')}
+            onCancel={currentUser ? () => navigateTo('home') : undefined}
           />
         )}
 
@@ -577,7 +608,7 @@ export default function App() {
             onToggleReminder={handleToggleReminder}
             onSelectMatch={(m) => {
               setActiveMatchForLive(m);
-              setActiveTab('live');
+              navigateTo('live');
             }}
           />
         )}
@@ -591,7 +622,7 @@ export default function App() {
         {activeTab === 'contact' && (
           <ContactInquiryPage
             currentUser={currentUser}
-            onOpenLogin={() => setActiveTab('login')}
+            onOpenLogin={() => navigateTo('login')}
           />
         )}
 
@@ -624,7 +655,7 @@ export default function App() {
         {activeTab === 'messages' && (
           <MessagesPage
             currentUser={currentUser}
-            onOpenLogin={() => setActiveTab('login')}
+            onOpenLogin={() => navigateTo('login')}
           />
         )}
 
@@ -643,7 +674,7 @@ export default function App() {
             currentUser={currentUser}
             matches={matches}
             notices={notices}
-            onBackToHome={() => setActiveTab('home')}
+            onBackToHome={() => navigateTo('home')}
           />
         )}
 
@@ -657,7 +688,7 @@ export default function App() {
             onToggleReminder={handleToggleReminder}
             onOpenMatchDetail={(m) => {
               setActiveMatchForLive(m);
-              setActiveTab('live');
+              navigateTo('live');
             }}
           />
         )}
@@ -680,7 +711,7 @@ export default function App() {
                 lastLogin: new Date().toISOString()
               }}
               match={currentLiveMatch}
-              onBack={() => setActiveTab('bracket')}
+              onBack={() => navigateTo('bracket')}
             />
           ) : (
             <div className="py-20 text-center text-xs text-slate-400">
@@ -700,7 +731,7 @@ export default function App() {
              weather={weather}
              refreshing={weatherRefreshing}
              onRefresh={refetchWeather}
-             onBack={() => setActiveTab('home')}
+             onBack={() => navigateTo('home')}
            />
         )}
 
@@ -737,14 +768,14 @@ export default function App() {
                     <>
                       <button
                         type="button"
-                        onClick={() => setActiveTab('admin')}
+                        onClick={() => navigateTo('admin')}
                         className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition cursor-pointer shadow-xs"
                       >
                         어드민 콘솔 열기
                       </button>
                       <button
                         type="button"
-                        onClick={() => setActiveTab('roledashboard')}
+                        onClick={() => navigateTo('roledashboard')}
                         className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl transition cursor-pointer shadow-xs"
                       >
                         직무별 대시보드
@@ -755,14 +786,14 @@ export default function App() {
                     <>
                       <button
                         type="button"
-                        onClick={() => setActiveTab('roledashboard')}
+                        onClick={() => navigateTo('roledashboard')}
                         className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition cursor-pointer shadow-xs"
                       >
                         학급 반장 전용 대시보드
                       </button>
                       <button
                         type="button"
-                        onClick={() => setActiveTab('formation')}
+                        onClick={() => navigateTo('formation')}
                         className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl transition cursor-pointer shadow-xs"
                       >
                         라인업 제출
@@ -773,7 +804,7 @@ export default function App() {
                     <>
                       <button
                         type="button"
-                        onClick={() => setActiveTab('roledashboard')}
+                        onClick={() => navigateTo('roledashboard')}
                         className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition cursor-pointer shadow-xs"
                       >
                         학생회 진행 대시보드
@@ -783,9 +814,9 @@ export default function App() {
                         onClick={() => {
                           if (currentLiveMatch) {
                             setActiveMatchForLive(currentLiveMatch);
-                            setActiveTab('live');
+                            navigateTo('live');
                           } else {
-                            setActiveTab('schedule');
+                            navigateTo('schedule');
                           }
                         }}
                         className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl transition cursor-pointer shadow-xs"
@@ -798,7 +829,7 @@ export default function App() {
                     <>
                       <button
                         type="button"
-                        onClick={() => setActiveTab('roledashboard')}
+                        onClick={() => navigateTo('roledashboard')}
                         className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl transition cursor-pointer shadow-xs"
                       >
                         심판 전용 대시보드
@@ -808,9 +839,9 @@ export default function App() {
                         onClick={() => {
                           if (currentLiveMatch) {
                             setActiveMatchForLive(currentLiveMatch);
-                            setActiveTab('live');
+                            navigateTo('live');
                           } else {
-                            setActiveTab('schedule');
+                            navigateTo('schedule');
                           }
                         }}
                         className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl transition cursor-pointer shadow-xs"
@@ -822,7 +853,7 @@ export default function App() {
                   {currentUser.role === 'health_officer' && (
                     <button
                       type="button"
-                      onClick={() => setActiveTab('roledashboard')}
+                      onClick={() => navigateTo('roledashboard')}
                       className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl transition cursor-pointer shadow-xs"
                     >
                       의무실 전용 대시보드
@@ -832,14 +863,14 @@ export default function App() {
                     <>
                       <button
                         type="button"
-                        onClick={() => setActiveTab('schedule')}
+                        onClick={() => navigateTo('schedule')}
                         className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl transition cursor-pointer shadow-xs"
                       >
                         학급 대진 및 경기 참관
                       </button>
                       <button
                         type="button"
-                        onClick={() => setActiveTab('roledashboard')}
+                        onClick={() => navigateTo('roledashboard')}
                         className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl transition cursor-pointer shadow-xs"
                       >
                         직무별 대시보드
@@ -856,19 +887,19 @@ export default function App() {
               <div className="lg:col-span-3 space-y-5">
                 <WeatherWidget
                   variant="card"
-                  onOpenDetails={() => setActiveTab('weather')}
+                  onOpenDetails={() => navigateTo('weather')}
                 />
 
-                <SafetyGuideCard onOpenInjuryEncyclopedia={() => setActiveTab('injury')} />
+                <SafetyGuideCard onOpenInjuryEncyclopedia={() => navigateTo('injury')} />
 
                 <TodayScheduleCard
                   matches={matches}
                   userReminders={userReminders}
                   onToggleReminder={handleToggleReminder}
-                  onViewAll={() => setActiveTab('schedule')}
+                  onViewAll={() => navigateTo('schedule')}
                   onSelectMatch={(m) => {
                     setActiveMatchForLive(m);
-                    setActiveTab('live');
+                    navigateTo('live');
                   }}
                 />
               </div>
@@ -881,7 +912,7 @@ export default function App() {
                   onOpenLiveScore={() => {
                     if (currentLiveMatch) {
                       setActiveMatchForLive(currentLiveMatch);
-                      setActiveTab('live');
+                      navigateTo('live');
                     }
                   }}
                   onCheerReaction={handleSendReaction}
@@ -891,7 +922,7 @@ export default function App() {
 
                 <TournamentSummaryCard
                   matches={matches}
-                  onOpenFullBracket={() => setActiveTab('bracket')}
+                  onOpenFullBracket={() => navigateTo('bracket')}
                 />
               </div>
 
@@ -899,7 +930,7 @@ export default function App() {
               <div className="lg:col-span-3 space-y-5">
                 <ClassLeaderboardCard
                   standings={calculatedStandings as any}
-                  onOpenFullStandings={() => setActiveTab('standings')}
+                  onOpenFullStandings={() => navigateTo('standings')}
                 />
 
                 <LiveCheersFeedCard
@@ -920,7 +951,7 @@ export default function App() {
       {/* 5. Mobile Bottom Navigation */}
       <MobileBottomNav
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={navigateTo}
         userProfile={currentUser}
       />
 

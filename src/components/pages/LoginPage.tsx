@@ -4,15 +4,14 @@ import { UserProfile } from '../../types';
 import { checkStudentIdExists, createAccount, getUserProfile, syncUserProfile } from '../../services/firebaseService';
 import { SangsanLogo } from '../common/SangsanLogo';
 import { SmartlabLogo } from '../common/SmartlabLogo';
-import { Shield, CheckCircle, AlertTriangle, LogIn, UserCheck, Key, Lock, ArrowLeft, ArrowRight, User, Eye } from 'lucide-react';
+import { Shield, CheckCircle, AlertTriangle, LogIn, UserCheck, Key, Lock, ArrowLeft, ArrowRight, User } from 'lucide-react';
 
 interface LoginPageProps {
   onSuccess: (profile: UserProfile) => void;
   onCancel?: () => void;
-  onContinueAsGuest?: () => void;
 }
 
-export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onCancel, onContinueAsGuest }) => {
+export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onCancel }) => {
   const [tab, setTab] = useState<'student' | 'admin'>('student');
 
   // Student login / signup fields
@@ -300,19 +299,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onCancel, onCon
             </form>
           )}
 
-          {/* Guest preview button if user wants to look around first */}
-          {onContinueAsGuest && (
-            <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-center">
-              <button
-                type="button"
-                onClick={onContinueAsGuest}
-                className="text-xs text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition cursor-pointer flex items-center justify-center gap-1.5 mx-auto py-1"
-              >
-                <Eye className="w-3.5 h-3.5 text-slate-400" />
-                <span>로그인 없이 먼저 대시보드 둘러보기</span>
-              </button>
-            </div>
-          )}
         </div>
       </div>
 
