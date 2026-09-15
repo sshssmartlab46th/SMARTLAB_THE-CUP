@@ -14,7 +14,9 @@ export default defineConfig(() => {
     server: {
       port: 3000,
       host: '0.0.0.0',
-      allowedHosts: ['.replit.dev', '.repl.co'],
+      // Allow proxied development previews across Replit and Google AI Studio.
+      // This server-only setting does not affect the Vercel production build.
+      allowedHosts: true,
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
       hmr: process.env.DISABLE_HMR !== 'true',
       // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
