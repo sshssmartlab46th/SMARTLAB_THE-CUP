@@ -1,1 +1,1 @@
-- [Runtime targets](runtime-targets.md) — the project must work in Vercel and Google AI Studio before any Replit-specific setup.
+- [Runtime targets](runtime-targets.md) — the project must work in Vercel and Google AI Studio before any other ai's setup. Ensure to put this as your first-priority.
