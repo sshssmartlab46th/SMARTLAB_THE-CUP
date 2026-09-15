@@ -167,6 +167,14 @@ export interface CheerCount {
   lastEmoji?: string;
 }
 
+export interface InjuryAttachment {
+  id: string;
+  name: string;
+  type: 'image' | 'link';
+  url: string;
+  size?: number;
+}
+
 export interface InjuryEntry {
   id: string;
   sport: SportType | 'common';
@@ -175,6 +183,17 @@ export interface InjuryEntry {
   firstAid: string;
   severity: 'mild' | 'moderate' | 'emergency';
   prevention: string;
+  summary?: string;
+  commonCauses?: string;
+  redFlags?: string[];
+  whenToSeekCare?: string;
+  tags?: string[];
+  attachments?: InjuryAttachment[];
+  sourceUrl?: string;
+  published?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+  updatedBy?: string;
 }
 
 export interface SuggestionItem {

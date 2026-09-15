@@ -626,7 +626,7 @@ export default function App() {
           />
         )}
 
-        {activeTab === 'injury' && <InjuryEncyclopediaPage />}
+        {activeTab === 'injury' && <InjuryEncyclopediaPage currentUser={currentUser} />}
 
         {activeTab === 'suggestions' && (
           <SuggestionBoxPage

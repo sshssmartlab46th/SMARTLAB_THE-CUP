@@ -831,7 +831,17 @@ export function listenInjuries(callback: (injuries: InjuryEntry[]) => void): () 
 
 export async function saveInjuryEntry(injury: InjuryEntry): Promise<void> {
   const docRef = doc(db, 'injuries', injury.id);
-  await setDoc(docRef, injury, { merge: true });
+  const now = new Date().toISOString();
+  await setDoc(docRef, {
+    ...injury,
+    createdAt: injury.createdAt || now,
+    updatedAt: now
+  }, { merge: true });
+}
+
+export async function deleteInjuryEntry(injuryId: string): Promise<void> {
+  if (!injuryId) return;
+  await deleteDoc(doc(db, 'injuries', injuryId));
 }
 
 // -------------------------------------------------------------
