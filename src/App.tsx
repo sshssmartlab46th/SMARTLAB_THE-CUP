@@ -50,6 +50,7 @@ import {
   RoleDashboardPage,
   MessagesPage,
   WeatherDetailPage,
+  NoticesPage,
   // Role Dashboard cards
   ClassScopeNoticeCard,
   ClassRosterManagerCard,
@@ -91,7 +92,8 @@ import {
   updateMatch,
   updateScoreWithAudit,
   autoStartDueMatches,
-  startMatch
+  startMatch,
+  seedInitialDataIfEmpty
 } from './services/firebaseService';
 import { parseStudentId } from './utils/studentIdParser';
 import { filterProfanity } from './utils/profanityFilter';
@@ -131,6 +133,7 @@ export default function App() {
 
   const protectedTabs = useMemo<Set<MainNavTab>>(() => new Set([
     'home',
+    'notices',
     'bracket',
     'live',
     'standings',
@@ -208,8 +211,10 @@ export default function App() {
     }
   }, [activeTab, currentUser, protectedTabs]);
 
-  // Setup Firebase Real-time listeners
+  // Setup Firebase Real-time listeners & seed initial brackets if empty
   useEffect(() => {
+    seedInitialDataIfEmpty().catch(console.error);
+
     const unsubMatches = listenMatches((mList) => {
       setMatches(mList);
     });
@@ -267,16 +272,18 @@ export default function App() {
     return () => clearInterval(interval);
   }, [matches]);
 
-  // Popup important notice automatically on initial load if present and not dismissed today
+  // Popup: strictly the single most recent notice automatically on initial load if present and not dismissed today
+  // (User mandate: "팝업에는 가장 최근 공지만 ㄱㄱ")
   useEffect(() => {
     if (!hasShownInitialPopup && notices.length > 0) {
       try {
         const { dateStr } = getKSTNowParts();
         const hideDate = localStorage.getItem('sangsan_hide_notice_date');
         if (hideDate !== dateStr) {
-          const targetNotice = notices.find(n => n.important) || notices[0];
-          if (targetNotice) {
-            setSelectedNoticeForPopup(targetNotice);
+          // Strictly the most recent notice (notices[0], as notices are sorted by createdAt descending)
+          const mostRecentNotice = notices[0];
+          if (mostRecentNotice) {
+            setSelectedNoticeForPopup(mostRecentNotice);
           }
         }
       } catch (e) {
@@ -546,6 +553,7 @@ export default function App() {
 
   // Footer Navigation links
   const footerLinks = [
+    { label: '공지사항 전체보기', onClick: () => navigateTo('notices') },
     { label: '개인정보처리방침', onClick: () => navigateTo('privacy') },
     { label: '체육대회 규정집', onClick: () => navigateTo('rules') },
     { label: '스마트랩 소개', onClick: () => navigateTo('smartlab') },
@@ -598,6 +606,14 @@ export default function App() {
           <LoginPage
             onSuccess={handleLoginSuccess}
             onCancel={currentUser ? () => navigateTo('home') : undefined}
+          />
+        )}
+
+        {activeTab === 'notices' && (
+          <NoticesPage
+            notices={notices}
+            currentUser={currentUser}
+            onOpenPopup={(n) => setSelectedNoticeForPopup(n)}
           />
         )}
 
@@ -922,6 +938,8 @@ export default function App() {
 
                 <TournamentSummaryCard
                   matches={matches}
+                  selectedSport={selectedSport}
+                  onSelectSport={setSelectedSport}
                   onOpenFullBracket={() => navigateTo('bracket')}
                 />
               </div>
@@ -955,13 +973,16 @@ export default function App() {
         userProfile={currentUser}
       />
 
-      {/* 6. Notice Popup Modal (실제 작동하는 공지 팝업창) */}
+      {/* 6. Notice Popup Modal (가장 최근 공지만 단일 표시) */}
       {selectedNoticeForPopup && (
         <NoticeModal
           isOpen={Boolean(selectedNoticeForPopup)}
           notice={selectedNoticeForPopup}
-          notices={notices}
           onClose={() => setSelectedNoticeForPopup(null)}
+          onViewAllNotices={() => {
+            setSelectedNoticeForPopup(null);
+            navigateTo('notices');
+          }}
           onDismissToday={() => {
             try {
               const { dateStr } = getKSTNowParts();

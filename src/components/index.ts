@@ -54,6 +54,7 @@ export * from './auth/AuthModal';
 export * from './messages/DirectMessageModal';
 export * from './suggestions/SuggestionModal';
 export * from './injury/InjuryEncyclopediaModal';
+export * from './editor/GoogleDocsEditor';
 export * from './lineup/SoccerFormationBuilder';
 export * from './matches/MVPVotingModal';
 export * from './matches/TournamentBracketView';
@@ -77,6 +78,7 @@ export * from './pages/AdminConsolePage';
 export * from './pages/RoleDashboardPage';
 export * from './pages/MessagesPage';
 export * from './pages/WeatherDetailPage';
+export * from './pages/NoticesPage';
 
 // Project Documentation & Design Specification SSOT (Dead-code reference for AI models)
 export * from '../docs/projectSpecification';

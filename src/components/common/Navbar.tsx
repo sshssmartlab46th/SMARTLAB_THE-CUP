@@ -5,6 +5,7 @@ import { SmartlabLogo } from './SmartlabLogo';
 import { 
   Sun, 
   Moon,
+  Bell,
   MessageSquare,
   HelpCircle,
   Activity,
@@ -16,6 +17,7 @@ import {
 
 export type MainNavTab = 
   | 'home' 
+  | 'notices'
   | 'bracket' 
   | 'live' 
   | 'standings' 
@@ -159,6 +161,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <nav className="flex items-center gap-1 overflow-x-auto py-1">
               {[
                 { tab: 'home', label: '종합 홈' },
+                { tab: 'notices', label: '공지사항' },
                 { tab: 'bracket', label: '대진표' },
                 { tab: 'schedule', label: '전체 일정' },
                 { tab: 'live', label: '실시간 현황' },
@@ -197,6 +200,19 @@ export const Navbar: React.FC<NavbarProps> = ({
           )}
 
           {/* Quick Shortcuts */}
+          <button
+            type="button"
+            onClick={() => onTabChange('notices')}
+            title="공지사항 전체 목록"
+            className={`p-1.5 rounded-lg border transition cursor-pointer ${
+              activeTab === 'notices'
+                ? 'bg-red-50 dark:bg-red-950/40 border-red-500 text-red-600 dark:text-red-400'
+                : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-red-600'
+            }`}
+          >
+            <Bell className="w-4 h-4" />
+          </button>
+
           <button
             type="button"
             onClick={() => onTabChange('injury')}

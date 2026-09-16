@@ -191,6 +191,7 @@ export interface InjuryEntry {
   attachments?: InjuryAttachment[];
   sourceUrl?: string;
   published?: boolean;
+  contentHtml?: string;
   createdAt?: string;
   updatedAt?: string;
   updatedBy?: string;

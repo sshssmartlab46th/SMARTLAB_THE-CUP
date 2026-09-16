@@ -1,6 +1,6 @@
 import React from 'react';
 import { MainNavTab } from './Navbar';
-import { Home, Calendar, Trophy, Activity, Award, MessageSquare, HelpCircle } from 'lucide-react';
+import { Home, Bell, Calendar, Trophy, Activity, Award, MessageSquare } from 'lucide-react';
 import { UserProfile } from '../../types';
 
 interface MobileBottomNavProps {
@@ -16,6 +16,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
 }) => {
   const navItems = [
     { tab: 'home' as MainNavTab, label: '홈', icon: Home },
+    { tab: 'notices' as MainNavTab, label: '공지', icon: Bell },
     { tab: 'bracket' as MainNavTab, label: '대진표', icon: Trophy },
     { tab: 'schedule' as MainNavTab, label: '일정', icon: Calendar },
     { tab: 'live' as MainNavTab, label: '실시간', icon: Activity },

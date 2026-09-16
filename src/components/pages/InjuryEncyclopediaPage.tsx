@@ -5,13 +5,19 @@ import {
   BookOpen,
   CheckCircle2,
   ChevronRight,
+  Download,
   Edit3,
   ExternalLink,
+  FileEdit,
   FileImage,
+  FileText,
   HeartPulse,
   ImagePlus,
+  LayoutGrid,
   Loader2,
+  Maximize2,
   Plus,
+  Printer,
   Search,
   ShieldCheck,
   Sparkles,
@@ -23,6 +29,7 @@ import { InjuryAttachment, InjuryEntry, SportType, UserProfile, UserRole } from 
 import { deleteInjuryEntry, listenInjuries, saveInjuryEntry } from '../../services/firebaseService';
 import { compressImageFile } from '../../utils/imageCompressor';
 import { askGroq } from '../../services/groqService';
+import { GoogleDocsEditor } from '../editor/GoogleDocsEditor';
 
 interface InjuryEncyclopediaPageProps {
   currentUser?: UserProfile | null;
@@ -214,6 +221,172 @@ export const InjuryEncyclopediaPage: React.FC<InjuryEncyclopediaPageProps> = ({ 
     if (selectedEntry && selectedEntry.id !== selectedId) setSelectedId(selectedEntry.id);
   }, [entries, selectedEntry, selectedId]);
 
+  // Google Docs View & Editor States
+  const [docViewMode, setDocViewMode] = useState<'docs' | 'cards'>('docs');
+  const [googleDocsOpen, setGoogleDocsOpen] = useState(false);
+  const [googleDocsTitle, setGoogleDocsTitle] = useState('');
+  const [googleDocsInitialHtml, setGoogleDocsInitialHtml] = useState('');
+  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
+  const [editingSport, setEditingSport] = useState<InjuryEntry['sport']>('common');
+  const [editingSeverity, setEditingSeverity] = useState<InjuryEntry['severity']>('mild');
+
+  const generateDocsHtmlFromEntry = (entry: InjuryEntry): string => {
+    if (entry.contentHtml && entry.contentHtml.trim().length > 0) {
+      return entry.contentHtml;
+    }
+
+    const sportLabel = SPORT_OPTIONS.find((s) => s.value === entry.sport)?.label || entry.sport;
+    const sevClass = entry.severity === 'emergency' ? '#fee2e2' : entry.severity === 'moderate' ? '#ffedd5' : '#dcfce7';
+    const sevTextColor = entry.severity === 'emergency' ? '#b91c1c' : entry.severity === 'moderate' ? '#c2410c' : '#15803d';
+
+    return `
+      <h1 style="color: #0f172a; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; font-size: 26px; font-weight: 800; margin-bottom: 8px;">${entry.title}</h1>
+      <p style="color: #64748b; font-size: 13px; margin-top: 4px; margin-bottom: 16px;">
+        <strong>종목 분류:</strong> ${sportLabel} &nbsp;|&nbsp; 
+        <strong>중증도:</strong> <span style="background-color: ${sevClass}; color: ${sevTextColor}; padding: 2px 8px; border-radius: 4px; font-weight: 700;">${severityLabel[entry.severity]}</span>
+        ${entry.tags && entry.tags.length > 0 ? ` &nbsp;|&nbsp; <strong>태그:</strong> ${entry.tags.map(t => `#${t}`).join(' ')}` : ''}
+      </p>
+
+      <div style="background-color: #f8fafc; border-left: 4px solid #3b82f6; padding: 12px 16px; border-radius: 6px; margin-bottom: 20px;">
+        <p style="font-size: 14px; color: #334155; margin: 0; line-height: 1.6;">
+          <strong>요약:</strong> ${entry.summary || entry.symptoms}
+        </p>
+      </div>
+
+      <h2 style="color: #0f172a; margin-top: 24px; margin-bottom: 8px; font-size: 18px; font-weight: 700; border-left: 4px solid #ef4444; padding-left: 8px;">1. 주요 증상 및 판별 기준</h2>
+      <p style="line-height: 1.8; color: #334155; margin-bottom: 16px;">${entry.symptoms}</p>
+
+      <h2 style="color: #0f172a; margin-top: 24px; margin-bottom: 8px; font-size: 18px; font-weight: 700; border-left: 4px solid #3b82f6; padding-left: 8px;">2. 발생 원인 및 위험 상황</h2>
+      <p style="line-height: 1.8; color: #334155; margin-bottom: 16px;">${entry.commonCauses || '기본 기재된 원인 정보가 없습니다.'}</p>
+
+      <h2 style="color: #0f172a; margin-top: 24px; margin-bottom: 8px; font-size: 18px; font-weight: 700; border-left: 4px solid #10b981; padding-left: 8px;">3. 현장 응급처치 수칙 (RICE 프로토콜)</h2>
+      <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 14px 16px; margin: 12px 0 20px 0;">
+        <p style="white-space: pre-wrap; line-height: 1.8; color: #14532d; margin: 0;">${entry.firstAid}</p>
+      </div>
+
+      ${entry.redFlags && entry.redFlags.length > 0 ? `
+        <h2 style="color: #0f172a; margin-top: 24px; margin-bottom: 8px; font-size: 18px; font-weight: 700; border-left: 4px solid #dc2626; padding-left: 8px;">4. 즉시 도움을 받아야 하는 신호 (Red Flags)</h2>
+        <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 12px 18px; margin-bottom: 20px;">
+          <ul style="color: #991b1b; line-height: 1.8; margin: 0; padding-left: 18px;">
+            ${entry.redFlags.map((flag) => `<li>${flag}</li>`).join('')}
+          </ul>
+        </div>
+      ` : ''}
+
+      <h2 style="color: #0f172a; margin-top: 24px; margin-bottom: 8px; font-size: 18px; font-weight: 700; border-left: 4px solid #6366f1; padding-left: 8px;">5. 보건실 방문 및 경기 복귀 기준</h2>
+      <p style="line-height: 1.8; color: #334155; margin-bottom: 16px;">${entry.whenToSeekCare || '통증이 지속되거나 부기가 심해지는 경우 보건실을 방문하여 보건교사의 확인을 받습니다.'}</p>
+
+      ${entry.prevention ? `
+        <h2 style="color: #0f172a; margin-top: 24px; margin-bottom: 8px; font-size: 18px; font-weight: 700; border-left: 4px solid #eab308; padding-left: 8px;">6. 예방 수칙</h2>
+        <p style="line-height: 1.8; color: #334155; margin-bottom: 16px;">${entry.prevention}</p>
+      ` : ''}
+
+      ${entry.attachments && entry.attachments.length > 0 ? `
+        <h2 style="color: #0f172a; margin-top: 24px; margin-bottom: 8px; font-size: 18px; font-weight: 700; border-left: 4px solid #a855f7; padding-left: 8px;">7. 첨부 이미지 자료</h2>
+        <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px;">
+          ${entry.attachments.filter(a => a.type === 'image').map(img => `<img src="${img.url}" alt="${img.name}" style="max-width: 280px; border-radius: 8px; border: 1px solid #e2e8f0;" />`).join('')}
+        </div>
+      ` : ''}
+    `;
+  };
+
+  const openGoogleDocs = (entry?: InjuryEntry) => {
+    if (entry) {
+      setEditingEntryId(entry.id);
+      setEditingSport(entry.sport);
+      setEditingSeverity(entry.severity);
+      setGoogleDocsTitle(entry.title);
+      setGoogleDocsInitialHtml(generateDocsHtmlFromEntry(entry));
+    } else {
+      setEditingEntryId(`injury-${Date.now()}`);
+      setEditingSport('common');
+      setEditingSeverity('mild');
+      setGoogleDocsTitle('새 부상 지식백과 가이드');
+      setGoogleDocsInitialHtml(`
+        <h1 style="color: #1e293b; font-size: 26px; font-weight: 800; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">새 부상 대응 가이드</h1>
+        <p style="color: #64748b; font-size: 14px;">상산고등학교 체육대회 및 축제 공식 보건실 지침</p>
+        <hr style="margin: 16px 0; border: 0; border-top: 1px solid #e2e8f0;" />
+        
+        <h2 style="color: #0f172a; border-left: 4px solid #ef4444; padding-left: 8px;">1. 주요 증상 및 판별 기준</h2>
+        <p>선수가 호소하는 통증 부위, 외관상 징후(부기, 멍 등) 및 초기 관찰 사항을 기록하세요.</p>
+
+        <h2 style="color: #0f172a; border-left: 4px solid #3b82f6; padding-left: 8px;">2. 발생 원인 및 위험 상황</h2>
+        <p>경기 중 어떠한 동작(착지, 충돌, 급가속 등)에서 부상이 주로 유발되는지 설명하세요.</p>
+
+        <h2 style="color: #0f172a; border-left: 4px solid #10b981; padding-left: 8px;">3. 현장 응급처치 수칙 (RICE 프로토콜)</h2>
+        <p>현장에서 즉시 취해야 하는 안정(Rest), 냉찜질(Ice), 압박(Compression), 거상(Elevation) 조치를 기재하세요.</p>
+
+        <h2 style="color: #0f172a; border-left: 4px solid #dc2626; padding-left: 8px;">4. 즉각 이송 및 보건실 의뢰 기준 (위험 신호)</h2>
+        <p>119 긴급 연락이나 의료기관 이송이 필요한 위험 징후를 명시하세요.</p>
+      `);
+    }
+    setGoogleDocsOpen(true);
+  };
+
+  const handleSaveGoogleDocs = async (data: { title: string; contentHtml: string; plainText: string }) => {
+    if (!currentUser) return;
+    const id = editingEntryId || `injury-${Date.now()}`;
+    setIsSaving(true);
+    try {
+      await saveInjuryEntry({
+        id,
+        sport: editingSport,
+        title: data.title.trim() || '제목 없는 문서',
+        contentHtml: data.contentHtml,
+        summary: data.plainText.slice(0, 160).replace(/\s+/g, ' ').trim(),
+        symptoms: data.plainText.slice(0, 300).replace(/\s+/g, ' ').trim(),
+        commonCauses: '구글 닥스 본문 참조',
+        firstAid: '구글 닥스 상세 문서 본문 참조',
+        prevention: '구글 닥스 상세 문서 본문 참조',
+        redFlags: [],
+        whenToSeekCare: '보건실 방문 및 구글 닥스 문서 본문 참조',
+        severity: editingSeverity,
+        tags: ['구글닥스', SPORT_OPTIONS.find((s) => s.value === editingSport)?.label || '공통'],
+        attachments: [],
+        sourceUrl: '',
+        published: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        updatedBy: `${currentUser.name} (${roleLabel[currentUser.role] || currentUser.role})`
+      });
+      setSelectedId(id);
+      setGoogleDocsOpen(false);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : '문서를 저장하지 못했습니다.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDownloadHtml = (entry: InjuryEntry) => {
+    const html = `
+      <!DOCTYPE html>
+      <html lang="ko">
+      <head>
+        <meta charset="utf-8" />
+        <title>${entry.title}</title>
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 40px; max-width: 800px; margin: 0 auto; color: #1e293b; line-height: 1.6; }
+          table { border-collapse: collapse; width: 100%; margin: 16px 0; }
+          table th, table td { border: 1px solid #cbd5e1; padding: 8px 12px; }
+          table th { background-color: #f1f5f9; }
+          img { max-width: 100%; border-radius: 8px; }
+        </style>
+      </head>
+      <body>
+        ${generateDocsHtmlFromEntry(entry)}
+      </body>
+      </html>
+    `;
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${entry.title}.html`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const openEditor = (entry?: InjuryEntry) => {
     setEditorError('');
     setDraft(entry ? { ...entry, redFlags: [...(entry.redFlags || [])], tags: [...(entry.tags || [])], attachments: [...(entry.attachments || [])] } : emptyDraft());
@@ -394,14 +567,25 @@ ${context}`
             Groq AI 증상 상담
           </button>
           {canManage && (
-            <button
-              type="button"
-              onClick={() => openEditor()}
-              className="ml-auto rounded-xl bg-red-600 px-3.5 py-2 text-xs font-bold text-white transition hover:bg-red-700"
-            >
-              <Plus className="mr-1.5 inline-block h-3.5 w-3.5" />
-              새 문서 추가
-            </button>
+            <div className="ml-auto flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => openGoogleDocs()}
+                className="rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-bold text-white transition hover:bg-blue-700 flex items-center gap-1.5 shadow-xs cursor-pointer"
+              >
+                <FileText className="h-3.5 w-3.5" />
+                Google Docs 문서 작성
+              </button>
+              <button
+                type="button"
+                onClick={() => openEditor()}
+                className="rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 transition cursor-pointer"
+                title="간편 양식으로 문서 추가"
+              >
+                <Plus className="mr-1 inline-block h-3.5 w-3.5" />
+                간편 추가
+              </button>
+            </div>
           )}
         </div>
       </header>
@@ -501,73 +685,179 @@ ${context}`
             </div>
           </aside>
 
-          <article className="min-h-[560px] rounded-3xl border border-slate-200 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-900 sm:p-7">
+          <article className="min-h-[560px] rounded-3xl border border-slate-200 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-900 sm:p-7 flex flex-col">
             {selectedEntry ? (
               <>
-                <div className="flex flex-col gap-4 border-b border-slate-100 pb-5 dark:border-slate-800 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <div className="mb-2 flex flex-wrap items-center gap-2">
-                      <span className={`rounded-full px-2.5 py-1 text-[11px] font-black ${severityClass[selectedEntry.severity]}`}>{severityLabel[selectedEntry.severity]}</span>
-                      <span className="text-[11px] font-bold text-slate-400">{SPORT_OPTIONS.find((option) => option.value === selectedEntry.sport)?.label || selectedEntry.sport}</span>
-                      {selectedEntry.attachments?.length ? <span className="text-[11px] font-bold text-purple-500"><FileImage className="mr-1 inline h-3.5 w-3.5" />첨부 {selectedEntry.attachments.length}</span> : null}
-                    </div>
-                    <h2 className="text-2xl font-black tracking-tight text-slate-950 dark:text-white">{selectedEntry.title}</h2>
-                    <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-500 dark:text-slate-400">{selectedEntry.summary || selectedEntry.symptoms}</p>
-                    <p className="mt-2 text-[11px] text-slate-400">최종 검수: {formatUpdatedAt(selectedEntry.updatedAt)}{selectedEntry.updatedBy ? ` · ${selectedEntry.updatedBy}` : ''}</p>
+                {/* Document Top Bar: View Mode Switcher + Action Buttons */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4 mb-5">
+                  {/* View Mode Toggle */}
+                  <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
+                    <button
+                      type="button"
+                      onClick={() => setDocViewMode('docs')}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                        docViewMode === 'docs'
+                          ? 'bg-blue-600 text-white shadow-xs'
+                          : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
+                      }`}
+                    >
+                      <FileText className="h-3.5 w-3.5" />
+                      Google Docs 문서 뷰
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDocViewMode('cards')}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                        docViewMode === 'cards'
+                          ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-xs'
+                          : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
+                      }`}
+                    >
+                      <LayoutGrid className="h-3.5 w-3.5" />
+                      요약 카드 뷰
+                    </button>
                   </div>
-                  {canManage && (
-                    <div className="flex shrink-0 gap-2">
-                      <button type="button" onClick={() => openEditor(selectedEntry)} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 hover:border-red-400 hover:text-red-600 dark:border-slate-700 dark:text-slate-300"><Edit3 className="mr-1 inline h-3.5 w-3.5" />편집</button>
-                      {firestoreEntries.some((item) => item.id === selectedEntry.id) && <button type="button" onClick={() => handleDelete(selectedEntry)} className="rounded-xl border border-red-200 px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50 dark:border-red-900/50 dark:hover:bg-red-950/30"><Trash2 className="mr-1 inline h-3.5 w-3.5" />삭제</button>}
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-2">
+                    {canManage && (
+                      <button
+                        type="button"
+                        onClick={() => openGoogleDocs(selectedEntry)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 hover:bg-blue-100 font-bold text-xs transition cursor-pointer"
+                        title="Google Docs 에디터로 전체 편집"
+                      >
+                        <FileEdit className="h-3.5 w-3.5" />
+                        Google Docs로 편집
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => window.print()}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs transition cursor-pointer"
+                      title="문서 인쇄"
+                    >
+                      <Printer className="h-3.5 w-3.5" />
+                      인쇄
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadHtml(selectedEntry)}
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs transition cursor-pointer"
+                      title="HTML 파일로 다운로드"
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                    </button>
+                    {canManage && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => openEditor(selectedEntry)}
+                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold text-xs hover:border-slate-300 transition cursor-pointer"
+                          title="간편 양식 수정"
+                        >
+                          <Edit3 className="h-3.5 w-3.5" />
+                        </button>
+                        {firestoreEntries.some((item) => item.id === selectedEntry.id) && (
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(selectedEntry)}
+                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-red-200 dark:border-red-900/50 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 font-bold text-xs transition cursor-pointer"
+                            title="문서 삭제"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {docViewMode === 'docs' ? (
+                  /* Google Docs Paper Canvas */
+                  <div className="flex-1 rounded-2xl bg-[#f0f4f9] dark:bg-slate-950/70 p-3 sm:p-6 border border-slate-200 dark:border-slate-800/80 overflow-y-auto max-h-[75vh]">
+                    <div className="max-w-3xl mx-auto bg-white dark:bg-slate-900 rounded-xl shadow-md border border-slate-200/90 dark:border-slate-800 p-6 sm:p-12 min-h-[520px]">
+                      {/* Paper Header Ribbon */}
+                      <div className="flex items-center justify-between pb-4 mb-6 border-b border-slate-100 dark:border-slate-800 text-[11px] text-slate-400">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                          <span>상산고등학교 체육대회·축제 보건 지식백과</span>
+                        </div>
+                        <div>최종 검수: {formatUpdatedAt(selectedEntry.updatedAt)}{selectedEntry.updatedBy ? ` · ${selectedEntry.updatedBy}` : ''}</div>
+                      </div>
+
+                      {/* Rendered HTML content */}
+                      <div
+                        className="google-docs-rendered prose max-w-none dark:prose-invert text-slate-800 dark:text-slate-200"
+                        dangerouslySetInnerHTML={{
+                          __html: generateDocsHtmlFromEntry(selectedEntry)
+                        }}
+                      />
                     </div>
-                  )}
-                </div>
-
-                <div className="mt-6 grid gap-5 xl:grid-cols-2">
-                  <section>
-                    <h3 className="mb-2 flex items-center gap-2 text-sm font-black text-slate-900 dark:text-white"><Activity className="h-4 w-4 text-red-500" />주요 증상 및 판별 기준</h3>
-                    <p className="text-sm leading-7 text-slate-600 dark:text-slate-300">{selectedEntry.symptoms}</p>
-                  </section>
-                  <section>
-                    <h3 className="mb-2 flex items-center gap-2 text-sm font-black text-slate-900 dark:text-white"><ShieldCheck className="h-4 w-4 text-emerald-500" />발생 원인·상황</h3>
-                    <p className="text-sm leading-7 text-slate-600 dark:text-slate-300">{selectedEntry.commonCauses || '등록된 발생 원인 정보가 없습니다.'}</p>
-                  </section>
-                </div>
-
-                <section className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 dark:border-emerald-900/50 dark:bg-emerald-950/20">
-                  <h3 className="mb-2 flex items-center gap-2 text-sm font-black text-emerald-800 dark:text-emerald-200"><CheckCircle2 className="h-4 w-4" />현장 응급처치</h3>
-                  <p className="whitespace-pre-wrap text-sm leading-7 text-emerald-950 dark:text-emerald-100">{selectedEntry.firstAid}</p>
-                </section>
-
-                <div className="mt-5 grid gap-5 xl:grid-cols-2">
-                  <section className="rounded-2xl border border-red-200 bg-red-50/60 p-4 dark:border-red-900/50 dark:bg-red-950/20">
-                    <h3 className="mb-2 flex items-center gap-2 text-sm font-black text-red-800 dark:text-red-200"><AlertTriangle className="h-4 w-4" />즉시 도움을 받아야 하는 신호</h3>
-                    {selectedEntry.redFlags?.length ? <ul className="space-y-2 text-sm leading-relaxed text-red-900 dark:text-red-100">{selectedEntry.redFlags.map((flag) => <li key={flag} className="flex gap-2"><span>•</span>{flag}</li>)}</ul> : <p className="text-sm text-red-800/70 dark:text-red-200/70">등록된 위험 신호가 없습니다.</p>}
-                  </section>
-                  <section className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/40">
-                    <h3 className="mb-2 text-sm font-black text-slate-900 dark:text-white">보건실 방문·경기 복귀 기준</h3>
-                    <p className="text-sm leading-7 text-slate-600 dark:text-slate-300">{selectedEntry.whenToSeekCare || '증상이 지속되면 보건 담당자에게 확인받고, 허가 없이 경기에 복귀하지 않습니다.'}</p>
-                  </section>
-                </div>
-
-                {selectedEntry.prevention && (
-                  <section className="mt-5">
-                    <h3 className="mb-2 text-sm font-black text-slate-900 dark:text-white">예방 수칙</h3>
-                    <p className="text-sm leading-7 text-slate-600 dark:text-slate-300">{selectedEntry.prevention}</p>
-                  </section>
-                )}
-
-                {selectedEntry.attachments?.some((item) => item.type === 'image') && (
-                  <section className="mt-6 border-t border-slate-100 pt-5 dark:border-slate-800">
-                    <h3 className="mb-3 flex items-center gap-2 text-sm font-black text-slate-900 dark:text-white"><ImagePlus className="h-4 w-4 text-purple-500" />참고 이미지</h3>
-                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                      {selectedEntry.attachments.filter((item) => item.type === 'image').map((item) => <img key={item.id} src={item.url} alt={item.name} className="aspect-square w-full rounded-xl border border-slate-200 object-cover dark:border-slate-700" />)}
+                  </div>
+                ) : (
+                  /* Itemized Cards View */
+                  <div>
+                    <div className="flex flex-col gap-4 border-b border-slate-100 pb-5 dark:border-slate-800 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <div className="mb-2 flex flex-wrap items-center gap-2">
+                          <span className={`rounded-full px-2.5 py-1 text-[11px] font-black ${severityClass[selectedEntry.severity]}`}>{severityLabel[selectedEntry.severity]}</span>
+                          <span className="text-[11px] font-bold text-slate-400">{SPORT_OPTIONS.find((option) => option.value === selectedEntry.sport)?.label || selectedEntry.sport}</span>
+                          {selectedEntry.attachments?.length ? <span className="text-[11px] font-bold text-purple-500"><FileImage className="mr-1 inline h-3.5 w-3.5" />첨부 {selectedEntry.attachments.length}</span> : null}
+                        </div>
+                        <h2 className="text-2xl font-black tracking-tight text-slate-950 dark:text-white">{selectedEntry.title}</h2>
+                        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-500 dark:text-slate-400">{selectedEntry.summary || selectedEntry.symptoms}</p>
+                        <p className="mt-2 text-[11px] text-slate-400">최종 검수: {formatUpdatedAt(selectedEntry.updatedAt)}{selectedEntry.updatedBy ? ` · ${selectedEntry.updatedBy}` : ''}</p>
+                      </div>
                     </div>
-                  </section>
-                )}
 
-                {selectedEntry.sourceUrl && (
-                  <a href={selectedEntry.sourceUrl} target="_blank" rel="noreferrer" className="mt-5 inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:underline"><ExternalLink className="h-3.5 w-3.5" />관련 참고 자료 열기</a>
+                    <div className="mt-6 grid gap-5 xl:grid-cols-2">
+                      <section>
+                        <h3 className="mb-2 flex items-center gap-2 text-sm font-black text-slate-900 dark:text-white"><Activity className="h-4 w-4 text-red-500" />주요 증상 및 판별 기준</h3>
+                        <p className="text-sm leading-7 text-slate-600 dark:text-slate-300">{selectedEntry.symptoms}</p>
+                      </section>
+                      <section>
+                        <h3 className="mb-2 flex items-center gap-2 text-sm font-black text-slate-900 dark:text-white"><ShieldCheck className="h-4 w-4 text-emerald-500" />발생 원인·상황</h3>
+                        <p className="text-sm leading-7 text-slate-600 dark:text-slate-300">{selectedEntry.commonCauses || '등록된 발생 원인 정보가 없습니다.'}</p>
+                      </section>
+                    </div>
+
+                    <section className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 dark:border-emerald-900/50 dark:bg-emerald-950/20">
+                      <h3 className="mb-2 flex items-center gap-2 text-sm font-black text-emerald-800 dark:text-emerald-200"><CheckCircle2 className="h-4 w-4" />현장 응급처치</h3>
+                      <p className="whitespace-pre-wrap text-sm leading-7 text-emerald-950 dark:text-emerald-100">{selectedEntry.firstAid}</p>
+                    </section>
+
+                    <div className="mt-5 grid gap-5 xl:grid-cols-2">
+                      <section className="rounded-2xl border border-red-200 bg-red-50/60 p-4 dark:border-red-900/50 dark:bg-red-950/20">
+                        <h3 className="mb-2 flex items-center gap-2 text-sm font-black text-red-800 dark:text-red-200"><AlertTriangle className="h-4 w-4" />즉시 도움을 받아야 하는 신호</h3>
+                        {selectedEntry.redFlags?.length ? <ul className="space-y-2 text-sm leading-relaxed text-red-900 dark:text-red-100">{selectedEntry.redFlags.map((flag) => <li key={flag} className="flex gap-2"><span>•</span>{flag}</li>)}</ul> : <p className="text-sm text-red-800/70 dark:text-red-200/70">등록된 위험 신호가 없습니다.</p>}
+                      </section>
+                      <section className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/40">
+                        <h3 className="mb-2 text-sm font-black text-slate-900 dark:text-white">보건실 방문·경기 복귀 기준</h3>
+                        <p className="text-sm leading-7 text-slate-600 dark:text-slate-300">{selectedEntry.whenToSeekCare || '증상이 지속되면 보건 담당자에게 확인받고, 허가 없이 경기에 복귀하지 않습니다.'}</p>
+                      </section>
+                    </div>
+
+                    {selectedEntry.prevention && (
+                      <section className="mt-5">
+                        <h3 className="mb-2 text-sm font-black text-slate-900 dark:text-white">예방 수칙</h3>
+                        <p className="text-sm leading-7 text-slate-600 dark:text-slate-300">{selectedEntry.prevention}</p>
+                      </section>
+                    )}
+
+                    {selectedEntry.attachments?.some((item) => item.type === 'image') && (
+                      <section className="mt-6 border-t border-slate-100 pt-5 dark:border-slate-800">
+                        <h3 className="mb-3 flex items-center gap-2 text-sm font-black text-slate-900 dark:text-white"><ImagePlus className="h-4 w-4 text-purple-500" />참고 이미지</h3>
+                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                          {selectedEntry.attachments.filter((item) => item.type === 'image').map((item) => <img key={item.id} src={item.url} alt={item.name} className="aspect-square w-full rounded-xl border border-slate-200 object-cover dark:border-slate-700" />)}
+                        </div>
+                      </section>
+                    )}
+
+                    {selectedEntry.sourceUrl && (
+                      <a href={selectedEntry.sourceUrl} target="_blank" rel="noreferrer" className="mt-5 inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:underline"><ExternalLink className="h-3.5 w-3.5" />관련 참고 자료 열기</a>
+                    )}
+                  </div>
                 )}
               </>
             ) : (
@@ -621,6 +911,60 @@ ${context}`
                 <div className="flex gap-2"><button type="button" onClick={() => setEditorOpen(false)} className="rounded-xl bg-slate-100 px-4 py-2.5 text-xs font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">취소</button><button type="submit" disabled={isSaving} className="rounded-xl bg-red-600 px-4 py-2.5 text-xs font-bold text-white disabled:opacity-50">{isSaving ? <><Loader2 className="mr-1 inline h-4 w-4 animate-spin" />저장 중</> : '문서 저장'}</button></div>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Full-featured Google Docs Editor Modal */}
+      {googleDocsOpen && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-slate-950/80 backdrop-blur-xs">
+          {/* Top Classification Sub-bar */}
+          <div className="bg-slate-900 border-b border-slate-800 px-4 py-2 flex items-center justify-between text-xs text-white shrink-0">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="font-bold text-blue-400">상산고 보건 지식백과 · Google Docs 에디터</span>
+              <div className="flex items-center gap-1.5">
+                <label className="text-[11px] text-slate-400">종목:</label>
+                <select
+                  value={editingSport}
+                  onChange={(e) => setEditingSport(e.target.value as InjuryEntry['sport'])}
+                  className="bg-slate-800 text-white rounded-md px-2 py-1 text-xs border border-slate-700 outline-none"
+                >
+                  {SPORT_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <label className="text-[11px] text-slate-400">중증도:</label>
+                <select
+                  value={editingSeverity}
+                  onChange={(e) => setEditingSeverity(e.target.value as InjuryEntry['severity'])}
+                  className="bg-slate-800 text-white rounded-md px-2 py-1 text-xs border border-slate-700 outline-none"
+                >
+                  <option value="mild">경증</option>
+                  <option value="moderate">중등도</option>
+                  <option value="emergency">응급 (위험)</option>
+                </select>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setGoogleDocsOpen(false)}
+              className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition cursor-pointer"
+              title="에디터 닫기"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="flex-1 w-full h-[calc(100vh-44px)] overflow-hidden">
+            <GoogleDocsEditor
+              initialTitle={googleDocsTitle}
+              initialContentHtml={googleDocsInitialHtml}
+              documentCategory={SPORT_OPTIONS.find((s) => s.value === editingSport)?.label || '지식백과'}
+              onSave={handleSaveGoogleDocs}
+              onClose={() => setGoogleDocsOpen(false)}
+            />
           </div>
         </div>
       )}

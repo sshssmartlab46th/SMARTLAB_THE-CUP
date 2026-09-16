@@ -1,7 +1,26 @@
 import React, { useState } from 'react';
 import { MatchItem, SportType } from '../../types';
-import { Trophy, Clock, MapPin, Bell, BellRing, ChevronRight, Activity, Flame, Filter, GitMerge, LayoutList, Medal, Crown } from 'lucide-react';
-import { getMatchTournamentSlot, formatKSTTime } from '../../services/firebaseService';
+import {
+  Trophy,
+  Crown,
+  Medal,
+  Calendar,
+  Clock,
+  MapPin,
+  Bell,
+  BellRing,
+  Filter,
+  RefreshCw,
+  GitMerge,
+  LayoutList,
+  Sparkles
+} from 'lucide-react';
+import {
+  getMatchTournamentSlot,
+  getMatchGrade,
+  formatKSTTime,
+  seedInitialDataIfEmpty
+} from '../../services/firebaseService';
 
 interface TournamentBracketViewProps {
   matches: MatchItem[];
@@ -20,32 +39,34 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
   onToggleReminder,
   onOpenMatchDetail
 }) => {
-  const [selectedGrade, setSelectedGrade] = useState<'all' | '1' | '2' | '3'>('all');
+  const [selectedGrade, setSelectedGrade] = useState<'1' | '2' | '3' | 'all'>('1');
   const [viewMode, setViewMode] = useState<'tree' | 'list'>('tree');
+  const [isSeeding, setIsSeeding] = useState(false);
 
   const sportsList: { key: SportType; label: string; genderNote: string }[] = [
-    { key: 'soccer', label: '축구', genderNote: '남자 8개 반 (8강)' },
-    { key: 'basketball', label: '농구', genderNote: '남자 8개 반 (8강)' },
-    { key: 'dodgeball', label: '피구', genderNote: '여자 4개 반 (4강)' },
-    { key: 'relay_male', label: '남자 계주', genderNote: '남자 8개 반 릴레이' },
-    { key: 'relay_female', label: '여자 계주', genderNote: '여자 4개 반 릴레이' },
-    { key: 'tug_of_war', label: '줄다리기', genderNote: '단판 / 토너먼트' },
+    { key: 'soccer', label: '축구', genderNote: '남자 8강' },
+    { key: 'basketball', label: '농구', genderNote: '남자 8강' },
+    { key: 'dodgeball', label: '피구', genderNote: '여자 4강' },
+    { key: 'relay_male', label: '남자 계주', genderNote: '8개 반 릴레이' },
+    { key: 'relay_female', label: '여자 계주', genderNote: '4개 반 릴레이' },
+    { key: 'tug_of_war', label: '줄다리기', genderNote: '토너먼트' },
     { key: 'group_rope', label: '단체 줄넘기', genderNote: '기록 측정' }
   ];
 
-  // Filter matches by sport and grade
+  // Filter matches by sport and grade using robust getMatchGrade
   const sportMatches = matches.filter((m) => {
     if (m.sport !== sport) return false;
     if (selectedGrade !== 'all') {
-      const matchGrade = m.homeClass ? m.homeClass.charAt(0) : m.title.charAt(0);
+      const matchGrade = getMatchGrade(m);
       if (matchGrade !== selectedGrade) return false;
     }
     return true;
   });
 
-  const isRelay = sport === 'relay_male' || sport === 'relay_female';
+  const isRelayOrTrack = sport === 'relay_male' || sport === 'relay_female' || sport === 'group_rope';
+  const isDodgeball = sport === 'dodgeball'; // 4-team tournament
 
-  // Group matches by round for bracket tree view
+  // Find match by slot or fallback
   const findMatchBySlot = (slot: 'QF1' | 'QF2' | 'QF3' | 'QF4' | 'SF1' | 'SF2' | 'FINAL' | 'BRONZE') => {
     return sportMatches.find(m => getMatchTournamentSlot(m) === slot);
   };
@@ -64,19 +85,30 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
       : null
     : null;
 
+  const handleSeedDefaults = async () => {
+    setIsSeeding(true);
+    try {
+      await seedInitialDataIfEmpty();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSeeding(false);
+    }
+  };
+
   const renderBracketMatchCard = (m: MatchItem | undefined, placeholderTitle: string) => {
     if (!m) {
       return (
         <div className="w-56 p-3.5 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900/40 text-xs text-slate-400 dark:text-slate-600 flex flex-col justify-center items-center h-28 select-none">
           <span className="font-semibold">{placeholderTitle}</span>
-          <span className="text-[10px] mt-1 text-slate-400">대진 미정 (이전 라운드 대기)</span>
+          <span className="text-[10px] mt-1 text-slate-400">대진 미정 (이전 라운드 승자 대기)</span>
         </div>
       );
     }
 
     const hasReminder = userReminders.includes(m.id);
-    const isHomeWinner = m.status === 'FINISHED' && m.homeScore > m.awayScore;
-    const isAwayWinner = m.status === 'FINISHED' && m.awayScore > m.homeScore;
+    const isTopWinner = m.status === 'FINISHED' && m.homeScore > m.awayScore;
+    const isBottomWinner = m.status === 'FINISHED' && m.awayScore > m.homeScore;
 
     return (
       <div 
@@ -84,7 +116,7 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
         className="w-56 p-3 rounded-2xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 shadow-xs hover:border-red-500 hover:shadow-md transition cursor-pointer relative group select-none"
       >
         <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-100 dark:border-slate-800 text-[11px]">
-          <span className="font-bold text-slate-700 dark:text-slate-300 truncate">
+          <span className="font-bold text-slate-700 dark:text-slate-300 truncate max-w-[120px]">
             {m.round || m.title}
           </span>
           <div className="flex items-center gap-1.5">
@@ -112,12 +144,12 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
           </div>
         </div>
 
-        {/* Home Team */}
+        {/* Team 1 (Top) */}
         <div className={`flex items-center justify-between py-1 px-1.5 rounded-lg text-xs transition ${
-          isHomeWinner ? 'bg-red-50 dark:bg-red-950/40 font-bold text-red-600 dark:text-red-400' : 'text-slate-800 dark:text-slate-200'
+          isTopWinner ? 'bg-red-50 dark:bg-red-950/40 font-bold text-red-600 dark:text-red-400' : 'text-slate-800 dark:text-slate-200'
         }`}>
           <div className="flex items-center gap-1.5 truncate">
-            {isHomeWinner && <Crown className="w-3 h-3 text-amber-500 shrink-0" />}
+            {isTopWinner && <Crown className="w-3 h-3 text-amber-500 shrink-0" />}
             <span className="truncate">{m.homeTeam}</span>
           </div>
           <span className="font-mono font-bold text-sm ml-2">
@@ -125,12 +157,12 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
           </span>
         </div>
 
-        {/* Away Team */}
+        {/* Team 2 (Bottom) */}
         <div className={`flex items-center justify-between py-1 px-1.5 rounded-lg text-xs transition mt-0.5 ${
-          isAwayWinner ? 'bg-red-50 dark:bg-red-950/40 font-bold text-red-600 dark:text-red-400' : 'text-slate-800 dark:text-slate-200'
+          isBottomWinner ? 'bg-red-50 dark:bg-red-950/40 font-bold text-red-600 dark:text-red-400' : 'text-slate-800 dark:text-slate-200'
         }`}>
           <div className="flex items-center gap-1.5 truncate">
-            {isAwayWinner && <Crown className="w-3 h-3 text-amber-500 shrink-0" />}
+            {isBottomWinner && <Crown className="w-3 h-3 text-amber-500 shrink-0" />}
             <span className="truncate">{m.awayTeam}</span>
           </div>
           <span className="font-mono font-bold text-sm ml-2">
@@ -139,7 +171,7 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
         </div>
 
         <div className="pt-1.5 mt-1 border-t border-slate-50 dark:border-slate-800/80 flex items-center justify-between text-[10px] text-slate-400">
-          <span>{m.court || '경기장'}</span>
+          <span>{m.court || '대운동장'}</span>
           <span>{m.startTime ? formatKSTTime(m.startTime) : ''}</span>
         </div>
       </div>
@@ -148,21 +180,20 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* Grade Selector & Sport Bar */}
+      {/* Controls Bar: Grade & View Mode */}
       <div className="space-y-2">
-        {/* Controls Bar: Grade & View Mode */}
         <div className="flex flex-wrap items-center justify-between gap-2">
           {/* Grade Selector */}
           <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl">
             <span className="text-xs font-bold text-slate-500 dark:text-slate-400 px-2.5 py-1 flex items-center gap-1">
               <Filter className="w-3.5 h-3.5" />
-              학년 필터:
+              학년:
             </span>
             {[
-              { key: 'all', label: '전체 학년' },
               { key: '1', label: '1학년' },
               { key: '2', label: '2학년' },
-              { key: '3', label: '3학년' }
+              { key: '3', label: '3학년' },
+              { key: 'all', label: '전체' }
             ].map(g => (
               <button
                 key={g.key}
@@ -180,7 +211,7 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
           </div>
 
           {/* View Mode Toggle: Tree vs List */}
-          {!isRelay && (
+          {!isRelayOrTrack && (
             <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl">
               <button
                 type="button"
@@ -192,7 +223,7 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
                 }`}
               >
                 <GitMerge className="w-3.5 h-3.5" />
-                <span>트리 대진표</span>
+                <span>토너먼트 트리</span>
               </button>
               <button
                 type="button"
@@ -204,13 +235,13 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
                 }`}
               >
                 <LayoutList className="w-3.5 h-3.5" />
-                <span>목록 카드</span>
+                <span>경기 목록</span>
               </button>
             </div>
           )}
         </div>
 
-        {/* Sport Bar */}
+        {/* Sport Bar (All sports included) */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
           {sportsList.map((s) => (
             <button
@@ -234,28 +265,38 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
         </div>
       </div>
 
-      {isRelay ? (
-        /* Relay Race Format */
+      {/* Main View Area */}
+      {isRelayOrTrack ? (
+        /* Relay / Time-Trial Format */
         <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-xs space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
             <div>
               <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
                 <Trophy className="w-4 h-4 text-amber-500" />
-                {sport === 'relay_male' ? '남자 계주 릴레이 (1~4반, 9~12반)' : '여자 계주 릴레이 (5~8반)'}
+                {sportsList.find((s) => s.key === sport)?.label} 일정 및 레인 기록
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                {selectedGrade === 'all' ? '전체 학년' : `${selectedGrade}학년`} 릴레이 트랙 일정 및 레인 기록
+                {selectedGrade === 'all' ? '전체 학년' : `${selectedGrade}학년`} 트랙 및 필드 종목
               </p>
             </div>
             <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300">
-              트랙 종목
+              트랙·기록 종목
             </span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {sportMatches.length === 0 ? (
-              <div className="col-span-2 py-8 text-center text-xs text-slate-400">
-                선택한 조건의 계주 일정이 없습니다.
+              <div className="col-span-2 py-12 text-center text-xs text-slate-400 space-y-3">
+                <p>선택한 종목({sportsList.find((s) => s.key === sport)?.label})의 등록된 일정이 없습니다.</p>
+                <button
+                  type="button"
+                  onClick={handleSeedDefaults}
+                  disabled={isSeeding}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-xs inline-flex items-center gap-2 cursor-pointer shadow-xs disabled:opacity-50"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>상산고 공식 표준 일정 자동 생성</span>
+                </button>
               </div>
             ) : (
               sportMatches.map((m) => {
@@ -315,14 +356,14 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
                     <div className="p-3 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs">
                       <div>
                         <div className="font-bold text-slate-900 dark:text-white">{m.homeTeam}</div>
-                        <div className="text-[10px] text-slate-400">1레인</div>
+                        <div className="text-[10px] text-slate-400">1조 / 1레인</div>
                       </div>
                       <div className="text-base font-black font-mono text-red-600 dark:text-red-400">
                         {m.status === 'FINISHED' || m.status === 'LIVE' ? `${m.homeScore} : ${m.awayScore}` : 'VS'}
                       </div>
                       <div className="text-right">
                         <div className="font-bold text-slate-900 dark:text-white">{m.awayTeam}</div>
-                        <div className="text-[10px] text-slate-400">2레인</div>
+                        <div className="text-[10px] text-slate-400">2조 / 2레인</div>
                       </div>
                     </div>
                   </div>
@@ -341,7 +382,7 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
                 {sportsList.find((s) => s.key === sport)?.label} 공식 토너먼트 대진 트리 ({selectedGrade === 'all' ? '전학년' : `${selectedGrade}학년`})
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                8강전 → 4강 준결승 → 결승전 및 최종 우승팀 대진도
+                {isDodgeball ? '여자 4개 반 (5, 6, 7, 8반) 준결승 → 결승전 및 3·4위전' : '남자 8강전 → 4강 준결승 → 결승전 및 최종 우승팀 대진도'}
               </p>
             </div>
             {championTeam && (
@@ -353,14 +394,23 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
           </div>
 
           {sportMatches.length === 0 ? (
-            <div className="py-12 text-center text-xs text-slate-400">
-              해당 종목 및 학년에 등록된 경기 대진표가 없습니다.
+            <div className="py-12 text-center text-xs text-slate-400 space-y-3">
+              <p>{selectedGrade}학년 {sportsList.find((s) => s.key === sport)?.label} 등록된 경기 대진표가 없습니다.</p>
+              <button
+                type="button"
+                onClick={handleSeedDefaults}
+                disabled={isSeeding}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-xs inline-flex items-center gap-2 cursor-pointer shadow-xs disabled:opacity-50"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>상산고 공식 표준 대진표 자동 등록</span>
+              </button>
             </div>
           ) : (
             <div className="overflow-x-auto pb-6 pt-2">
               <div className="min-w-[650px] flex items-stretch justify-start gap-8 relative px-4">
-                {/* Column 1: 8강전 (Quarterfinals) - Show if 8-team tournament */}
-                {(qfMatches.length > 0 || findMatchBySlot('QF1') || findMatchBySlot('QF2')) && (
+                {/* Column 1: 8강전 (Only if NOT 4-team Dodgeball) */}
+                {!isDodgeball && (
                   <div className="flex flex-col justify-around gap-6">
                     <div className="text-center font-bold text-xs text-slate-500 dark:text-slate-400 pb-2 border-b border-slate-200 dark:border-slate-800">
                       8강전 (준준결승)
@@ -382,8 +432,14 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
                     4강전 (준결승)
                   </div>
                   <div className="flex flex-col justify-around h-full py-8 space-y-12">
-                    {renderBracketMatchCard(findMatchBySlot('SF1') || sfMatches[0] || (sportMatches.length > 4 ? sportMatches[4] : undefined), '4강 1경기 (준결승 A)')}
-                    {renderBracketMatchCard(findMatchBySlot('SF2') || sfMatches[1] || (sportMatches.length > 5 ? sportMatches[5] : undefined), '4강 2경기 (준결승 B)')}
+                    {renderBracketMatchCard(
+                      findMatchBySlot('SF1') || sfMatches[0] || (sportMatches.length > (isDodgeball ? 0 : 4) ? sportMatches[isDodgeball ? 0 : 4] : undefined),
+                      '4강 1경기 (준결승 A)'
+                    )}
+                    {renderBracketMatchCard(
+                      findMatchBySlot('SF2') || sfMatches[1] || (sportMatches.length > (isDodgeball ? 1 : 5) ? sportMatches[isDodgeball ? 1 : 5] : undefined),
+                      '4강 2경기 (준결승 B)'
+                    )}
                   </div>
                 </div>
 
@@ -397,9 +453,12 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
                     {/* Final Match Card */}
                     <div className="relative">
                       <div className="text-[10px] font-bold text-amber-600 dark:text-amber-400 mb-1 flex items-center gap-1">
-                        <Crown className="w-3 h-3 text-amber-500" /> 결승전 (1·2위 결정)
+                        <Crown className="w-3 h-3 text-amber-500" /> 결승전 (우승 결정전)
                       </div>
-                      {renderBracketMatchCard(findMatchBySlot('FINAL') || finalMatches[0] || (sportMatches.length > 6 ? sportMatches[6] : undefined), '결승전 (우승 결정전)')}
+                      {renderBracketMatchCard(
+                        findMatchBySlot('FINAL') || finalMatches[0] || (sportMatches.length > (isDodgeball ? 3 : 6) ? sportMatches[isDodgeball ? 3 : 6] : undefined),
+                        '결승전 (우승 결정전)'
+                      )}
                     </div>
 
                     {/* Bronze Match Card */}
@@ -407,7 +466,10 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
                       <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1 flex items-center gap-1">
                         <Medal className="w-3 h-3 text-amber-700" /> 3·4위 결정전
                       </div>
-                      {renderBracketMatchCard(findMatchBySlot('BRONZE') || bronzeMatches[0] || (sportMatches.length > 7 ? sportMatches[7] : undefined), '3·4위 결정전')}
+                      {renderBracketMatchCard(
+                        findMatchBySlot('BRONZE') || bronzeMatches[0] || (sportMatches.length > (isDodgeball ? 2 : 7) ? sportMatches[isDodgeball ? 2 : 7] : undefined),
+                        '3·4위 결정전'
+                      )}
                     </div>
                   </div>
                 </div>
@@ -422,7 +484,7 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
             <div>
               <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
                 <Trophy className="w-4 h-4 text-amber-500" />
-                {sportsList.find((s) => s.key === sport)?.label} 대진표 ({selectedGrade === 'all' ? '전학년' : `${selectedGrade}학년`})
+                {sportsList.find((s) => s.key === sport)?.label} 경기 목록 ({selectedGrade === 'all' ? '전학년' : `${selectedGrade}학년`})
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 동일 성별·동일 학년 매칭 (남자: 1~4, 9~12반 / 여자: 5~8반)
@@ -434,8 +496,17 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
           </div>
 
           {sportMatches.length === 0 ? (
-            <div className="py-12 text-center text-xs text-slate-400">
-              해당 종목 및 학년에 등록된 경기 대진표가 없습니다.
+            <div className="py-12 text-center text-xs text-slate-400 space-y-3">
+              <p>해당 조건에 등록된 경기 대진표가 없습니다.</p>
+              <button
+                type="button"
+                onClick={handleSeedDefaults}
+                disabled={isSeeding}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-xs inline-flex items-center gap-2 cursor-pointer shadow-xs disabled:opacity-50"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>상산고 공식 표준 대진표 자동 등록</span>
+              </button>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -451,10 +522,10 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
                     onClick={() => onOpenMatchDetail?.(m)}
                   >
                     <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                        {m.title}
+                      </span>
                       <div className="flex items-center gap-1.5">
-                        <span className="font-bold text-xs text-slate-900 dark:text-white">
-                          {m.title}
-                        </span>
                         <span
                           className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                             m.status === 'LIVE'
@@ -464,53 +535,58 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
                               : 'bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300'
                           }`}
                         >
-                          {m.status === 'LIVE' ? 'LIVE' : m.status === 'FINISHED' ? '종료' : '대기'}
+                          {m.status === 'LIVE' ? '진행중' : m.status === 'FINISHED' ? '종료' : '예정'}
                         </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onToggleReminder(m);
+                          }}
+                          className={`p-1.5 rounded-lg border transition cursor-pointer ${
+                            hasReminder
+                              ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/50 text-amber-600'
+                              : 'border-slate-200 dark:border-slate-700 text-slate-400 hover:text-slate-600'
+                          }`}
+                          title="경기 10분 전 알림 신청"
+                        >
+                          {hasReminder ? <BellRing className="w-3.5 h-3.5" /> : <Bell className="w-3.5 h-3.5" />}
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onToggleReminder(m);
-                        }}
-                        className={`p-1.5 rounded-lg border transition cursor-pointer ${
-                          hasReminder
-                            ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/50 text-amber-600'
-                            : 'border-slate-200 dark:border-slate-700 text-slate-400 hover:text-slate-600'
-                        }`}
-                        title="경기 시작 10분 전 알림"
-                      >
-                        {hasReminder ? <BellRing className="w-3.5 h-3.5" /> : <Bell className="w-3.5 h-3.5" />}
-                      </button>
                     </div>
 
-                    <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2 text-xs">
-                      <div className="flex items-center justify-between">
-                        <span className={`font-bold ${isHomeWinner ? 'text-red-600 dark:text-red-400 font-black' : 'text-slate-900 dark:text-white'}`}>
-                          {m.homeTeam}
-                        </span>
-                        <span className="font-mono font-bold text-sm text-slate-900 dark:text-white">
-                          {m.homeScore ?? '-'}
+                    <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3.5 h-3.5 text-slate-400" />
+                        {m.startTime ? formatKSTTime(m.startTime) : '-'}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                        {m.court || '경기장'}
+                      </span>
+                    </div>
+
+                    {/* Matchup row */}
+                    <div className="p-3 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-1.5 text-xs">
+                      <div className={`flex items-center justify-between font-medium ${isHomeWinner ? 'font-bold text-red-600 dark:text-red-400' : 'text-slate-900 dark:text-white'}`}>
+                        <div className="flex items-center gap-1.5">
+                          {isHomeWinner && <Crown className="w-3 h-3 text-amber-500" />}
+                          <span>{m.homeTeam}</span>
+                        </div>
+                        <span className="font-mono font-bold text-sm">
+                          {m.status === 'FINISHED' || m.status === 'LIVE' ? m.homeScore : '-'}
                         </span>
                       </div>
                       <div className="h-px bg-slate-100 dark:bg-slate-800" />
-                      <div className="flex items-center justify-between">
-                        <span className={`font-bold ${isAwayWinner ? 'text-red-600 dark:text-red-400 font-black' : 'text-slate-900 dark:text-white'}`}>
-                          {m.awayTeam}
-                        </span>
-                        <span className="font-mono font-bold text-sm text-slate-900 dark:text-white">
-                          {m.awayScore ?? '-'}
+                      <div className={`flex items-center justify-between font-medium ${isAwayWinner ? 'font-bold text-red-600 dark:text-red-400' : 'text-slate-900 dark:text-white'}`}>
+                        <div className="flex items-center gap-1.5">
+                          {isAwayWinner && <Crown className="w-3 h-3 text-amber-500" />}
+                          <span>{m.awayTeam}</span>
+                        </div>
+                        <span className="font-mono font-bold text-sm">
+                          {m.status === 'FINISHED' || m.status === 'LIVE' ? m.awayScore : '-'}
                         </span>
                       </div>
-                    </div>
-
-                    <div className="flex items-center justify-between text-[11px] text-slate-400">
-                      <span>
-                        {m.startTime ? `${formatKSTTime(m.startTime)} · ` : ''}{m.court}
-                      </span>
-                      <span className="text-red-600 dark:text-red-400 font-semibold flex items-center">
-                        상세보기 <ChevronRight className="w-3 h-3" />
-                      </span>
                     </div>
                   </div>
                 );

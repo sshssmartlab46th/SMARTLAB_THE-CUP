@@ -57,8 +57,9 @@ export const LiveMatchHeroCard: React.FC<LiveMatchHeroCardProps> = ({
     );
   }
 
-  const homeLabel = match.homeTeam || (match.homeClass ? `${match.homeClass}반` : '홈팀');
-  const awayLabel = match.awayTeam || (match.awayClass ? `${match.awayClass}반` : '원정팀');
+  // Left & Right Team Labels (removed '홈', '어웨이' designations)
+  const leftTeamLabel = match.homeTeam || (match.homeClass ? `${match.homeClass}반` : '팀 A');
+  const rightTeamLabel = match.awayTeam || (match.awayClass ? `${match.awayClass}반` : '팀 B');
   const matchPeriod = match.period || '';
   const matchCourt = match.court || match.location || '';
   const matchRound = match.round || match.title || '';
@@ -87,22 +88,23 @@ export const LiveMatchHeroCard: React.FC<LiveMatchHeroCardProps> = ({
 
   // Determine user class affinity
   const userClassNum = currentUser?.classNum;
-  const isHomeMyClass = Boolean(
+  const isLeftMyClass = Boolean(
     userClassNum &&
     (match.homeClass === userClassNum ||
-     homeLabel.includes(`${userClassNum}반`) ||
-     homeLabel.includes(`-${userClassNum}`))
+     leftTeamLabel.includes(`${userClassNum}반`) ||
+     leftTeamLabel.includes(`-${userClassNum}`))
   );
-  const isAwayMyClass = Boolean(
+  const isRightMyClass = Boolean(
     userClassNum &&
     (match.awayClass === userClassNum ||
-     awayLabel.includes(`${userClassNum}반`) ||
-     awayLabel.includes(`-${userClassNum}`))
+     rightTeamLabel.includes(`${userClassNum}반`) ||
+     rightTeamLabel.includes(`-${userClassNum}`))
   );
 
-  const preferredTeam: 'home' | 'away' = isAwayMyClass ? 'away' : 'home';
-  const preferredLabel = isAwayMyClass ? awayLabel : isHomeMyClass ? homeLabel : '우리 학급';
-  const totalCheers = (cheerCounts.home || 0) + (cheerCounts.away || 0);
+  // User's class is actively playing in this match
+  const isMyClassPlaying = isLeftMyClass || isRightMyClass;
+  const myClassTeam: 'home' | 'away' = isRightMyClass ? 'away' : 'home';
+  const myClassLabel = isRightMyClass ? rightTeamLabel : isLeftMyClass ? leftTeamLabel : '우리 학급';
 
   const spawnParticle = (emoji: string, e?: React.MouseEvent) => {
     const rect = (e?.currentTarget as HTMLElement)?.getBoundingClientRect?.() || { left: 150, top: 100 };
@@ -140,7 +142,7 @@ export const LiveMatchHeroCard: React.FC<LiveMatchHeroCardProps> = ({
       await sendLiveReaction(team === 'home' ? 'heart' : 'fire');
       onCheerReaction?.(team === 'home' ? 'heart' : 'fire');
 
-      const targetName = team === 'home' ? homeLabel : awayLabel;
+      const targetName = team === 'home' ? leftTeamLabel : rightTeamLabel;
       setCheeredMessage(`${targetName}에 응원을 보냈습니다! ${emoji}`);
       setTimeout(() => setCheeredMessage(null), 2500);
     } catch (err) {
@@ -151,7 +153,7 @@ export const LiveMatchHeroCard: React.FC<LiveMatchHeroCardProps> = ({
   };
 
   return (
-    <div className="rounded-2xl border-2 border-red-500/80 dark:border-emerald-500 bg-white dark:bg-slate-900 p-5 sm:p-6 shadow-sm relative overflow-hidden transition-all">
+    <div className="rounded-2xl border-2 border-red-500/80 dark:border-emerald-500 bg-white dark:bg-slate-900 p-5 sm:p-6 shadow-md relative overflow-hidden transition-all">
       {/* Floating Particles Overlay */}
       <div className="pointer-events-none fixed inset-0 z-50 overflow-hidden">
         {particles.map((p) => (
@@ -198,15 +200,15 @@ export const LiveMatchHeroCard: React.FC<LiveMatchHeroCardProps> = ({
         </div>
       </div>
 
-      {/* Main Matchup Layout */}
-      <div className="grid grid-cols-3 items-center text-center my-3 py-2 bg-slate-50/70 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800">
-        {/* Home Team */}
+      {/* Main Matchup Layout (Left Team vs Right Team) */}
+      <div className="grid grid-cols-3 items-center text-center my-3 py-3 bg-slate-50/80 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800">
+        {/* Left Team */}
         <div className="space-y-1 px-1">
           <div className="flex items-center justify-center gap-1">
             <h3 className="font-bold text-sm sm:text-base text-slate-900 dark:text-white truncate">
-              {homeLabel}
+              {leftTeamLabel}
             </h3>
-            {isHomeMyClass && (
+            {isLeftMyClass && (
               <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300 shrink-0">
                 우리반
               </span>
@@ -253,13 +255,13 @@ export const LiveMatchHeroCard: React.FC<LiveMatchHeroCardProps> = ({
           )}
         </div>
 
-        {/* Away Team */}
+        {/* Right Team */}
         <div className="space-y-1 px-1">
           <div className="flex items-center justify-center gap-1">
             <h3 className="font-bold text-sm sm:text-base text-slate-900 dark:text-white truncate">
-              {awayLabel}
+              {rightTeamLabel}
             </h3>
-            {isAwayMyClass && (
+            {isRightMyClass && (
               <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 shrink-0">
                 우리반
               </span>
@@ -287,9 +289,9 @@ export const LiveMatchHeroCard: React.FC<LiveMatchHeroCardProps> = ({
         </div>
       )}
 
-      {/* Primary Action: 우리 학급 실시간 응원하기 Button */}
-      <div className="space-y-2 mt-4">
-        {canStartMatch && (
+      {/* Admin / Referee Quick Start Button */}
+      {canStartMatch && (
+        <div className="mb-3">
           <button
             type="button"
             onClick={handleStartThisMatch}
@@ -307,53 +309,68 @@ export const LiveMatchHeroCard: React.FC<LiveMatchHeroCardProps> = ({
                 : '▶ 공식 경기 지금 시작하기 (LIVE 전환)'}
             </span>
           </button>
-        )}
+        </div>
+      )}
 
+      {/* ONLY IF our class is playing in this match: Show '우리 학급 실시간 응원하기' */}
+      {isMyClassPlaying && (
+        <div className="mb-3">
+          <button
+            type="button"
+            onClick={(e) => handleCheer(myClassTeam, e)}
+            disabled={isCheering}
+            className="w-full py-2.5 px-4 rounded-xl bg-linear-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition active:scale-98 cursor-pointer disabled:opacity-50"
+          >
+            <Heart className="w-4 h-4 fill-current animate-pulse text-white" />
+            <span>
+              우리 학급 ({myClassLabel}) 실시간 집중 응원하기 (+1❤️)
+            </span>
+          </button>
+        </div>
+      )}
+
+      {/* Balanced 3-Column Action Layout:
+          Left Cheering Button | Center '경기 상세히 보기' CTA | Right Cheering Button */}
+      <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 pt-1 items-center">
+        {/* Left Team Cheer Button */}
         <button
           type="button"
-          onClick={(e) => handleCheer(preferredTeam, e)}
-          disabled={isCheering}
-          className="w-full py-3 px-4 rounded-xl bg-red-600 hover:bg-red-700 dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white dark:text-slate-950 font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition active:scale-98 cursor-pointer disabled:opacity-50"
+          onClick={(e) => handleCheer('home', e)}
+          className="sm:col-span-3 py-3 px-3 rounded-xl border border-red-200 dark:border-red-900/60 bg-red-50/80 dark:bg-red-950/40 hover:bg-red-100 dark:hover:bg-red-900/60 text-red-700 dark:text-red-300 font-bold text-xs flex items-center justify-center gap-1.5 transition active:scale-98 cursor-pointer shadow-xs"
         >
-          <Heart className="w-4 h-4 fill-current animate-pulse text-white dark:text-slate-950" />
-          <span>
-            {isHomeMyClass || isAwayMyClass
-              ? `우리 학급 (${preferredLabel}) 실시간 응원하기 (+1❤️)`
-              : `우리 학급 실시간 응원하기 (${totalCheers.toLocaleString()}표)`}
+          <Heart className="w-4 h-4 fill-current text-red-500 shrink-0" />
+          <span className="truncate">{leftTeamLabel} 응원</span>
+          <span className="text-[11px] font-mono px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200">
+            {cheerCounts.home}표
           </span>
         </button>
 
-        {/* Secondary controls: Both team cheer buttons & Open Scoreboard */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1">
-          <button
-            type="button"
-            onClick={(e) => handleCheer('home', e)}
-            className="py-2 px-2.5 rounded-xl border border-red-200 dark:border-red-900/60 bg-red-50/60 dark:bg-red-950/30 hover:bg-red-100 dark:hover:bg-red-900/50 text-red-700 dark:text-red-300 font-bold text-xs flex items-center justify-center gap-1 transition cursor-pointer"
-          >
-            <Heart className="w-3.5 h-3.5 fill-current text-red-500" />
-            <span className="truncate">{homeLabel} ({cheerCounts.home}표)</span>
-          </button>
+        {/* Center: 경기 상세히 보기 (Super attractive, irresistible CTA in the absolute center) */}
+        <button
+          type="button"
+          onClick={onOpenLiveScore}
+          className="sm:col-span-6 py-3 px-4 rounded-xl bg-linear-to-r from-slate-900 via-red-950 to-slate-900 hover:from-red-900 hover:to-slate-900 dark:from-red-600 dark:to-rose-700 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-red-900/20 hover:shadow-xl transition-all active:scale-98 cursor-pointer border border-red-500/30 group"
+        >
+          <Sparkles className="w-4 h-4 text-amber-400 animate-spin transition-transform duration-1000 group-hover:scale-125" />
+          <span className="tracking-wide">경기 상세히 보기</span>
+          <span className="text-[10px] font-normal px-2 py-0.5 rounded-full bg-white/20 text-white/90 hidden sm:inline-block">
+            실시간 스코어·라인업
+          </span>
+          <ChevronRight className="w-4 h-4 text-amber-300 transition-transform group-hover:translate-x-1" />
+        </button>
 
-          <button
-            type="button"
-            onClick={(e) => handleCheer('away', e)}
-            className="py-2 px-2.5 rounded-xl border border-blue-200 dark:border-blue-900/60 bg-blue-50/60 dark:bg-blue-950/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-bold text-xs flex items-center justify-center gap-1 transition cursor-pointer"
-          >
-            <Flame className="w-3.5 h-3.5 fill-current text-blue-500" />
-            <span className="truncate">{awayLabel} ({cheerCounts.away}표)</span>
-          </button>
-
-          {onOpenLiveScore && (
-            <button
-              type="button"
-              onClick={onOpenLiveScore}
-              className="col-span-2 sm:col-span-1 py-2 px-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-1 transition cursor-pointer"
-            >
-              <span>경기 센터</span>
-              <ChevronRight className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
+        {/* Right Team Cheer Button */}
+        <button
+          type="button"
+          onClick={(e) => handleCheer('away', e)}
+          className="sm:col-span-3 py-3 px-3 rounded-xl border border-blue-200 dark:border-blue-900/60 bg-blue-50/80 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 font-bold text-xs flex items-center justify-center gap-1.5 transition active:scale-98 cursor-pointer shadow-xs"
+        >
+          <Flame className="w-4 h-4 fill-current text-blue-500 shrink-0" />
+          <span className="truncate">{rightTeamLabel} 응원</span>
+          <span className="text-[11px] font-mono px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200">
+            {cheerCounts.away}표
+          </span>
+        </button>
       </div>
     </div>
   );
