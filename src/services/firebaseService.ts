@@ -18,6 +18,7 @@ import {
 } from 'firebase/firestore';
 import { signInAnonymously, onAuthStateChanged, User } from 'firebase/auth';
 import { auth, db } from '../lib/firebase';
+import { realtimeWsClient } from './realtimeWsClient';
 import { 
   MatchItem, 
   NoticeItem, 
@@ -665,33 +666,74 @@ export async function syncUserProfile(profile: UserProfile): Promise<void> {
 // Matches Live Listener & Score Engine
 // -------------------------------------------------------------
 export function listenMatches(callback: (matches: MatchItem[]) => void): () => void {
-  ensureFirebaseAuth().catch(console.error);
+  let firestoreUnsub: (() => void) | null = null;
+  let hasReceivedData = false;
 
-  try {
-    const q = collection(db, 'matches');
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      if (!snapshot.empty) {
-        const list: MatchItem[] = [];
-        snapshot.forEach((docSnap) => {
-          const data = docSnap.data();
-          list.push({
-            ...data,
-            id: docSnap.id
-          } as MatchItem);
-        });
-        callback(list);
-      } else {
+  const wrappedCallback = (matches: MatchItem[]) => {
+    hasReceivedData = true;
+    callback(matches);
+  };
+
+  // 1. Subscribe via WebSocket relay
+  const wsUnsub = realtimeWsClient.subscribeMatches(wrappedCallback);
+
+  // 2. Start direct Firestore onSnapshot as fallback if WS is not active or fails
+  const startFirestoreFallback = () => {
+    if (firestoreUnsub) return;
+    try {
+      ensureFirebaseAuth().catch(console.error);
+      const q = collection(db, 'matches');
+      firestoreUnsub = onSnapshot(q, (snapshot) => {
+        if (!snapshot.empty) {
+          const list: MatchItem[] = [];
+          snapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            list.push({
+              ...data,
+              id: docSnap.id
+            } as MatchItem);
+          });
+          callback(list);
+        } else {
+          callback([]);
+        }
+      }, (error) => {
+        console.warn('[Firebase] listenMatches fallback error:', error);
         callback([]);
+      });
+    } catch (e) {
+      console.warn('[Firebase] listenMatches fallback init error:', e);
+    }
+  };
+
+  // Check WS status; if disconnected or fallback mode, start Firestore listener
+  const statusUnsub = realtimeWsClient.subscribeStatus((connected) => {
+    if (connected) {
+      if (firestoreUnsub) {
+        firestoreUnsub();
+        firestoreUnsub = null;
       }
-    }, (error) => {
-      console.warn('[Firebase] listenMatches error:', error);
-      callback([]);
-    });
-    return unsubscribe;
-  } catch (e) {
-    callback([]);
-    return () => {};
-  }
+    } else {
+      startFirestoreFallback();
+    }
+  });
+
+  // Safety timer: if WS doesn't deliver initial data within 2.5s, trigger Firestore
+  const fallbackTimer = setTimeout(() => {
+    if (!realtimeWsClient.isWsActive() && !hasReceivedData) {
+      startFirestoreFallback();
+    }
+  }, 2500);
+
+  return () => {
+    clearTimeout(fallbackTimer);
+    wsUnsub();
+    statusUnsub();
+    if (firestoreUnsub) {
+      firestoreUnsub();
+      firestoreUnsub = null;
+    }
+  };
 }
 
 export async function createMatch(matchData: Partial<MatchItem>): Promise<string> {
@@ -1312,23 +1354,70 @@ export function listenMessages(userClass: string, isLeaderOrTeacher: boolean, ca
 // Realtime Cheers
 // -------------------------------------------------------------
 export function listenCheers(matchId: string, callback: (cheer: CheerCount) => void): () => void {
-  try {
-    const docRef = doc(db, 'cheers', matchId);
-    const unsubscribe = onSnapshot(docRef, (snapshot) => {
-      if (snapshot.exists()) {
-        callback(snapshot.data() as CheerCount);
-      } else {
-        callback({ matchId, homeCheers: 0, awayCheers: 0 });
+  let firestoreUnsub: (() => void) | null = null;
+  let hasReceivedData = false;
+
+  const wrappedCallback = (cheer: CheerCount) => {
+    hasReceivedData = true;
+    callback(cheer);
+  };
+
+  // 1. Subscribe via WebSocket relay
+  const wsUnsub = realtimeWsClient.subscribeCheers(matchId, wrappedCallback);
+
+  // 2. Start direct Firestore fallback if WS inactive or on Vercel
+  const startFirestoreFallback = () => {
+    if (firestoreUnsub) return;
+    try {
+      const docRef = doc(db, 'cheers', matchId);
+      firestoreUnsub = onSnapshot(docRef, (snapshot) => {
+        if (snapshot.exists()) {
+          callback(snapshot.data() as CheerCount);
+        } else {
+          callback({ matchId, homeCheers: 0, awayCheers: 0 });
+        }
+      }, () => callback({ matchId, homeCheers: 0, awayCheers: 0 }));
+    } catch (e) {
+      callback({ matchId, homeCheers: 0, awayCheers: 0 });
+    }
+  };
+
+  const statusUnsub = realtimeWsClient.subscribeStatus((connected) => {
+    if (connected) {
+      if (firestoreUnsub) {
+        firestoreUnsub();
+        firestoreUnsub = null;
       }
-    }, () => callback({ matchId, homeCheers: 0, awayCheers: 0 }));
-    return unsubscribe;
-  } catch (e) {
-    callback({ matchId, homeCheers: 0, awayCheers: 0 });
-    return () => {};
-  }
+    } else {
+      startFirestoreFallback();
+    }
+  });
+
+  const fallbackTimer = setTimeout(() => {
+    if (!realtimeWsClient.isWsActive() && !hasReceivedData) {
+      startFirestoreFallback();
+    }
+  }, 2500);
+
+  return () => {
+    clearTimeout(fallbackTimer);
+    wsUnsub();
+    statusUnsub();
+    if (firestoreUnsub) {
+      firestoreUnsub();
+      firestoreUnsub = null;
+    }
+  };
 }
 
 export async function sendCheer(matchId: string, team: 'home' | 'away', emoji: string): Promise<void> {
+  // 1. Send via WebSocket relay if connected (In-memory aggregation + 3.5s batch + 5min Firestore flush)
+  const sentViaWs = realtimeWsClient.sendCheer(matchId, team, emoji);
+  if (sentViaWs) {
+    return;
+  }
+
+  // 2. Fallback to direct Firestore write (Vercel deployment or offline WS)
   try {
     await ensureFirebaseAuth();
     const docRef = doc(db, 'cheers', matchId);
@@ -1343,18 +1432,58 @@ export async function sendCheer(matchId: string, team: 'home' | 'away', emoji: s
 }
 
 export function listenCheersFeed(callback: (cheers: CheerMessageItem[]) => void): () => void {
-  try {
-    const q = query(collection(db, 'cheer_messages'), orderBy('createdAt', 'desc'), limit(30));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const list: CheerMessageItem[] = [];
-      snapshot.forEach((d) => list.push(d.data() as CheerMessageItem));
-      callback(list);
-    }, () => callback([]));
-    return unsubscribe;
-  } catch (e) {
-    callback([]);
-    return () => {};
-  }
+  let firestoreUnsub: (() => void) | null = null;
+  let hasReceivedData = false;
+
+  const wrappedCallback = (feed: CheerMessageItem[]) => {
+    hasReceivedData = true;
+    callback(feed);
+  };
+
+  // 1. Subscribe via WebSocket relay
+  const wsUnsub = realtimeWsClient.subscribeCheersFeed(wrappedCallback);
+
+  // 2. Start direct Firestore fallback if WS inactive or on Vercel
+  const startFirestoreFallback = () => {
+    if (firestoreUnsub) return;
+    try {
+      const q = query(collection(db, 'cheer_messages'), orderBy('createdAt', 'desc'), limit(30));
+      firestoreUnsub = onSnapshot(q, (snapshot) => {
+        const list: CheerMessageItem[] = [];
+        snapshot.forEach((d) => list.push(d.data() as CheerMessageItem));
+        callback(list);
+      }, () => callback([]));
+    } catch (e) {
+      callback([]);
+    }
+  };
+
+  const statusUnsub = realtimeWsClient.subscribeStatus((connected) => {
+    if (connected) {
+      if (firestoreUnsub) {
+        firestoreUnsub();
+        firestoreUnsub = null;
+      }
+    } else {
+      startFirestoreFallback();
+    }
+  });
+
+  const fallbackTimer = setTimeout(() => {
+    if (!realtimeWsClient.isWsActive() && !hasReceivedData) {
+      startFirestoreFallback();
+    }
+  }, 2500);
+
+  return () => {
+    clearTimeout(fallbackTimer);
+    wsUnsub();
+    statusUnsub();
+    if (firestoreUnsub) {
+      firestoreUnsub();
+      firestoreUnsub = null;
+    }
+  };
 }
 
 export async function sendCheerMessage(
@@ -1380,16 +1509,8 @@ export async function sendCheerMessage(
 }
 
 export async function sendLiveReaction(reactionType: 'fire' | 'clap' | 'heart' | 'cheer'): Promise<void> {
-  try {
-    await ensureFirebaseAuth();
-    const docRef = doc(collection(db, 'live_reactions'));
-    await setDoc(docRef, {
-      reactionType,
-      timestamp: new Date().toISOString()
-    });
-  } catch (e) {
-    console.warn('[Firebase] sendLiveReaction error:', e);
-  }
+  // Transmit reaction directly via WebSocket in-memory relay; eliminates per-click Firestore document creation
+  realtimeWsClient.sendReaction(reactionType);
 }
 
 
