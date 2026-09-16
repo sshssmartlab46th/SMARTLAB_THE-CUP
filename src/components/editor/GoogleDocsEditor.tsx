@@ -591,13 +591,12 @@ export const GoogleDocsEditor: React.FC<GoogleDocsEditorProps> = ({
         onChange={handleFontFileUpload}
       />
 
-      {/* TOP HEADER: Google Docs Header */}
+      {/* TOP HEADER: Clean Editor Header */}
       <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 py-2 flex items-center justify-between gap-3 text-xs">
         <div className="flex items-center gap-3 min-w-0">
-          {/* Blue Google Docs Icon */}
-          <div className="w-9 h-10 rounded-sm bg-blue-600 flex flex-col justify-between p-1.5 text-white shadow-2xs shrink-0 cursor-pointer hover:opacity-90 transition">
+          {/* Edit Icon Badge */}
+          <div className="w-9 h-9 rounded-xl bg-slate-900 dark:bg-emerald-600 flex items-center justify-center text-white shadow-2xs shrink-0">
             <FileText className="w-4 h-4" />
-            <div className="w-full h-1 bg-white/60 rounded-xs"></div>
           </div>
 
           <div className="min-w-0">
@@ -611,15 +610,15 @@ export const GoogleDocsEditor: React.FC<GoogleDocsEditorProps> = ({
                 }}
                 disabled={readOnly}
                 placeholder="제목 없는 문서"
-                className="font-bold text-slate-900 dark:text-white bg-transparent border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white dark:focus:bg-slate-800 px-1.5 py-0.5 rounded outline-none transition text-sm max-w-[280px] sm:max-w-md truncate"
+                className="font-bold text-slate-900 dark:text-white bg-transparent border-b border-transparent hover:border-slate-300 focus:border-emerald-500 focus:bg-white dark:focus:bg-slate-800 px-1.5 py-0.5 rounded outline-none transition text-sm max-w-[280px] sm:max-w-md truncate"
               />
               <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-slate-400">
-                <CloudCheck className="w-3.5 h-3.5 text-blue-500" />
-                <span>{isSaved ? '드라이브 저장됨' : '저장 대기 중...'}</span>
+                <CloudCheck className="w-3.5 h-3.5 text-emerald-500" />
+                <span>{isSaved ? '저장 완료' : '수정 중...'}</span>
               </span>
             </div>
 
-            {/* Menu Bar: 파일, 수정, 보기, 삽입, 서식, 도구, 도움말 */}
+            {/* Menu Bar: 파일, 수정, 보기, 삽입, 서식 */}
             <div className="flex items-center gap-1 text-slate-600 dark:text-slate-400 font-medium text-[11px] mt-0.5">
               {[
                 {
@@ -673,13 +672,6 @@ export const GoogleDocsEditor: React.FC<GoogleDocsEditorProps> = ({
                     { label: '취소선 (Strikethrough)', action: () => executeCommand('strikeThrough') },
                     { label: '양쪽 정렬 (Justify)', action: () => executeCommand('justifyFull') }
                   ]
-                },
-                {
-                  key: 'font',
-                  label: '폰트 관리',
-                  items: [
-                    { label: '➕ 새 폰트 파일 업로드 (.ttf, .otf, .woff)', action: () => fontFileInputRef.current?.click() }
-                  ]
                 }
               ].map((menu) => (
                 <div key={menu.key} className="relative">
@@ -702,7 +694,7 @@ export const GoogleDocsEditor: React.FC<GoogleDocsEditorProps> = ({
                             item.action();
                             setActiveMenu(null);
                           }}
-                          className="w-full text-left px-3 py-1.5 text-xs hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:text-blue-600 transition flex items-center justify-between cursor-pointer"
+                          className="w-full text-left px-3 py-1.5 text-xs hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-emerald-600 transition flex items-center justify-between cursor-pointer"
                         >
                           <span>{item.label}</span>
                         </button>
@@ -726,25 +718,12 @@ export const GoogleDocsEditor: React.FC<GoogleDocsEditorProps> = ({
             {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
           </button>
 
-          {/* Share Pill (Docs style) */}
-          <button
-            type="button"
-            onClick={() => {
-              navigator.clipboard?.writeText(window.location.href);
-              alert('문서 공유 링크가 클립보드에 복사되었습니다.');
-            }}
-            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-bold text-xs hover:bg-blue-200 transition cursor-pointer"
-          >
-            <Lock className="w-3 h-3" />
-            <span>공유</span>
-          </button>
-
           {/* Save Button */}
           {!readOnly && (
             <button
               type="button"
               onClick={handleSave}
-              className="px-3.5 py-1.5 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+              className="px-4 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition flex items-center gap-1.5 cursor-pointer"
             >
               <Check className="w-3.5 h-3.5" />
               <span>저장</span>
@@ -855,90 +834,6 @@ export const GoogleDocsEditor: React.FC<GoogleDocsEditorProps> = ({
 
         <div className="w-px h-5 bg-slate-300 dark:bg-slate-700 mx-1 shrink-0" />
 
-        {/* Font Family Dropdown */}
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setFontDropdownOpen(!fontDropdownOpen)}
-            className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-white dark:hover:bg-slate-800 text-xs font-medium max-w-[130px] truncate cursor-pointer"
-            style={{ fontFamily: currentFont }}
-          >
-            <span className="truncate">{currentFont}</span>
-            <ChevronDown className="w-3 h-3 shrink-0" />
-          </button>
-          {fontDropdownOpen && (
-            <div className="absolute top-full left-0 mt-1 w-56 max-h-72 overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl py-1 z-50">
-              <div className="p-2 border-b border-slate-100 dark:border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => {
-                    fontFileInputRef.current?.click();
-                    setFontDropdownOpen(false);
-                  }}
-                  className="w-full py-1.5 px-2 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-blue-100 transition cursor-pointer"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>폰트 파일 업로드 (.ttf, .otf)</span>
-                </button>
-              </div>
-
-              {fonts.map((f) => (
-                <button
-                  key={f.name}
-                  type="button"
-                  onClick={() => {
-                    executeCommand('fontName', f.name);
-                    setCurrentFont(f.name);
-                    setFontDropdownOpen(false);
-                  }}
-                  className="w-full text-left px-3 py-1.5 hover:bg-blue-50 dark:hover:bg-blue-950/40 text-xs flex items-center justify-between transition cursor-pointer"
-                  style={{ fontFamily: f.name }}
-                >
-                  <span>{f.name}</span>
-                  {f.source === 'custom' && (
-                    <span className="text-[9px] px-1 py-0.5 rounded bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300">
-                      커스텀
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="w-px h-5 bg-slate-300 dark:bg-slate-700 mx-1 shrink-0" />
-
-        {/* Font Size controls (- 11 +) */}
-        <div className="flex items-center">
-          <button
-            type="button"
-            onClick={() => {
-              const newSize = Math.max(8, fontSize - 1);
-              setFontSize(newSize);
-              executeCommand('fontSize', '3'); // standard relative
-            }}
-            className="px-1.5 py-1 rounded hover:bg-white dark:hover:bg-slate-800 font-bold cursor-pointer"
-          >
-            -
-          </button>
-          <span className="px-2 py-0.5 font-semibold text-xs min-w-[24px] text-center">
-            {fontSize}
-          </span>
-          <button
-            type="button"
-            onClick={() => {
-              const newSize = Math.min(48, fontSize + 1);
-              setFontSize(newSize);
-              executeCommand('fontSize', '4');
-            }}
-            className="px-1.5 py-1 rounded hover:bg-white dark:hover:bg-slate-800 font-bold cursor-pointer"
-          >
-            +
-          </button>
-        </div>
-
-        <div className="w-px h-5 bg-slate-300 dark:bg-slate-700 mx-1 shrink-0" />
-
         {/* Basic Text Formats (B, I, U, S) */}
         <button
           type="button"
@@ -972,64 +867,6 @@ export const GoogleDocsEditor: React.FC<GoogleDocsEditorProps> = ({
         >
           <Strikethrough className="w-4 h-4" />
         </button>
-
-        {/* Text Color Picker */}
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setTextColorPickerOpen(!textColorPickerOpen)}
-            className="p-1.5 rounded hover:bg-white dark:hover:bg-slate-800 transition flex items-center gap-0.5 cursor-pointer"
-            title="텍스트 색상"
-          >
-            <Baseline className="w-4 h-4 text-blue-600" />
-            <ChevronDown className="w-2.5 h-2.5 text-slate-400" />
-          </button>
-          {textColorPickerOpen && (
-            <div className="absolute top-full left-0 mt-1 p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-50 grid grid-cols-10 gap-1 w-60">
-              {COLOR_PALETTE.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => {
-                    executeCommand('foreColor', c);
-                    setTextColorPickerOpen(false);
-                  }}
-                  className="w-5 h-5 rounded-sm border border-slate-200 dark:border-slate-700 hover:scale-110 transition cursor-pointer"
-                  style={{ backgroundColor: c }}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Highlight Color Picker */}
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setHighlightColorPickerOpen(!highlightColorPickerOpen)}
-            className="p-1.5 rounded hover:bg-white dark:hover:bg-slate-800 transition flex items-center gap-0.5 cursor-pointer"
-            title="형광펜 강조 색상"
-          >
-            <Highlighter className="w-4 h-4 text-amber-500" />
-            <ChevronDown className="w-2.5 h-2.5 text-slate-400" />
-          </button>
-          {highlightColorPickerOpen && (
-            <div className="absolute top-full left-0 mt-1 p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-50 grid grid-cols-10 gap-1 w-60">
-              {COLOR_PALETTE.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => {
-                    executeCommand('hiliteColor', c);
-                    setHighlightColorPickerOpen(false);
-                  }}
-                  className="w-5 h-5 rounded-sm border border-slate-200 dark:border-slate-700 hover:scale-110 transition cursor-pointer"
-                  style={{ backgroundColor: c }}
-                />
-              ))}
-            </div>
-          )}
-        </div>
 
         <div className="w-px h-5 bg-slate-300 dark:bg-slate-700 mx-1 shrink-0" />
 

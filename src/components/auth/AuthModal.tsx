@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { parseStudentId } from '../../utils/studentIdParser';
 import { UserProfile } from '../../types';
-import { checkStudentIdExists, createAccount } from '../../services/firebaseService';
+import { checkStudentIdExists, createAccount, getUserProfile, syncUserProfile } from '../../services/firebaseService';
 import { SangsanLogo } from '../common/SangsanLogo';
-import { Shield, CheckCircle, AlertTriangle, LogIn, UserCheck, Key } from 'lucide-react';
+import { Shield, CheckCircle, AlertTriangle, LogIn, UserCheck, Key, HelpCircle } from 'lucide-react';
+import { LoginProblemModal } from './LoginProblemModal';
 
 interface AuthModalProps {
   onSuccess: (profile: UserProfile) => void;
@@ -26,6 +27,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess, isOpen = true }
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showProblemModal, setShowProblemModal] = useState(false);
   const [pendingProfile, setPendingProfile] = useState<UserProfile | null>(null);
 
   if (!isOpen) return null;
@@ -55,11 +57,24 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess, isOpen = true }
 
     setIsSubmitting(true);
     try {
-      // 1. Check duplicate studentId in database
-      const exists = await checkStudentIdExists(trimmedId);
-      if (exists) {
-        setErrorMessage('이미 가입된 학번입니다. (중복 학번 가입 불가)');
-        setIsSubmitting(false);
+      // 1. Check if user already exists in DB (for 2nd, 3rd login verification)
+      const existingUser = await getUserProfile(trimmedId);
+      if (existingUser) {
+        // Validation rule: 최초 가입 시 입력된 이름과 다르면 로그인 거부
+        if (existingUser.name && existingUser.name.trim() !== trimmedName) {
+          setErrorMessage('로그인 정보가 잘못되었습니다');
+          setIsSubmitting(false);
+          return;
+        }
+
+        // Name matches: update lastLogin and log in
+        const updatedProfile: UserProfile = {
+          ...existingUser,
+          lastLogin: new Date().toISOString()
+        };
+        await syncUserProfile(updatedProfile);
+        localStorage.setItem('sangsan_current_user', JSON.stringify(updatedProfile));
+        onSuccess(updatedProfile);
         return;
       }
 
@@ -256,6 +271,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess, isOpen = true }
                   <UserCheck className="w-4 h-4" />
                   <span>{isSubmitting ? '확인 중...' : '가입 확인 및 시작'}</span>
                 </button>
+
+                <div className="pt-2.5 text-center">
+                  <button
+                    type="button"
+                    onClick={() => setShowProblemModal(true)}
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-amber-600 dark:text-slate-400 dark:hover:text-amber-400 transition cursor-pointer"
+                  >
+                    <HelpCircle className="w-3.5 h-3.5 text-amber-500" />
+                    로그인에 문제가 있습니다.
+                  </button>
+                </div>
               </div>
             </form>
           ) : (
@@ -367,6 +393,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess, isOpen = true }
           </div>
         </div>
       )}
+
+      {/* Login Problem Reporting Modal */}
+      <LoginProblemModal
+        isOpen={showProblemModal}
+        onClose={() => setShowProblemModal(false)}
+        defaultStudentId={studentIdInput}
+        defaultName={nameInput}
+      />
     </div>
   );
 };

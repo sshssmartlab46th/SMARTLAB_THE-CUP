@@ -22,8 +22,10 @@ import {
   History, 
   LayoutDashboard, 
   Bell,
-  MessageSquare
+  MessageSquare,
+  HelpCircle
 } from 'lucide-react';
+import { AdminLoginInquiriesTab } from '../admin/AdminLoginInquiriesTab';
 import { 
   listenAllUsers, 
   listenScoreApprovals, 
@@ -57,7 +59,7 @@ export const AdminConsolePage: React.FC<AdminConsolePageProps> = ({
   inquiries,
   festivalConfig
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'overview' | 'roster' | 'brackets' | 'notices' | 'points' | 'audit'>('roster');
+  const [activeSubTab, setActiveSubTab] = useState<'overview' | 'roster' | 'brackets' | 'notices' | 'points' | 'audit' | 'login_inquiries'>('roster');
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
   const [scoreRequests, setScoreRequests] = useState<ScoreApprovalRequestItem[]>([]);
   const [noticeMessage, setNoticeMessage] = useState<string | null>(null);
@@ -338,7 +340,8 @@ export const AdminConsolePage: React.FC<AdminConsolePageProps> = ({
             { key: 'notices', label: '전교 공지사항 관리', icon: Bell },
             { key: 'points', label: '종목별 배점 설정', icon: Trophy },
             { key: 'overview', label: '종합 관제', icon: LayoutDashboard },
-            { key: 'audit', label: '감사 로그', icon: History }
+            { key: 'audit', label: '감사 로그', icon: History },
+            { key: 'login_inquiries', label: '로그인 사연함', icon: HelpCircle }
           ].map(t => {
             const Icon = t.icon;
             return (
@@ -438,6 +441,26 @@ export const AdminConsolePage: React.FC<AdminConsolePageProps> = ({
       {activeSubTab === 'audit' && (
         <div className="space-y-6">
           <AdminAuditLogCard auditLogs={auditLogs} />
+        </div>
+      )}
+
+      {/* 7. Login Problem Inquiries Subtab */}
+      {activeSubTab === 'login_inquiries' && (
+        <div className="space-y-6">
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <HelpCircle className="w-5 h-5 text-amber-500" />
+                  학생 로그인 문제 접수 및 사연 관리
+                </h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  이름 불일치 등으로 로그인에 실패한 학생이 제출한 사연을 확인하고, 실명 정정 또는 계정 초기화를 즉시 조치할 수 있습니다.
+                </p>
+              </div>
+            </div>
+            <AdminLoginInquiriesTab />
+          </div>
         </div>
       )}
 

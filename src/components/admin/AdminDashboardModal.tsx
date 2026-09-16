@@ -10,7 +10,8 @@ import {
 } from '../../services/firebaseService';
 import { getRoleBadgeInfo } from '../../utils/studentIdParser';
 import { formatKSTDateTime } from '../../utils/kstTime';
-import { Shield, Users, FileText, ToggleLeft, ToggleRight, Trash2, Check, X, Search, ShieldAlert } from 'lucide-react';
+import { Shield, Users, FileText, ToggleLeft, ToggleRight, Trash2, Check, X, Search, ShieldAlert, HelpCircle } from 'lucide-react';
+import { AdminLoginInquiriesTab } from './AdminLoginInquiriesTab';
 
 interface AdminDashboardModalProps {
   currentUser: UserProfile;
@@ -23,7 +24,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
   isOpen,
   onClose
 }) => {
-  const [activeTab, setActiveTab] = useState<'system' | 'users' | 'audit'>('system');
+  const [activeTab, setActiveTab] = useState<'system' | 'users' | 'audit' | 'inquiries'>('system');
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
   const [festivalConfig, setFestivalConfig] = useState<FestivalConfig | null>(null);
@@ -154,6 +155,19 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
           >
             <FileText className="w-3.5 h-3.5" />
             스코어 수정 감사 로그 ({auditLogs.length}건)
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('inquiries')}
+            className={`px-3.5 py-1.5 rounded-lg font-bold flex items-center gap-1.5 transition ${
+              activeTab === 'inquiries'
+                ? 'bg-amber-500 text-white'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+            }`}
+          >
+            <HelpCircle className="w-3.5 h-3.5" />
+            로그인 문제 접수 / 사연함
           </button>
         </div>
 
@@ -329,6 +343,10 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                 )}
               </div>
             </div>
+          )}
+
+          {activeTab === 'inquiries' && (
+            <AdminLoginInquiriesTab />
           )}
         </div>
       </div>

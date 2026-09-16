@@ -32,7 +32,8 @@ import {
   MVPVote,
   MatchReminderItem,
   UserRole,
-  CheerMessageItem
+  CheerMessageItem,
+  LoginInquiry
 } from '../types';
 
 // Ensure Firebase Anonymous Auth for Firestore security rules
@@ -1139,6 +1140,78 @@ export async function quickAdjustScore(
   );
 }
 
+export async function recordMatchGoalWithScorer(
+  match: MatchItem,
+  team: 'home' | 'away',
+  scorerName: string,
+  minute: number,
+  scoreType: string = '필드골',
+  operator: { id: string; name: string; role: string }
+): Promise<void> {
+  const currentHome = match.homeScore ?? 0;
+  const currentAway = match.awayScore ?? 0;
+  const newHome = team === 'home' ? currentHome + 1 : currentHome;
+  const newAway = team === 'away' ? currentAway + 1 : currentAway;
+
+  const teamName = team === 'home' ? (match.homeTeam || '홈팀') : (match.awayTeam || '원정팀');
+  const actionText = `${teamName} ${scorerName} 선수 ${minute}분 골 (${scoreType})`;
+
+  const newEvent = {
+    id: `evt-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+    minute: minute,
+    type: 'GOAL' as const,
+    team: team,
+    player: scorerName,
+    description: `${teamName} ${scorerName} 선수 ${scoreType}`,
+    timestamp: new Date().toISOString()
+  };
+
+  const updatedEvents = [...(match.events || []), newEvent];
+
+  await updateScoreWithAudit(
+    { ...match, events: updatedEvents },
+    newHome,
+    newAway,
+    `[득점 기록] ${actionText}`,
+    operator,
+    actionText
+  );
+}
+
+export async function removeMatchEventWithAudit(
+  match: MatchItem,
+  eventId: string,
+  revertScore: boolean,
+  operator: { id: string; name: string; role: string }
+): Promise<void> {
+  const targetEvent = (match.events || []).find((e) => e.id === eventId);
+  const updatedEvents = (match.events || []).filter((e) => e.id !== eventId);
+
+  let newHome = match.homeScore ?? 0;
+  let newAway = match.awayScore ?? 0;
+
+  if (revertScore && targetEvent && targetEvent.type === 'GOAL') {
+    if (targetEvent.team === 'home') {
+      newHome = Math.max(0, newHome - 1);
+    } else if (targetEvent.team === 'away') {
+      newAway = Math.max(0, newAway - 1);
+    }
+  }
+
+  const desc = targetEvent 
+    ? `[이벤트 삭제] ${targetEvent.minute}분 ${targetEvent.player || ''} ${targetEvent.description}${revertScore ? ' (스코어 1점 차감 환원)' : ''}`
+    : `[이벤트 삭제] ID ${eventId}`;
+
+  await updateScoreWithAudit(
+    { ...match, events: updatedEvents },
+    newHome,
+    newAway,
+    desc,
+    operator,
+    desc
+  );
+}
+
 // -------------------------------------------------------------
 // Notices Listener & Creator
 // -------------------------------------------------------------
@@ -1784,6 +1857,76 @@ export async function rejectScoreRequest(requestId: string, reason?: string): Pr
     throw e;
   }
 }
+
+// -------------------------------------------------------------
+// Login Inquiries & Account Problem Reporting (로그인 문제 접수)
+// -------------------------------------------------------------
+export async function submitLoginInquiry(inquiry: {
+  studentId: string;
+  claimedName: string;
+  registeredName?: string | null;
+  message: string;
+}): Promise<string> {
+  await ensureFirebaseAuth();
+  const id = `inq_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+  const docRef = doc(db, 'login_inquiries', id);
+  const data: LoginInquiry = {
+    id,
+    studentId: inquiry.studentId.trim(),
+    claimedName: inquiry.claimedName.trim(),
+    registeredName: inquiry.registeredName?.trim() || null,
+    message: inquiry.message.trim(),
+    status: 'PENDING',
+    createdAt: new Date().toISOString()
+  };
+  await setDoc(docRef, data);
+  return id;
+}
+
+export function listenLoginInquiries(callback: (inquiries: LoginInquiry[]) => void): () => void {
+  try {
+    const q = collection(db, 'login_inquiries');
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const list: LoginInquiry[] = [];
+      snapshot.forEach((d) => list.push(d.data() as LoginInquiry));
+      list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      callback(list);
+    }, (err) => {
+      console.warn('[Firebase] listenLoginInquiries error:', err);
+      callback([]);
+    });
+    return unsubscribe;
+  } catch (e) {
+    callback([]);
+    return () => {};
+  }
+}
+
+export async function resolveLoginInquiry(inquiryId: string, resolvedBy: string = '총괄 관리자'): Promise<void> {
+  await ensureFirebaseAuth();
+  const docRef = doc(db, 'login_inquiries', inquiryId);
+  await updateDoc(docRef, {
+    status: 'RESOLVED',
+    resolvedAt: new Date().toISOString(),
+    resolvedBy
+  });
+}
+
+export async function resetStudentAccount(studentId: string): Promise<void> {
+  await ensureFirebaseAuth();
+  const docRef = doc(db, 'users', studentId.trim());
+  await deleteDoc(docRef);
+}
+
+export async function updateStudentName(studentId: string, newName: string): Promise<void> {
+  await ensureFirebaseAuth();
+  const docRef = doc(db, 'users', studentId.trim());
+  await updateDoc(docRef, {
+    name: newName.trim(),
+    lastLogin: new Date().toISOString()
+  });
+}
+
 
 
 

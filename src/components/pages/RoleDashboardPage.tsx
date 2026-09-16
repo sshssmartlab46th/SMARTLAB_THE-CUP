@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { UserProfile, MatchItem, NoticeItem, UserRole, ScoreApprovalRequestItem, FieldIncidentItem, SupplyItem, MedicalIncidentQueueItem, HospitalTransferItem, SubstitutionRecord, MedicalTimelineItem } from '../../types';
+import React, { useState, useEffect } from 'react';
+import { UserProfile, MatchItem, NoticeItem, UserRole, ScoreApprovalRequestItem, FieldIncidentItem, SupplyItem, MedicalIncidentQueueItem, HospitalTransferItem, SubstitutionRecord, MedicalTimelineItem, ClassLineup } from '../../types';
 import { 
   Users, 
   ShieldCheck, 
@@ -31,7 +31,8 @@ import {
   MedicalEmergencyHotlineCard, 
   MedicalPatientTimelineCard 
 } from '../index';
-import { updateMatch, updateScoreWithAudit, createNotice, submitScoreApprovalRequest } from '../../services/firebaseService';
+import { updateMatch, updateScoreWithAudit, createNotice, submitScoreApprovalRequest, listenLineups } from '../../services/firebaseService';
+import { GoalScorerModal } from '../matches/GoalScorerModal';
 
 interface RoleDashboardPageProps {
   currentUser: UserProfile | null;
@@ -103,6 +104,15 @@ export const RoleDashboardPage: React.FC<RoleDashboardPageProps> = ({
   const [refereeSubstitutions, setRefereeSubstitutions] = useState<SubstitutionRecord[]>([
     { id: 'sub-1', minute: 14, teamLabel: '3-2반', outPlayer: '최현우 (FW)', inPlayer: '강동원 (MF)' }
   ]);
+
+  const [refereeLineups, setRefereeLineups] = useState<ClassLineup[]>([]);
+  const [showRefereeGoalModal, setShowRefereeGoalModal] = useState(false);
+  const [refereeGoalTeam, setRefereeGoalTeam] = useState<'home' | 'away'>('home');
+
+  useEffect(() => {
+    const unsub = listenLineups(setRefereeLineups);
+    return () => unsub();
+  }, []);
 
   // -------------------------------------------------------------
   // Medical State
@@ -415,6 +425,10 @@ export const RoleDashboardPage: React.FC<RoleDashboardPageProps> = ({
               <RefereeScoreboardCard
                 match={activeRefereeMatch || null}
                 onUpdateScore={handleScoreUpdate}
+                onRecordGoal={(team) => {
+                  setRefereeGoalTeam(team);
+                  setShowRefereeGoalModal(true);
+                }}
                 onToggleTimer={handleToggleMatchTimer}
                 onEndMatch={handleEndMatch}
               />
@@ -482,6 +496,21 @@ export const RoleDashboardPage: React.FC<RoleDashboardPageProps> = ({
             </div>
           </div>
         </div>
+      )}
+      {/* Referee Goal Scorer Modal */}
+      {showRefereeGoalModal && activeRefereeMatch && currentUser && (
+        <GoalScorerModal
+          isOpen={showRefereeGoalModal}
+          onClose={() => setShowRefereeGoalModal(false)}
+          match={activeRefereeMatch}
+          currentUser={currentUser}
+          lineups={refereeLineups}
+          initialTeam={refereeGoalTeam}
+          onSuccess={(scorer, team) => {
+            const teamName = team === 'home' ? activeRefereeMatch.homeTeam : activeRefereeMatch.awayTeam;
+            showToast(`[${teamName}] ${scorer} 선수의 골이 경기 타임라인에 공식 기록되었습니다!`);
+          }}
+        />
       )}
     </div>
   );

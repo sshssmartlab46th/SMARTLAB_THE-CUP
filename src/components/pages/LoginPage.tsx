@@ -4,7 +4,8 @@ import { UserProfile } from '../../types';
 import { checkStudentIdExists, createAccount, getUserProfile, syncUserProfile } from '../../services/firebaseService';
 import { SangsanLogo } from '../common/SangsanLogo';
 import { SmartlabLogo } from '../common/SmartlabLogo';
-import { Shield, CheckCircle, AlertTriangle, LogIn, UserCheck, Key, Lock, ArrowLeft, ArrowRight, User } from 'lucide-react';
+import { Shield, CheckCircle, AlertTriangle, LogIn, UserCheck, Key, Lock, ArrowLeft, ArrowRight, User, HelpCircle } from 'lucide-react';
+import { LoginProblemModal } from '../auth/LoginProblemModal';
 
 interface LoginPageProps {
   onSuccess: (profile: UserProfile) => void;
@@ -26,6 +27,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onCancel }) => 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showProblemModal, setShowProblemModal] = useState(false);
   const [pendingProfile, setPendingProfile] = useState<UserProfile | null>(null);
 
   // Student Auth
@@ -56,10 +58,16 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onCancel }) => 
       // 1. Check if user already exists in DB (to preserve admin-assigned roles)
       const existingUser = await getUserProfile(trimmedId);
       if (existingUser) {
-        // Update name if changed & record lastLogin
+        // Validation rule: 최초 가입 시 입력된 이름과 다르면 로그인 거부
+        if (existingUser.name && existingUser.name.trim() !== trimmedName) {
+          setErrorMessage('로그인 정보가 잘못되었습니다');
+          setIsSubmitting(false);
+          return;
+        }
+
+        // Name matches: update lastLogin and log in
         const updatedProfile: UserProfile = {
           ...existingUser,
-          name: trimmedName,
           lastLogin: new Date().toISOString()
         };
         await syncUserProfile(updatedProfile);
@@ -259,6 +267,17 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onCancel }) => 
                 <LogIn className="w-4 h-4" />
                 {isSubmitting ? '확인 중...' : '학생 인증 및 입장하기'}
               </button>
+
+              <div className="pt-2 text-center">
+                <button
+                  type="button"
+                  onClick={() => setShowProblemModal(true)}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-amber-600 dark:text-slate-400 dark:hover:text-amber-400 transition cursor-pointer"
+                >
+                  <HelpCircle className="w-3.5 h-3.5 text-amber-500" />
+                  로그인에 문제가 있습니다.
+                </button>
+              </div>
             </form>
           ) : (
             /* Admin Form */
@@ -355,6 +374,14 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onCancel }) => 
           </div>
         </div>
       )}
+
+      {/* Login Problem Reporting Modal */}
+      <LoginProblemModal
+        isOpen={showProblemModal}
+        onClose={() => setShowProblemModal(false)}
+        defaultStudentId={studentIdInput}
+        defaultName={nameInput}
+      />
     </div>
   );
 };

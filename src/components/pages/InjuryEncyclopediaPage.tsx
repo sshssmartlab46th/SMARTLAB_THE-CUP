@@ -221,8 +221,7 @@ export const InjuryEncyclopediaPage: React.FC<InjuryEncyclopediaPageProps> = ({ 
     if (selectedEntry && selectedEntry.id !== selectedId) setSelectedId(selectedEntry.id);
   }, [entries, selectedEntry, selectedId]);
 
-  // Google Docs View & Editor States
-  const [docViewMode, setDocViewMode] = useState<'docs' | 'cards'>('docs');
+  // Editor States
   const [googleDocsOpen, setGoogleDocsOpen] = useState(false);
   const [googleDocsTitle, setGoogleDocsTitle] = useState('');
   const [googleDocsInitialHtml, setGoogleDocsInitialHtml] = useState('');
@@ -571,10 +570,10 @@ ${context}`
               <button
                 type="button"
                 onClick={() => openGoogleDocs()}
-                className="rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-bold text-white transition hover:bg-blue-700 flex items-center gap-1.5 shadow-xs cursor-pointer"
+                className="rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-emerald-600 dark:hover:bg-emerald-700 px-3.5 py-2 text-xs font-bold text-white transition flex items-center gap-1.5 shadow-xs cursor-pointer"
               >
-                <FileText className="h-3.5 w-3.5" />
-                Google Docs 문서 작성
+                <FileEdit className="h-3.5 w-3.5" />
+                새 문서 작성
               </button>
               <button
                 type="button"
@@ -688,34 +687,18 @@ ${context}`
           <article className="min-h-[560px] rounded-3xl border border-slate-200 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-900 sm:p-7 flex flex-col">
             {selectedEntry ? (
               <>
-                {/* Document Top Bar: View Mode Switcher + Action Buttons */}
+                {/* Document Top Bar: Action Buttons & Metadata */}
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4 mb-5">
-                  {/* View Mode Toggle */}
-                  <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
-                    <button
-                      type="button"
-                      onClick={() => setDocViewMode('docs')}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                        docViewMode === 'docs'
-                          ? 'bg-blue-600 text-white shadow-xs'
-                          : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
-                      }`}
-                    >
-                      <FileText className="h-3.5 w-3.5" />
-                      Google Docs 문서 뷰
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setDocViewMode('cards')}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                        docViewMode === 'cards'
-                          ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-xs'
-                          : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
-                      }`}
-                    >
-                      <LayoutGrid className="h-3.5 w-3.5" />
-                      요약 카드 뷰
-                    </button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={`rounded-full px-2.5 py-1 text-[11px] font-black ${severityClass[selectedEntry.severity]}`}>
+                      {severityLabel[selectedEntry.severity]}
+                    </span>
+                    <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-full">
+                      {SPORT_OPTIONS.find((option) => option.value === selectedEntry.sport)?.label || selectedEntry.sport}
+                    </span>
+                    <span className="text-[11px] text-slate-400">
+                      최종 검수: {formatUpdatedAt(selectedEntry.updatedAt)}{selectedEntry.updatedBy ? ` · ${selectedEntry.updatedBy}` : ''}
+                    </span>
                   </div>
 
                   {/* Actions */}
@@ -724,11 +707,11 @@ ${context}`
                       <button
                         type="button"
                         onClick={() => openGoogleDocs(selectedEntry)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 hover:bg-blue-100 font-bold text-xs transition cursor-pointer"
-                        title="Google Docs 에디터로 전체 편집"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white font-bold text-xs transition cursor-pointer shadow-xs"
+                        title="문서 편집"
                       >
                         <FileEdit className="h-3.5 w-3.5" />
-                        Google Docs로 편집
+                        문서 편집
                       </button>
                     )}
                     <button
@@ -773,92 +756,27 @@ ${context}`
                   </div>
                 </div>
 
-                {docViewMode === 'docs' ? (
-                  /* Google Docs Paper Canvas */
-                  <div className="flex-1 rounded-2xl bg-[#f0f4f9] dark:bg-slate-950/70 p-3 sm:p-6 border border-slate-200 dark:border-slate-800/80 overflow-y-auto max-h-[75vh]">
-                    <div className="max-w-3xl mx-auto bg-white dark:bg-slate-900 rounded-xl shadow-md border border-slate-200/90 dark:border-slate-800 p-6 sm:p-12 min-h-[520px]">
-                      {/* Paper Header Ribbon */}
-                      <div className="flex items-center justify-between pb-4 mb-6 border-b border-slate-100 dark:border-slate-800 text-[11px] text-slate-400">
-                        <div className="flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                          <span>상산고등학교 체육대회·축제 보건 지식백과</span>
-                        </div>
-                        <div>최종 검수: {formatUpdatedAt(selectedEntry.updatedAt)}{selectedEntry.updatedBy ? ` · ${selectedEntry.updatedBy}` : ''}</div>
+                {/* Unified Document Reader View (Supports rich text, headings, tables, and full images) */}
+                <div className="flex-1 rounded-2xl bg-[#f0f4f9] dark:bg-slate-950/70 p-3 sm:p-6 border border-slate-200 dark:border-slate-800/80 overflow-y-auto max-h-[75vh]">
+                  <div className="max-w-3xl mx-auto bg-white dark:bg-slate-900 rounded-xl shadow-md border border-slate-200/90 dark:border-slate-800 p-6 sm:p-12 min-h-[520px]">
+                    {/* Official Document Ribbon */}
+                    <div className="flex items-center justify-between pb-4 mb-6 border-b border-slate-100 dark:border-slate-800 text-[11px] text-slate-400">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                        <span>상산고등학교 체육대회·축제 보건 지식백과</span>
                       </div>
-
-                      {/* Rendered HTML content */}
-                      <div
-                        className="google-docs-rendered prose max-w-none dark:prose-invert text-slate-800 dark:text-slate-200"
-                        dangerouslySetInnerHTML={{
-                          __html: generateDocsHtmlFromEntry(selectedEntry)
-                        }}
-                      />
+                      <div>최종 검수: {formatUpdatedAt(selectedEntry.updatedAt)}{selectedEntry.updatedBy ? ` · ${selectedEntry.updatedBy}` : ''}</div>
                     </div>
+
+                    {/* Rendered HTML content with rich formatting & images */}
+                    <div
+                      className="google-docs-rendered prose max-w-none dark:prose-invert text-slate-800 dark:text-slate-200 [&_img]:rounded-xl [&_img]:max-w-full [&_img]:shadow-xs [&_img]:border [&_img]:border-slate-200 dark:[&_img]:border-slate-700"
+                      dangerouslySetInnerHTML={{
+                        __html: generateDocsHtmlFromEntry(selectedEntry)
+                      }}
+                    />
                   </div>
-                ) : (
-                  /* Itemized Cards View */
-                  <div>
-                    <div className="flex flex-col gap-4 border-b border-slate-100 pb-5 dark:border-slate-800 sm:flex-row sm:items-start sm:justify-between">
-                      <div>
-                        <div className="mb-2 flex flex-wrap items-center gap-2">
-                          <span className={`rounded-full px-2.5 py-1 text-[11px] font-black ${severityClass[selectedEntry.severity]}`}>{severityLabel[selectedEntry.severity]}</span>
-                          <span className="text-[11px] font-bold text-slate-400">{SPORT_OPTIONS.find((option) => option.value === selectedEntry.sport)?.label || selectedEntry.sport}</span>
-                          {selectedEntry.attachments?.length ? <span className="text-[11px] font-bold text-purple-500"><FileImage className="mr-1 inline h-3.5 w-3.5" />첨부 {selectedEntry.attachments.length}</span> : null}
-                        </div>
-                        <h2 className="text-2xl font-black tracking-tight text-slate-950 dark:text-white">{selectedEntry.title}</h2>
-                        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-500 dark:text-slate-400">{selectedEntry.summary || selectedEntry.symptoms}</p>
-                        <p className="mt-2 text-[11px] text-slate-400">최종 검수: {formatUpdatedAt(selectedEntry.updatedAt)}{selectedEntry.updatedBy ? ` · ${selectedEntry.updatedBy}` : ''}</p>
-                      </div>
-                    </div>
-
-                    <div className="mt-6 grid gap-5 xl:grid-cols-2">
-                      <section>
-                        <h3 className="mb-2 flex items-center gap-2 text-sm font-black text-slate-900 dark:text-white"><Activity className="h-4 w-4 text-red-500" />주요 증상 및 판별 기준</h3>
-                        <p className="text-sm leading-7 text-slate-600 dark:text-slate-300">{selectedEntry.symptoms}</p>
-                      </section>
-                      <section>
-                        <h3 className="mb-2 flex items-center gap-2 text-sm font-black text-slate-900 dark:text-white"><ShieldCheck className="h-4 w-4 text-emerald-500" />발생 원인·상황</h3>
-                        <p className="text-sm leading-7 text-slate-600 dark:text-slate-300">{selectedEntry.commonCauses || '등록된 발생 원인 정보가 없습니다.'}</p>
-                      </section>
-                    </div>
-
-                    <section className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 dark:border-emerald-900/50 dark:bg-emerald-950/20">
-                      <h3 className="mb-2 flex items-center gap-2 text-sm font-black text-emerald-800 dark:text-emerald-200"><CheckCircle2 className="h-4 w-4" />현장 응급처치</h3>
-                      <p className="whitespace-pre-wrap text-sm leading-7 text-emerald-950 dark:text-emerald-100">{selectedEntry.firstAid}</p>
-                    </section>
-
-                    <div className="mt-5 grid gap-5 xl:grid-cols-2">
-                      <section className="rounded-2xl border border-red-200 bg-red-50/60 p-4 dark:border-red-900/50 dark:bg-red-950/20">
-                        <h3 className="mb-2 flex items-center gap-2 text-sm font-black text-red-800 dark:text-red-200"><AlertTriangle className="h-4 w-4" />즉시 도움을 받아야 하는 신호</h3>
-                        {selectedEntry.redFlags?.length ? <ul className="space-y-2 text-sm leading-relaxed text-red-900 dark:text-red-100">{selectedEntry.redFlags.map((flag) => <li key={flag} className="flex gap-2"><span>•</span>{flag}</li>)}</ul> : <p className="text-sm text-red-800/70 dark:text-red-200/70">등록된 위험 신호가 없습니다.</p>}
-                      </section>
-                      <section className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/40">
-                        <h3 className="mb-2 text-sm font-black text-slate-900 dark:text-white">보건실 방문·경기 복귀 기준</h3>
-                        <p className="text-sm leading-7 text-slate-600 dark:text-slate-300">{selectedEntry.whenToSeekCare || '증상이 지속되면 보건 담당자에게 확인받고, 허가 없이 경기에 복귀하지 않습니다.'}</p>
-                      </section>
-                    </div>
-
-                    {selectedEntry.prevention && (
-                      <section className="mt-5">
-                        <h3 className="mb-2 text-sm font-black text-slate-900 dark:text-white">예방 수칙</h3>
-                        <p className="text-sm leading-7 text-slate-600 dark:text-slate-300">{selectedEntry.prevention}</p>
-                      </section>
-                    )}
-
-                    {selectedEntry.attachments?.some((item) => item.type === 'image') && (
-                      <section className="mt-6 border-t border-slate-100 pt-5 dark:border-slate-800">
-                        <h3 className="mb-3 flex items-center gap-2 text-sm font-black text-slate-900 dark:text-white"><ImagePlus className="h-4 w-4 text-purple-500" />참고 이미지</h3>
-                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                          {selectedEntry.attachments.filter((item) => item.type === 'image').map((item) => <img key={item.id} src={item.url} alt={item.name} className="aspect-square w-full rounded-xl border border-slate-200 object-cover dark:border-slate-700" />)}
-                        </div>
-                      </section>
-                    )}
-
-                    {selectedEntry.sourceUrl && (
-                      <a href={selectedEntry.sourceUrl} target="_blank" rel="noreferrer" className="mt-5 inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:underline"><ExternalLink className="h-3.5 w-3.5" />관련 참고 자료 열기</a>
-                    )}
-                  </div>
-                )}
+                </div>
               </>
             ) : (
               <div className="flex h-full min-h-[500px] items-center justify-center text-sm text-slate-400">표시할 문서가 없습니다.</div>
@@ -921,7 +839,7 @@ ${context}`
           {/* Top Classification Sub-bar */}
           <div className="bg-slate-900 border-b border-slate-800 px-4 py-2 flex items-center justify-between text-xs text-white shrink-0">
             <div className="flex flex-wrap items-center gap-3">
-              <span className="font-bold text-blue-400">상산고 보건 지식백과 · Google Docs 에디터</span>
+              <span className="font-bold text-emerald-400">상산고 보건 지식백과 · 문서 편집</span>
               <div className="flex items-center gap-1.5">
                 <label className="text-[11px] text-slate-400">종목:</label>
                 <select

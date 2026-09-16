@@ -5,6 +5,7 @@ import { Pause, Play, StopCircle, Plus, Minus, AlertCircle } from 'lucide-react'
 export interface RefereeScoreboardCardProps {
   match?: MatchItem | null;
   onUpdateScore?: (team: 'home' | 'away', delta: number) => void;
+  onRecordGoal?: (team: 'home' | 'away') => void;
   onAddCard?: (team: 'home' | 'away', cardType: 'YELLOW' | 'RED') => void;
   onToggleTimer?: () => void;
   onEndMatch?: () => void;
@@ -13,6 +14,7 @@ export interface RefereeScoreboardCardProps {
 export const RefereeScoreboardCard: React.FC<RefereeScoreboardCardProps> = ({
   match,
   onUpdateScore,
+  onRecordGoal,
   onAddCard,
   onToggleTimer,
   onEndMatch
@@ -78,6 +80,17 @@ export const RefereeScoreboardCard: React.FC<RefereeScoreboardCardProps> = ({
           </div>
 
           <div className="flex items-center justify-center gap-1.5">
+            {onRecordGoal && (
+              <button
+                type="button"
+                onClick={() => onRecordGoal('home')}
+                className="px-2 py-1 rounded bg-red-100 dark:bg-red-950/60 border border-red-200 dark:border-red-900/60 text-[10px] font-bold text-red-700 dark:text-red-300 hover:bg-red-200 transition flex items-center gap-1 cursor-pointer"
+                title="홈팀 득점자 선택 및 기록"
+              >
+                <span>⚽</span>
+                <span>골 기록</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={() => onAddCard?.('home', 'YELLOW')}
@@ -137,6 +150,17 @@ export const RefereeScoreboardCard: React.FC<RefereeScoreboardCardProps> = ({
           </div>
 
           <div className="flex items-center justify-center gap-1.5">
+            {onRecordGoal && (
+              <button
+                type="button"
+                onClick={() => onRecordGoal('away')}
+                className="px-2 py-1 rounded bg-blue-100 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-900/60 text-[10px] font-bold text-blue-700 dark:text-blue-300 hover:bg-blue-200 transition flex items-center gap-1 cursor-pointer"
+                title="원정팀 득점자 선택 및 기록"
+              >
+                <span>⚽</span>
+                <span>골 기록</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={() => onAddCard?.('away', 'YELLOW')}

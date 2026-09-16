@@ -413,3 +413,16 @@ export interface AssignedRefereeMatch {
   status: 'LIVE' | 'SCHEDULED' | 'FINISHED';
   isCurrentAssigned: boolean;
 }
+
+export interface LoginInquiry {
+  id: string;
+  studentId: string; // 1번째 메타 정보: 학번
+  claimedName: string; // 2번째 메타 정보: 학생이 입력/주장한 이름
+  registeredName?: string | null; // 현재 DB에 등록된 원래 이름
+  message: string; // 학생이 제출한 사연 내용
+  status: 'PENDING' | 'RESOLVED';
+  createdAt: string;
+  resolvedAt?: string;
+  resolvedBy?: string;
+}
+

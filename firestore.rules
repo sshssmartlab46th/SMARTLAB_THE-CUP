@@ -93,5 +93,10 @@ service cloud.firestore {
     match /score_approvals/{approvalId} {
       allow read, write: if true;
     }
+
+    // Login Inquiries Collection (로그인 문제 접수)
+    match /login_inquiries/{inquiryId} {
+      allow read, write: if true;
+    }
   }
 }

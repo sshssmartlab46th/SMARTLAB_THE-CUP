@@ -10,9 +10,11 @@ import {
   pauseMatch,
   resumeMatch,
   finishMatch,
-  parseMatchStartTime
+  parseMatchStartTime,
+  removeMatchEventWithAudit
 } from '../../services/firebaseService';
 import { MVPVotingModal } from './MVPVotingModal';
+import { GoalScorerModal } from './GoalScorerModal';
 import { 
   Flame, 
   Heart, 
@@ -30,7 +32,8 @@ import {
   ArrowLeft,
   Play,
   Pause,
-  Square
+  Square,
+  Trash2
 } from 'lucide-react';
 
 interface LiveMatchStatusViewProps {
@@ -48,6 +51,9 @@ export const LiveMatchStatusView: React.FC<LiveMatchStatusViewProps> = ({
   const [lineups, setLineups] = useState<ClassLineup[]>([]);
   const [showMvpModal, setShowMvpModal] = useState(false);
   const [showScoreEditor, setShowScoreEditor] = useState(false);
+  const [showGoalModal, setShowGoalModal] = useState(false);
+  const [goalModalTeam, setGoalModalTeam] = useState<'home' | 'away'>('home');
+  const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
 
   // Stepper score modification state
   const [newHomeScore, setNewHomeScore] = useState(match.homeScore ?? 0);
@@ -371,25 +377,39 @@ export const LiveMatchStatusView: React.FC<LiveMatchStatusViewProps> = ({
 
             {/* Quick Score Adjustment Buttons for Authorized Users */}
             {canEditScore ? (
-              <div className="flex items-center justify-center gap-1.5">
+              <div className="flex flex-col items-center gap-1.5">
+                <div className="flex items-center justify-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => handleQuickDelta('home', -1)}
+                    disabled={isSubmittingScore || (match.homeScore ?? 0) <= 0}
+                    className="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-red-100 dark:hover:bg-red-950 text-slate-700 dark:text-slate-200 hover:text-red-600 font-black text-sm flex items-center justify-center transition active:scale-95 disabled:opacity-30 cursor-pointer shadow-2xs"
+                    title="홈팀 -1점"
+                  >
+                    <Minus className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickDelta('home', 1)}
+                    disabled={isSubmittingScore}
+                    className="px-3 h-8 rounded-lg bg-red-600 hover:bg-red-700 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-1 transition active:scale-95 disabled:opacity-50 cursor-pointer shadow-xs"
+                    title="홈팀 +1점 득점"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>1</span>
+                  </button>
+                </div>
                 <button
                   type="button"
-                  onClick={() => handleQuickDelta('home', -1)}
-                  disabled={isSubmittingScore || (match.homeScore ?? 0) <= 0}
-                  className="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-red-100 dark:hover:bg-red-950 text-slate-700 dark:text-slate-200 hover:text-red-600 font-black text-sm flex items-center justify-center transition active:scale-95 disabled:opacity-30 cursor-pointer shadow-2xs"
-                  title="홈팀 -1점"
+                  onClick={() => {
+                    setGoalModalTeam('home');
+                    setShowGoalModal(true);
+                  }}
+                  className="px-2.5 py-1 rounded-lg bg-red-100 dark:bg-red-950/60 hover:bg-red-200 text-red-700 dark:text-red-300 font-bold text-[11px] flex items-center justify-center gap-1 transition cursor-pointer"
+                  title="홈팀 골 넣은 선수 지정 및 타임라인 기록"
                 >
-                  <Minus className="w-4 h-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleQuickDelta('home', 1)}
-                  disabled={isSubmittingScore}
-                  className="px-3 h-8 rounded-lg bg-red-600 hover:bg-red-700 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-1 transition active:scale-95 disabled:opacity-50 cursor-pointer shadow-xs"
-                  title="홈팀 +1점 득점"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>1</span>
+                  <span>⚽</span>
+                  <span>골 선수 기록</span>
                 </button>
               </div>
             ) : null}
@@ -422,25 +442,39 @@ export const LiveMatchStatusView: React.FC<LiveMatchStatusViewProps> = ({
 
             {/* Quick Score Adjustment Buttons for Authorized Users */}
             {canEditScore ? (
-              <div className="flex items-center justify-center gap-1.5">
+              <div className="flex flex-col items-center gap-1.5">
+                <div className="flex items-center justify-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => handleQuickDelta('away', -1)}
+                    disabled={isSubmittingScore || (match.awayScore ?? 0) <= 0}
+                    className="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-950 text-slate-700 dark:text-slate-200 hover:text-blue-600 font-black text-sm flex items-center justify-center transition active:scale-95 disabled:opacity-30 cursor-pointer shadow-2xs"
+                    title="원정팀 -1점"
+                  >
+                    <Minus className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickDelta('away', 1)}
+                    disabled={isSubmittingScore}
+                    className="px-3 h-8 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-1 transition active:scale-95 disabled:opacity-50 cursor-pointer shadow-xs"
+                    title="원정팀 +1점 득점"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>1</span>
+                  </button>
+                </div>
                 <button
                   type="button"
-                  onClick={() => handleQuickDelta('away', -1)}
-                  disabled={isSubmittingScore || (match.awayScore ?? 0) <= 0}
-                  className="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-950 text-slate-700 dark:text-slate-200 hover:text-blue-600 font-black text-sm flex items-center justify-center transition active:scale-95 disabled:opacity-30 cursor-pointer shadow-2xs"
-                  title="원정팀 -1점"
+                  onClick={() => {
+                    setGoalModalTeam('away');
+                    setShowGoalModal(true);
+                  }}
+                  className="px-2.5 py-1 rounded-lg bg-blue-100 dark:bg-blue-950/60 hover:bg-blue-200 text-blue-700 dark:text-blue-300 font-bold text-[11px] flex items-center justify-center gap-1 transition cursor-pointer"
+                  title="원정팀 골 넣은 선수 지정 및 타임라인 기록"
                 >
-                  <Minus className="w-4 h-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleQuickDelta('away', 1)}
-                  disabled={isSubmittingScore}
-                  className="px-3 h-8 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-1 transition active:scale-95 disabled:opacity-50 cursor-pointer shadow-xs"
-                  title="원정팀 +1점 득점"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>1</span>
+                  <span>⚽</span>
+                  <span>골 선수 기록</span>
                 </button>
               </div>
             ) : null}
@@ -633,36 +667,135 @@ export const LiveMatchStatusView: React.FC<LiveMatchStatusViewProps> = ({
 
       {/* Match Events Timeline */}
       <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-xs space-y-3">
-        <h3 className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
-          <Clock className="w-4 h-4 text-red-500" />
-          경기 실시간 타임라인 및 기록
-        </h3>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
+            <Clock className="w-4 h-4 text-red-500" />
+            경기 실시간 타임라인 및 기록
+          </h3>
+
+          {canEditScore && (
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setGoalModalTeam('home');
+                  setShowGoalModal(true);
+                }}
+                className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 transition shadow-xs cursor-pointer"
+              >
+                <span>⚽</span>
+                <span>골(득점) 선수 기록</span>
+              </button>
+            </div>
+          )}
+        </div>
 
         {(!match.events || match.events.length === 0) ? (
-          <div className="py-8 text-center text-xs text-slate-400">
+          <div className="py-8 text-center text-xs text-slate-400 bg-slate-50/50 dark:bg-slate-800/20 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
             기록된 경기 이벤트가 없습니다.
+            {canEditScore && (
+              <p className="mt-1 text-[11px] text-emerald-600 dark:text-emerald-400">
+                상단의 [골(득점) 선수 기록] 버튼을 눌러 라인업에서 선수를 선택해 기록할 수 있습니다.
+              </p>
+            )}
           </div>
         ) : (
           <div className="space-y-2">
-            {match.events.map((evt) => (
-              <div
-                key={evt.id}
-                className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 text-xs flex items-center justify-between"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="font-mono font-bold text-red-600 dark:text-red-400">
-                    {evt.minute}'
-                  </span>
-                  <span className="font-semibold text-slate-900 dark:text-white">
-                    {evt.player} ({evt.team})
-                  </span>
-                  <span className="text-slate-500">{evt.detail || evt.description}</span>
+            {match.events.map((evt) => {
+              const isGoal = evt.type === 'GOAL';
+              const teamLabel = evt.team === 'home' ? match.homeTeam : evt.team === 'away' ? match.awayTeam : '공통';
+
+              const handleDeleteEvent = async () => {
+                const isConfirmed = window.confirm(
+                  `[${evt.minute}분 ${evt.player || ''} 이벤트]를 타임라인에서 삭제하시겠습니까?`
+                );
+                if (!isConfirmed) return;
+
+                let revertScore = false;
+                if (isGoal) {
+                  revertScore = window.confirm(
+                    `해당 득점 삭제 시 스코어도 1점 차감 환원하시겠습니까?\n[확인] = 스코어 1점 차감 환원\n[취소] = 스코어 유지, 타임라인 기록만 삭제`
+                  );
+                }
+
+                setDeletingEventId(evt.id);
+                try {
+                  await removeMatchEventWithAudit(
+                    match,
+                    evt.id,
+                    revertScore,
+                    {
+                      id: currentUser.studentId,
+                      name: currentUser.name,
+                      role: currentUser.role
+                    }
+                  );
+                  showToast('타임라인 이벤트가 성공적으로 삭제되었습니다.');
+                } catch (err) {
+                  console.error('Failed to remove event:', err);
+                  showToast('이벤트 삭제에 실패했습니다.', 'error');
+                } finally {
+                  setDeletingEventId(null);
+                }
+              };
+
+              return (
+                <div
+                  key={evt.id}
+                  className={`p-3 rounded-xl border text-xs flex items-center justify-between transition ${
+                    isGoal
+                      ? 'bg-emerald-50/70 dark:bg-emerald-950/25 border-emerald-200 dark:border-emerald-800/50'
+                      : 'bg-slate-50 dark:bg-slate-800/40 border-slate-100 dark:border-slate-800'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="font-mono font-black text-sm text-red-600 dark:text-red-400 min-w-[32px]">
+                      {evt.minute}'
+                    </span>
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-1.5">
+                        {isGoal && <span className="text-sm">⚽</span>}
+                        <span className="font-bold text-slate-900 dark:text-white">
+                          {evt.player || '선수 미지정'}
+                        </span>
+                        <span className={`text-[11px] px-1.5 py-0.2 rounded-md font-semibold ${
+                          evt.team === 'home'
+                            ? 'bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300'
+                            : 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300'
+                        }`}>
+                          {teamLabel}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                        {evt.description || evt.detail}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                      isGoal
+                        ? 'bg-emerald-600 text-white shadow-2xs'
+                        : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                    }`}>
+                      {evt.type}
+                    </span>
+
+                    {canEditScore && (
+                      <button
+                        type="button"
+                        onClick={handleDeleteEvent}
+                        disabled={deletingEventId === evt.id}
+                        className="p-1 text-slate-400 hover:text-red-600 transition cursor-pointer"
+                        title="기록 삭제"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
-                  {evt.type}
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -745,6 +878,22 @@ export const LiveMatchStatusView: React.FC<LiveMatchStatusViewProps> = ({
           match={match}
           isOpen={showMvpModal}
           onClose={() => setShowMvpModal(false)}
+        />
+      )}
+
+      {/* Goal Scorer Modal */}
+      {showGoalModal && (
+        <GoalScorerModal
+          isOpen={showGoalModal}
+          onClose={() => setShowGoalModal(false)}
+          match={match}
+          currentUser={currentUser}
+          lineups={lineups}
+          initialTeam={goalModalTeam}
+          onSuccess={(scorer, team) => {
+            const tName = team === 'home' ? match.homeTeam : match.awayTeam;
+            showToast(`[${tName}] ${scorer} 선수의 득점이 실시간 타임라인에 기록되었습니다!`);
+          }}
         />
       )}
     </div>
