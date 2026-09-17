@@ -8,6 +8,7 @@ export interface LiveCheersFeedCardProps {
   onViewMore?: () => void;
   onSubmitCheer?: (message: string) => Promise<void> | void;
   isSubmitting?: boolean;
+  disabledNotice?: string;
 }
 
 export const LiveCheersFeedCard: React.FC<LiveCheersFeedCardProps> = ({
@@ -15,7 +16,8 @@ export const LiveCheersFeedCard: React.FC<LiveCheersFeedCardProps> = ({
   totalCount,
   onViewMore,
   onSubmitCheer,
-  isSubmitting = false
+  isSubmitting = false,
+  disabledNotice
 }) => {
   const [inputMsg, setInputMsg] = useState('');
   const count = totalCount !== undefined ? totalCount : cheers.length;

@@ -20,6 +20,7 @@ class RealtimeWsClient {
   private reconnectDelay = 1000;
   private maxReconnectDelay = 30000;
   private connectionAttemptStarted = false;
+  private consecutiveFailures = 0;
 
   // Cached state
   private cachedMatches: MatchItem[] | null = null;
@@ -61,7 +62,7 @@ class RealtimeWsClient {
   private isVercelEnvironment(): boolean {
     if (typeof window === 'undefined') return false;
     const hostname = window.location.hostname;
-    return hostname.includes('vercel.app');
+    return hostname.includes('vercel.app') || hostname.includes('webcontainer') || hostname.includes('local-credentialless');
   }
 
   public initConnection() {
@@ -70,9 +71,8 @@ class RealtimeWsClient {
       return;
     }
 
-    // Skip WS connection immediately on Vercel deployment without custom realtime server
+    // Skip WS connection immediately on static/Vercel preview environments
     if (this.isVercelEnvironment()) {
-      console.log('[RealtimeWs] Vercel environment detected. Direct Firestore fallback active.');
       this.hasFailedOnce = true;
       this.notifyStatus(false);
       return;
@@ -88,15 +88,15 @@ class RealtimeWsClient {
       // Connection timeout fallback (e.g. if server doesn't support WS)
       const connectTimeout = setTimeout(() => {
         if (!this.isConnected && this.socket?.readyState !== WebSocket.OPEN) {
-          console.warn('[RealtimeWs] Connection timeout. Triggering Firestore fallback...');
+          this.consecutiveFailures++;
           this.hasFailedOnce = true;
           this.notifyStatus(false);
         }
-      }, 3500);
+      }, 3000);
 
       this.socket.onopen = () => {
         clearTimeout(connectTimeout);
-        console.log('[RealtimeWs] Connected to relay server:', wsUrl);
+        this.consecutiveFailures = 0;
         this.notifyStatus(true);
         this.reconnectDelay = 1000; // Reset exponential backoff
 
@@ -116,8 +116,8 @@ class RealtimeWsClient {
         try {
           const msg = JSON.parse(event.data) as BatchMessage;
           this.handleIncomingMessage(msg);
-        } catch (err) {
-          console.warn('[RealtimeWs] JSON parse error:', err);
+        } catch {
+          // Ignore parse errors on ping/pong or binary frames
         }
       };
 
@@ -125,16 +125,17 @@ class RealtimeWsClient {
         clearInterval(this.pingInterval);
         this.notifyStatus(false);
         this.hasFailedOnce = true;
+        this.consecutiveFailures++;
         this.scheduleReconnect();
       };
 
-      this.socket.onerror = (err) => {
-        console.warn('[RealtimeWs] Socket error, falling back if disconnected:', err);
+      this.socket.onerror = () => {
+        this.consecutiveFailures++;
         this.hasFailedOnce = true;
         this.notifyStatus(false);
       };
-    } catch (e) {
-      console.warn('[RealtimeWs] Initialization error:', e);
+    } catch {
+      this.consecutiveFailures++;
       this.hasFailedOnce = true;
       this.notifyStatus(false);
       this.scheduleReconnect();
@@ -143,11 +144,12 @@ class RealtimeWsClient {
 
   private scheduleReconnect() {
     clearTimeout(this.reconnectTimeout);
-    console.log(`[RealtimeWs] Scheduling reconnect in ${this.reconnectDelay}ms...`);
+    // When socket is repeatedly unavailable, quiet down retry frequency to 60s
+    const delay = this.consecutiveFailures > 3 ? 60000 : this.reconnectDelay;
     this.reconnectTimeout = setTimeout(() => {
       this.reconnectDelay = Math.min(this.reconnectDelay * 2, this.maxReconnectDelay);
       this.initConnection();
-    }, this.reconnectDelay);
+    }, delay);
   }
 
   private handleIncomingMessage(msg: BatchMessage) {

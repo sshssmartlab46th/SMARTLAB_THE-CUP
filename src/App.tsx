@@ -93,6 +93,7 @@ import {
   updateMatch,
   updateScoreWithAudit,
   autoStartDueMatches,
+  syncCompletedTournamentRounds,
   startMatch,
   seedInitialDataIfEmpty
 } from './services/firebaseService';
@@ -271,6 +272,31 @@ export default function App() {
     // Check periodically every 15 seconds
     const interval = setInterval(triggerAutoStart, 15000);
     return () => clearInterval(interval);
+  }, [matches]);
+
+  // Reactive Tournament Round Auto-Advancement Sync
+  // Automatically advances winners to next round when all matches in an n-gang round are finished across all sports
+  useEffect(() => {
+    if (matches.length === 0) return;
+
+    let isCancelled = false;
+    const checkTournamentRounds = async () => {
+      try {
+        const res = await syncCompletedTournamentRounds(matches);
+        if (!isCancelled && res.updatedCount > 0) {
+          console.log(`[Tournament Auto-Advance] ${res.updatedCount} match(es) auto-advanced:`, res.logs);
+        }
+      } catch (e) {
+        console.warn('[Tournament Auto-Advance] Check warning:', e);
+      }
+    };
+
+    // Debounce to allow batches to settle
+    const debounceTimer = setTimeout(checkTournamentRounds, 800);
+    return () => {
+      isCancelled = true;
+      clearTimeout(debounceTimer);
+    };
   }, [matches]);
 
   // Popup: strictly the single most recent notice automatically on initial load if present and not dismissed today

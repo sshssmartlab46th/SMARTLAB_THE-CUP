@@ -51,23 +51,41 @@ export const RefereeSubstitutionsCard: React.FC<RefereeSubstitutionsCardProps> =
           </div>
         ) : (
           <div className="space-y-2">
-            {substitutions.map((sub) => (
-              <div 
-                key={sub.id}
-                className="p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 text-xs flex items-center justify-between gap-2"
-              >
-                <div>
-                  <span className="font-bold text-red-600 dark:text-red-400 mr-1.5">
-                    [{sub.classLabel}]
-                  </span>
-                  <span className="text-slate-500 mr-1">OUT: {sub.playerOut.name} ({sub.playerOut.position})</span>
-                  <span className="text-slate-800 dark:text-slate-200 font-bold">IN: {sub.playerIn.name} ({sub.playerIn.position})</span>
+            {substitutions.map((sub) => {
+              const renderPlayer = (player: any, fallback?: string) => {
+                if (!player && fallback) return fallback;
+                if (typeof player === 'string') return player;
+                if (player && typeof player === 'object') {
+                  return `${player.name}${player.position ? ` (${player.position})` : ''}`;
+                }
+                return fallback || '';
+              };
+
+              const classDisplay = sub.classLabel || sub.teamLabel || '교체';
+              const timeDisplay = sub.timeLabel || (sub.minute ? `${sub.minute}분` : '');
+              const outDisplay = renderPlayer(sub.playerOut, sub.outPlayer);
+              const inDisplay = renderPlayer(sub.playerIn, sub.inPlayer);
+
+              return (
+                <div 
+                  key={sub.id}
+                  className="p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 text-xs flex items-center justify-between gap-2"
+                >
+                  <div>
+                    <span className="font-bold text-red-600 dark:text-red-400 mr-1.5">
+                      [{classDisplay}]
+                    </span>
+                    {outDisplay && <span className="text-slate-500 mr-1">OUT: {outDisplay}</span>}
+                    {inDisplay && <span className="text-slate-800 dark:text-slate-200 font-bold">IN: {inDisplay}</span>}
+                  </div>
+                  {timeDisplay && (
+                    <span className="text-[11px] text-slate-400 shrink-0">
+                      {timeDisplay}
+                    </span>
+                  )}
                 </div>
-                <span className="text-[11px] text-slate-400 shrink-0">
-                  {sub.timeLabel}
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

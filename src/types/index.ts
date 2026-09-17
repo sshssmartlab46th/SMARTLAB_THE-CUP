@@ -68,6 +68,7 @@ export interface TimelineEvent {
   team: 'home' | 'away' | 'neutral';
   player?: string;
   description: string;
+  detail?: string;
   timestamp: string;
 }
 
@@ -89,7 +90,9 @@ export interface MatchItem {
   timerRunning: boolean;
   lastTimerStartedAt?: number;
   startTime: string; // ISO String (e.g. '2026-09-08T10:00:00Z')
+  scheduledTime?: string;
   court: string; // '대운동장 A', '체육관 1층'
+  location?: string;
   originalCourt?: string; // 백업된 원래 경기장 정보 (우천/실내 전환 시 복귀용)
   assignedRefereeId?: string;
   assignedRefereeName?: string;
@@ -229,6 +232,10 @@ export interface AuditLogEntry {
   newValue: string;
   timestamp: string;
   venue?: string;
+  previousScore?: string;
+  updatedScore?: string;
+  modifiedByName?: string;
+  modifiedBy?: string;
 }
 
 // -------------------------------------------------------------
@@ -397,21 +404,29 @@ export interface MedicalTimelineItem {
 
 export interface SubstitutionRecord {
   id: string;
-  timeLabel: string; // '후반 12분 적용'
-  classLabel: string; // '3-2반'
-  playerOut: { name: string; position: string };
-  playerIn: { name: string; position: string };
+  timeLabel?: string; // '후반 12분 적용'
+  minute?: number;
+  classLabel?: string; // '3-2반'
+  teamLabel?: string;
+  playerOut?: { name: string; position: string } | string;
+  playerIn?: { name: string; position: string } | string;
+  outPlayer?: string;
+  inPlayer?: string;
   reason?: string;
 }
 
 export interface AssignedRefereeMatch {
   id: string;
-  timeLabel: string;
+  timeLabel?: string;
+  time?: string;
   sport: SportType;
   title: string;
-  teams: string;
-  status: 'LIVE' | 'SCHEDULED' | 'FINISHED';
-  isCurrentAssigned: boolean;
+  teams?: string;
+  court?: string;
+  status?: 'LIVE' | 'SCHEDULED' | 'FINISHED';
+  statusLabel?: string;
+  isCompleted?: boolean;
+  isCurrentAssigned?: boolean;
 }
 
 export interface LoginInquiry {

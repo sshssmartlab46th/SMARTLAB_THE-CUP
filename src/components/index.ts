@@ -8,6 +8,7 @@ export * from './common/NoticeModal';
 export * from './common/Footer';
 export * from './common/WeatherWidget';
 export * from './common/WeatherAtmosphereOverlay';
+export * from './common/ErrorBoundary';
 
 // Home / Student view components
 export * from './home/SafetyGuideCard';

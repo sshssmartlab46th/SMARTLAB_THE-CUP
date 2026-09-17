@@ -427,7 +427,9 @@ export const AdminBracketManagerTab: React.FC<AdminBracketManagerTabProps> = ({
     try {
       const res = await syncAllTournamentAdvancements(matches);
       if (res.updatedCount > 0) {
-        onNotice(`[토너먼트 자동 진출 완료] ${res.updatedCount}건의 다음 라운드 대진이 승리 팀으로 자동 갱신되었습니다.`);
+        onNotice(`[토너먼트 라운드 자동 진출 완료] ${res.updatedCount}건의 대진이 승리 팀으로 자동 진출되었습니다: ${res.logs.join(' / ')}`);
+      } else if (res.pendingInfo && res.pendingInfo.length > 0) {
+        onNotice(`[라운드 진행 현황] n강 전 경기 종료 시 다음 라운드로 자동 진출합니다: ${res.pendingInfo.slice(0, 2).join(' | ')}`);
       } else {
         onNotice('현재 대기 중인 모든 다음 라운드 대진이 최신 경기 결과와 완벽히 동기화되어 있습니다.');
       }

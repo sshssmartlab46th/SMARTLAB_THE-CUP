@@ -4,13 +4,16 @@ import { FileText, ChevronRight } from 'lucide-react';
 
 export interface AdminAuditLogCardProps {
   logs?: AuditLogEntry[];
+  auditLogs?: AuditLogEntry[];
   onViewMore?: () => void;
 }
 
 export const AdminAuditLogCard: React.FC<AdminAuditLogCardProps> = ({
   logs = [],
+  auditLogs,
   onViewMore
 }) => {
+  const effectiveLogs = auditLogs || logs;
   return (
     <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/90 p-5 shadow-xs transition-all">
       <div className="flex items-center justify-between mb-4">
@@ -30,13 +33,13 @@ export const AdminAuditLogCard: React.FC<AdminAuditLogCardProps> = ({
         )}
       </div>
 
-      {logs.length === 0 ? (
+      {effectiveLogs.length === 0 ? (
         <div className="py-6 text-center text-slate-400 dark:text-slate-500 text-xs">
           기록된 시스템 감사 로그가 없습니다.
         </div>
       ) : (
         <div className="space-y-3">
-          {logs.map((log) => (
+          {effectiveLogs.map((log) => (
             <div 
               key={log.id} 
               className="p-2.5 rounded-xl bg-slate-50/50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800 text-xs space-y-1"

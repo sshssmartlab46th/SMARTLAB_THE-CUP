@@ -35,7 +35,8 @@ import {
   UserRole,
   CheerMessageItem,
   LoginInquiry,
-  AppDocument
+  AppDocument,
+  SportType
 } from '../types';
 import { DEFAULT_APP_DOCUMENTS } from '../data/defaultDocuments';
 
@@ -804,7 +805,7 @@ export async function createMatch(matchData: Partial<MatchItem>): Promise<string
     updatedAt: now,
     ...matchData
   };
-  await setDoc(docRef, fullMatch);
+  await setDoc(docRef, sanitizeFirestorePayload(fullMatch));
   return id;
 }
 
@@ -917,15 +918,38 @@ export async function resumeMatch(matchId: string): Promise<void> {
 }
 
 /**
- * Mark a match as finished
+ * Mark a match as finished and automatically synchronize tournament round advancement if an n-gang round completes
  */
 export async function finishMatch(matchId: string): Promise<void> {
   if (!matchId) return;
-  await updateMatch(matchId, {
-    status: 'FINISHED',
-    period: '경기 종료',
-    timerRunning: false
-  });
+  try {
+    await updateMatch(matchId, {
+      status: 'FINISHED',
+      period: '경기 종료',
+      timerRunning: false
+    });
+
+    // Check if this match finish triggers an n-gang round completion across all sports
+    try {
+      const q = collection(db, 'matches');
+      const snap = await getDocs(q);
+      const all: MatchItem[] = [];
+      snap.forEach((d) => all.push({ ...d.data(), id: d.id } as MatchItem));
+      const idx = all.findIndex((m) => m.id === matchId);
+      if (idx >= 0) {
+        all[idx] = { ...all[idx], status: 'FINISHED', period: '경기 종료', timerRunning: false };
+      }
+      const syncRes = await syncCompletedTournamentRounds(all);
+      if (syncRes.updatedCount > 0) {
+        console.log(`[Tournament Auto-Advance] Round completed! Updated ${syncRes.updatedCount} matches:`, syncRes.logs);
+      }
+    } catch (autoErr) {
+      console.warn('[Tournament Auto-Advance] Post-finish round check warning:', autoErr);
+    }
+  } catch (e) {
+    console.error('[Firebase] finishMatch error:', e);
+    throw e;
+  }
 }
 
 /**
@@ -1007,13 +1031,13 @@ export async function batchDeleteMatches(matchIds: string[]): Promise<number> {
 export function getMatchTournamentSlot(m: MatchItem): 'QF1' | 'QF2' | 'QF3' | 'QF4' | 'SF1' | 'SF2' | 'FINAL' | 'BRONZE' | null {
   if (m.tournamentSlot) return m.tournamentSlot;
   const str = `${m.round || ''} ${m.title || ''}`;
-  if (str.includes('8강 1') || str.includes('준준결승 1') || str.includes('QF1')) return 'QF1';
-  if (str.includes('8강 2') || str.includes('준준결승 2') || str.includes('QF2')) return 'QF2';
-  if (str.includes('8강 3') || str.includes('준준결승 3') || str.includes('QF3')) return 'QF3';
-  if (str.includes('8강 4') || str.includes('준준결승 4') || str.includes('QF4')) return 'QF4';
-  if ((str.includes('4강 1') || str.includes('준결승 1') || str.includes('SF1')) && !str.includes('결승전')) return 'SF1';
-  if ((str.includes('4강 2') || str.includes('준결승 2') || str.includes('SF2')) && !str.includes('결승전')) return 'SF2';
-  if (str.includes('3·4위') || str.includes('3위') || str.includes('BRONZE')) return 'BRONZE';
+  if (str.includes('8강 1') || str.includes('8강1') || str.includes('준준결승 1') || str.includes('8강 A') || str.includes('8강A') || str.includes('QF1')) return 'QF1';
+  if (str.includes('8강 2') || str.includes('8강2') || str.includes('준준결승 2') || str.includes('8강 B') || str.includes('8강B') || str.includes('QF2')) return 'QF2';
+  if (str.includes('8강 3') || str.includes('8강3') || str.includes('준준결승 3') || str.includes('8강 C') || str.includes('8강C') || str.includes('QF3')) return 'QF3';
+  if (str.includes('8강 4') || str.includes('8강4') || str.includes('준준결승 4') || str.includes('8강 D') || str.includes('8강D') || str.includes('QF4')) return 'QF4';
+  if ((str.includes('4강 1') || str.includes('4강1') || str.includes('준결승 1') || str.includes('4강 A') || str.includes('4강A') || str.includes('SF1')) && !str.includes('결승전') && !str.includes('결승')) return 'SF1';
+  if ((str.includes('4강 2') || str.includes('4강2') || str.includes('준결승 2') || str.includes('4강 B') || str.includes('4강B') || str.includes('SF2')) && !str.includes('결승전') && !str.includes('결승')) return 'SF2';
+  if (str.includes('3·4위') || str.includes('3,4위') || str.includes('3위전') || str.includes('3위 결정전') || str.includes('BRONZE')) return 'BRONZE';
   if (str.includes('결승전') || str.includes('결승') || str.includes('FINAL')) return 'FINAL';
   return null;
 }
@@ -1029,110 +1053,274 @@ export function getMatchGrade(m: MatchItem): string {
   return '1';
 }
 
+export function getSportNameKorean(sport: SportType): string {
+  switch (sport) {
+    case 'soccer': return '축구';
+    case 'basketball': return '농구';
+    case 'dodgeball': return '피구';
+    case 'relay_male': return '남자 계주';
+    case 'relay_female': return '여자 계주';
+    case 'tug_of_war': return '줄다리기';
+    case 'group_rope': return '단체 줄넘기';
+    default: return sport;
+  }
+}
+
+export function getMatchWinner(m: MatchItem): { name: string; classId: string } | null {
+  if (m.status !== 'FINISHED') return null;
+  const home = Number(m.homeScore) || 0;
+  const away = Number(m.awayScore) || 0;
+  if (home > away) {
+    return { name: m.homeTeam, classId: m.homeClass };
+  } else if (away > home) {
+    return { name: m.awayTeam, classId: m.awayClass };
+  }
+  return null;
+}
+
+export function getMatchLoser(m: MatchItem): { name: string; classId: string } | null {
+  if (m.status !== 'FINISHED') return null;
+  const home = Number(m.homeScore) || 0;
+  const away = Number(m.awayScore) || 0;
+  if (home > away) {
+    return { name: m.awayTeam, classId: m.awayClass };
+  } else if (away > home) {
+    return { name: m.homeTeam, classId: m.homeClass };
+  }
+  return null;
+}
+
+export interface RoundCompletionStatus {
+  sport: SportType;
+  grade: string;
+  roundType: 'QF' | 'SF';
+  roundLabel: string;
+  total: number;
+  finished: number;
+  isComplete: boolean;
+  matches: MatchItem[];
+  missingWinners: MatchItem[];
+}
+
+export function getRoundCompletionStatus(
+  matches: MatchItem[],
+  sport: SportType,
+  grade: string,
+  roundType: 'QF' | 'SF'
+): RoundCompletionStatus {
+  const roundLabel = roundType === 'QF' ? '8강전' : '4강전';
+  const targetMatches = matches.filter((m) => {
+    if (m.sport !== sport) return false;
+    if (getMatchGrade(m) !== grade) return false;
+    const slot = getMatchTournamentSlot(m);
+    if (roundType === 'QF') {
+      return (
+        slot === 'QF1' ||
+        slot === 'QF2' ||
+        slot === 'QF3' ||
+        slot === 'QF4' ||
+        ((Boolean(m.round?.includes('8강') || m.title?.includes('8강'))) && !m.round?.includes('4강'))
+      );
+    } else {
+      return (
+        slot === 'SF1' ||
+        slot === 'SF2' ||
+        ((Boolean(m.round?.includes('4강') || m.round?.includes('준결승') || m.title?.includes('4강') || m.title?.includes('준결승'))) &&
+          !m.round?.includes('8강') &&
+          !m.round?.includes('결승') &&
+          !m.title?.includes('결승'))
+      );
+    }
+  });
+
+  const total = targetMatches.length;
+  // A match is finished only when status is 'FINISHED' and a winner is decided
+  const finishedMatches = targetMatches.filter(
+    (m) => m.status === 'FINISHED' && (Number(m.homeScore) || 0) !== (Number(m.awayScore) || 0)
+  );
+  const missingWinners = targetMatches.filter(
+    (m) => m.status !== 'FINISHED' || (Number(m.homeScore) || 0) === (Number(m.awayScore) || 0)
+  );
+
+  const isComplete = total > 0 && finishedMatches.length === total;
+
+  return {
+    sport,
+    grade,
+    roundType,
+    roundLabel,
+    total,
+    finished: finishedMatches.length,
+    isComplete,
+    matches: targetMatches,
+    missingWinners
+  };
+}
+
+/**
+ * Synchronizes tournament bracket advancement when all matches in a round (n강) are finished.
+ * Complies with user mandate: "토너먼트 기준으로 할 때, n강이 다 끝났을 때 자동으로 되게 해줄래? 모든 종목 포함."
+ */
+export async function syncCompletedTournamentRounds(
+  allMatches: MatchItem[]
+): Promise<{ updatedCount: number; logs: string[]; pendingInfo: string[] }> {
+  if (!allMatches || allMatches.length === 0) {
+    return { updatedCount: 0, logs: [], pendingInfo: [] };
+  }
+
+  let totalUpdated = 0;
+  const allLogs: string[] = [];
+  const pendingInfo: string[] = [];
+
+  // Identify all tournament groups by (sport, grade)
+  const sportGradePairs = new Set<string>();
+  for (const m of allMatches) {
+    if (m.matchType === 'tournament' || ['soccer', 'basketball', 'dodgeball', 'tug_of_war'].includes(m.sport)) {
+      const grade = getMatchGrade(m);
+      sportGradePairs.add(`${m.sport}__${grade}`);
+    }
+  }
+
+  for (const pair of sportGradePairs) {
+    const [sportKey, grade] = pair.split('__') as [SportType, string];
+    const sportMetaLabel = getSportNameKorean(sportKey);
+
+    // -------------------------------------------------------------
+    // 1. 8강 (Quarterfinals) Check:
+    // Only advance when ALL 8강 matches are completely finished!
+    // -------------------------------------------------------------
+    const qfStatus = getRoundCompletionStatus(allMatches, sportKey, grade, 'QF');
+    if (qfStatus.total > 0) {
+      if (qfStatus.isComplete) {
+        // Find QF1, QF2, QF3, QF4
+        const qf1 = qfStatus.matches.find((m) => getMatchTournamentSlot(m) === 'QF1') || qfStatus.matches[0];
+        const qf2 = qfStatus.matches.find((m) => getMatchTournamentSlot(m) === 'QF2') || qfStatus.matches[1];
+        const qf3 = qfStatus.matches.find((m) => getMatchTournamentSlot(m) === 'QF3') || qfStatus.matches[2];
+        const qf4 = qfStatus.matches.find((m) => getMatchTournamentSlot(m) === 'QF4') || qfStatus.matches[3];
+
+        // Targets: SF1 and SF2
+        const sf1 = allMatches.find(
+          (m) => m.sport === sportKey && getMatchGrade(m) === grade && getMatchTournamentSlot(m) === 'SF1'
+        );
+        const sf2 = allMatches.find(
+          (m) => m.sport === sportKey && getMatchGrade(m) === grade && getMatchTournamentSlot(m) === 'SF2'
+        );
+
+        // SF1: QF1 winner (Home) vs QF2 winner (Away)
+        if (sf1 && qf1 && qf2) {
+          const w1 = getMatchWinner(qf1);
+          const w2 = getMatchWinner(qf2);
+          if (w1 && (sf1.homeTeam !== w1.name || sf1.homeClass !== w1.classId)) {
+            await updateMatch(sf1.id, { homeTeam: w1.name, homeClass: w1.classId });
+            totalUpdated++;
+            allLogs.push(`[${grade}학년 ${sportMetaLabel} 8강 전 경기 종료] 8강 1경기 승자 ${w1.name} → 4강 1경기(홈) 자동 진출`);
+          }
+          if (w2 && (sf1.awayTeam !== w2.name || sf1.awayClass !== w2.classId)) {
+            await updateMatch(sf1.id, { awayTeam: w2.name, awayClass: w2.classId });
+            totalUpdated++;
+            allLogs.push(`[${grade}학년 ${sportMetaLabel} 8강 전 경기 종료] 8강 2경기 승자 ${w2.name} → 4강 1경기(원정) 자동 진출`);
+          }
+        }
+
+        // SF2: QF3 winner (Home) vs QF4 winner (Away)
+        if (sf2 && qf3 && qf4) {
+          const w3 = getMatchWinner(qf3);
+          const w4 = getMatchWinner(qf4);
+          if (w3 && (sf2.homeTeam !== w3.name || sf2.homeClass !== w3.classId)) {
+            await updateMatch(sf2.id, { homeTeam: w3.name, homeClass: w3.classId });
+            totalUpdated++;
+            allLogs.push(`[${grade}학년 ${sportMetaLabel} 8강 전 경기 종료] 8강 3경기 승자 ${w3.name} → 4강 2경기(홈) 자동 진출`);
+          }
+          if (w4 && (sf2.awayTeam !== w4.name || sf2.awayClass !== w4.classId)) {
+            await updateMatch(sf2.id, { awayTeam: w4.name, awayClass: w4.classId });
+            totalUpdated++;
+            allLogs.push(`[${grade}학년 ${sportMetaLabel} 8강 전 경기 종료] 8강 4경기 승자 ${w4.name} → 4강 2경기(원정) 자동 진출`);
+          }
+        }
+      } else {
+        pendingInfo.push(
+          `[${grade}학년 ${sportMetaLabel}] 8강전 진행중 (${qfStatus.finished}/${qfStatus.total} 완료) - 전 경기 종료 시 4강으로 자동 진출합니다.`
+        );
+      }
+    }
+
+    // -------------------------------------------------------------
+    // 2. 4강 (Semifinals) Check:
+    // Only advance when ALL 4강 matches are completely finished!
+    // -------------------------------------------------------------
+    const sfStatus = getRoundCompletionStatus(allMatches, sportKey, grade, 'SF');
+    if (sfStatus.total > 0) {
+      if (sfStatus.isComplete) {
+        const sf1 = sfStatus.matches.find((m) => getMatchTournamentSlot(m) === 'SF1') || sfStatus.matches[0];
+        const sf2 = sfStatus.matches.find((m) => getMatchTournamentSlot(m) === 'SF2') || sfStatus.matches[1];
+
+        const finalMatch = allMatches.find(
+          (m) => m.sport === sportKey && getMatchGrade(m) === grade && getMatchTournamentSlot(m) === 'FINAL'
+        );
+        const bronzeMatch = allMatches.find(
+          (m) => m.sport === sportKey && getMatchGrade(m) === grade && getMatchTournamentSlot(m) === 'BRONZE'
+        );
+
+        if (sf1 && sf2) {
+          const w1 = getMatchWinner(sf1);
+          const l1 = getMatchLoser(sf1);
+          const w2 = getMatchWinner(sf2);
+          const l2 = getMatchLoser(sf2);
+
+          // Final: SF1 Winner (Home) vs SF2 Winner (Away)
+          if (finalMatch && w1 && (finalMatch.homeTeam !== w1.name || finalMatch.homeClass !== w1.classId)) {
+            await updateMatch(finalMatch.id, { homeTeam: w1.name, homeClass: w1.classId });
+            totalUpdated++;
+            allLogs.push(`[${grade}학년 ${sportMetaLabel} 4강 전 경기 종료] 4강 1경기 승자 ${w1.name} → 결승전(홈) 자동 진출`);
+          }
+          if (finalMatch && w2 && (finalMatch.awayTeam !== w2.name || finalMatch.awayClass !== w2.classId)) {
+            await updateMatch(finalMatch.id, { awayTeam: w2.name, awayClass: w2.classId });
+            totalUpdated++;
+            allLogs.push(`[${grade}학년 ${sportMetaLabel} 4강 전 경기 종료] 4강 2경기 승자 ${w2.name} → 결승전(원정) 자동 진출`);
+          }
+
+          // Bronze (3·4위전): SF1 Loser (Home) vs SF2 Loser (Away)
+          if (bronzeMatch && l1 && (bronzeMatch.homeTeam !== l1.name || bronzeMatch.homeClass !== l1.classId)) {
+            await updateMatch(bronzeMatch.id, { homeTeam: l1.name, homeClass: l1.classId });
+            totalUpdated++;
+            allLogs.push(`[${grade}학년 ${sportMetaLabel} 4강 전 경기 종료] 4강 1경기 패자 ${l1.name} → 3·4위전(홈) 자동 배정`);
+          }
+          if (bronzeMatch && l2 && (bronzeMatch.awayTeam !== l2.name || bronzeMatch.awayClass !== l2.classId)) {
+            await updateMatch(bronzeMatch.id, { awayTeam: l2.name, awayClass: l2.classId });
+            totalUpdated++;
+            allLogs.push(`[${grade}학년 ${sportMetaLabel} 4강 전 경기 종료] 4강 2경기 패자 ${l2.name} → 3·4위전(원정) 자동 배정`);
+          }
+        }
+      } else {
+        pendingInfo.push(
+          `[${grade}학년 ${sportMetaLabel}] 4강전 진행중 (${sfStatus.finished}/${sfStatus.total} 완료) - 전 경기 종료 시 결승전 및 3·4위전으로 자동 진출합니다.`
+        );
+      }
+    }
+  }
+
+  return { updatedCount: totalUpdated, logs: allLogs, pendingInfo };
+}
+
+/**
+ * Legacy/Single-match manual advance helper - retained for backwards compatibility or single match override
+ */
 export async function advanceTournamentRound(
   completedMatch: MatchItem,
   allMatches: MatchItem[]
 ): Promise<{ updatedCount: number; messages: string[] }> {
-  const slot = getMatchTournamentSlot(completedMatch);
-  if (!slot || slot === 'FINAL' || slot === 'BRONZE') {
-    return { updatedCount: 0, messages: [] };
-  }
-
-  let winner: { name: string; classId: string } | null = null;
-  let loser: { name: string; classId: string } | null = null;
-
-  if (completedMatch.homeScore > completedMatch.awayScore) {
-    winner = { name: completedMatch.homeTeam, classId: completedMatch.homeClass };
-    loser = { name: completedMatch.awayTeam, classId: completedMatch.awayClass };
-  } else if (completedMatch.awayScore > completedMatch.homeScore) {
-    winner = { name: completedMatch.awayTeam, classId: completedMatch.awayClass };
-    loser = { name: completedMatch.homeTeam, classId: completedMatch.homeClass };
-  } else {
-    return { updatedCount: 0, messages: [] };
-  }
-
-  const matchGrade = getMatchGrade(completedMatch);
-  const sameContextMatches = allMatches.filter(
-    (m) => m.id !== completedMatch.id && m.sport === completedMatch.sport && getMatchGrade(m) === matchGrade
-  );
-
-  let updatedCount = 0;
-  const messages: string[] = [];
-
-  if (slot === 'QF1') {
-    const target = sameContextMatches.find((m) => getMatchTournamentSlot(m) === 'SF1');
-    if (target && (target.homeTeam !== winner.name || target.homeClass !== winner.classId)) {
-      await updateMatch(target.id, { homeTeam: winner.name, homeClass: winner.classId });
-      updatedCount++;
-      messages.push(`[8강 1경기 승자 ${winner.name}] → 4강 1경기(홈) 자동 진출`);
-    }
-  } else if (slot === 'QF2') {
-    const target = sameContextMatches.find((m) => getMatchTournamentSlot(m) === 'SF1');
-    if (target && (target.awayTeam !== winner.name || target.awayClass !== winner.classId)) {
-      await updateMatch(target.id, { awayTeam: winner.name, awayClass: winner.classId });
-      updatedCount++;
-      messages.push(`[8강 2경기 승자 ${winner.name}] → 4강 1경기(원정) 자동 진출`);
-    }
-  } else if (slot === 'QF3') {
-    const target = sameContextMatches.find((m) => getMatchTournamentSlot(m) === 'SF2');
-    if (target && (target.homeTeam !== winner.name || target.homeClass !== winner.classId)) {
-      await updateMatch(target.id, { homeTeam: winner.name, homeClass: winner.classId });
-      updatedCount++;
-      messages.push(`[8강 3경기 승자 ${winner.name}] → 4강 2경기(홈) 자동 진출`);
-    }
-  } else if (slot === 'QF4') {
-    const target = sameContextMatches.find((m) => getMatchTournamentSlot(m) === 'SF2');
-    if (target && (target.awayTeam !== winner.name || target.awayClass !== winner.classId)) {
-      await updateMatch(target.id, { awayTeam: winner.name, awayClass: winner.classId });
-      updatedCount++;
-      messages.push(`[8강 4경기 승자 ${winner.name}] → 4강 2경기(원정) 자동 진출`);
-    }
-  } else if (slot === 'SF1') {
-    const finalTarget = sameContextMatches.find((m) => getMatchTournamentSlot(m) === 'FINAL');
-    if (finalTarget && (finalTarget.homeTeam !== winner.name || finalTarget.homeClass !== winner.classId)) {
-      await updateMatch(finalTarget.id, { homeTeam: winner.name, homeClass: winner.classId });
-      updatedCount++;
-      messages.push(`[4강 1경기 승자 ${winner.name}] → 결승전(홈) 자동 진출`);
-    }
-    const bronzeTarget = sameContextMatches.find((m) => getMatchTournamentSlot(m) === 'BRONZE');
-    if (bronzeTarget && loser && (bronzeTarget.homeTeam !== loser.name || bronzeTarget.homeClass !== loser.classId)) {
-      await updateMatch(bronzeTarget.id, { homeTeam: loser.name, homeClass: loser.classId });
-      updatedCount++;
-      messages.push(`[4강 1경기 패자 ${loser.name}] → 3·4위전(홈) 자동 배정`);
-    }
-  } else if (slot === 'SF2') {
-    const finalTarget = sameContextMatches.find((m) => getMatchTournamentSlot(m) === 'FINAL');
-    if (finalTarget && (finalTarget.awayTeam !== winner.name || finalTarget.awayClass !== winner.classId)) {
-      await updateMatch(finalTarget.id, { awayTeam: winner.name, awayClass: winner.classId });
-      updatedCount++;
-      messages.push(`[4강 2경기 승자 ${winner.name}] → 결승전(원정) 자동 진출`);
-    }
-    const bronzeTarget = sameContextMatches.find((m) => getMatchTournamentSlot(m) === 'BRONZE');
-    if (bronzeTarget && loser && (bronzeTarget.awayTeam !== loser.name || bronzeTarget.awayClass !== loser.classId)) {
-      await updateMatch(bronzeTarget.id, { awayTeam: loser.name, awayClass: loser.classId });
-      updatedCount++;
-      messages.push(`[4강 2경기 패자 ${loser.name}] → 3·4위전(원정) 자동 배정`);
-    }
-  }
-
-  return { updatedCount, messages };
+  // Delegate to round-completion sync
+  const res = await syncCompletedTournamentRounds(allMatches);
+  return { updatedCount: res.updatedCount, messages: res.logs };
 }
 
-export async function syncAllTournamentAdvancements(allMatches: MatchItem[]): Promise<{ updatedCount: number; logs: string[] }> {
-  let totalUpdated = 0;
-  const allLogs: string[] = [];
-
-  const eligible = allMatches.filter(
-    (m) => (m.status === 'FINISHED' || m.status === 'LIVE') && m.homeScore !== m.awayScore
-  );
-
-  for (const match of eligible) {
-    const res = await advanceTournamentRound(match, allMatches);
-    totalUpdated += res.updatedCount;
-    allLogs.push(...res.messages);
-  }
-
-  return { updatedCount: totalUpdated, logs: allLogs };
+/**
+ * Universal tournament advancement synchronizer for all sports and grades
+ */
+export async function syncAllTournamentAdvancements(
+  allMatches: MatchItem[]
+): Promise<{ updatedCount: number; logs: string[]; pendingInfo: string[] }> {
+  return await syncCompletedTournamentRounds(allMatches);
 }
 
 export async function updateScoreWithAudit(
@@ -1187,7 +1375,7 @@ export async function updateScoreWithAudit(
       newValue: newScoreStr,
       timestamp: new Date().toISOString()
     };
-    await setDoc(doc(auditRef, logItem.id), logItem);
+    await setDoc(doc(auditRef, logItem.id), sanitizeFirestorePayload(logItem));
   } catch (err) {
     console.warn('[Firebase Audit] Failed to record audit log:', err);
   }
@@ -1365,7 +1553,7 @@ export function listenLineups(callback: (lineups: ClassLineup[]) => void): () =>
 
 export async function saveLineup(lineup: ClassLineup): Promise<void> {
   const docRef = doc(db, 'lineups', lineup.id);
-  await setDoc(docRef, lineup, { merge: true });
+  await setDoc(docRef, sanitizeFirestorePayload(lineup), { merge: true });
 }
 
 // -------------------------------------------------------------
@@ -1545,7 +1733,7 @@ export async function sendCheerMessage(
       message,
       createdAt: formatKSTTime(new Date())
     };
-    await setDoc(docRef, item);
+    await setDoc(docRef, sanitizeFirestorePayload(item));
   } catch (e) {
     console.error('[Firebase] sendCheerMessage error:', e);
   }
@@ -1582,11 +1770,11 @@ export function listenInjuries(callback: (injuries: InjuryEntry[]) => void): () 
 export async function saveInjuryEntry(injury: InjuryEntry): Promise<void> {
   const docRef = doc(db, 'injuries', injury.id);
   const now = new Date().toISOString();
-  await setDoc(docRef, {
+  await setDoc(docRef, sanitizeFirestorePayload({
     ...injury,
     createdAt: injury.createdAt || now,
     updatedAt: now
-  }, { merge: true });
+  }), { merge: true });
 }
 
 export async function deleteInjuryEntry(injuryId: string): Promise<void> {
@@ -1695,10 +1883,10 @@ export function listenFestivalConfig(callback: (config: FestivalConfig | null) =
 
 export async function updateFestivalConfig(config: Partial<FestivalConfig>): Promise<void> {
   const docRef = doc(db, 'system', 'festival');
-  await setDoc(docRef, {
+  await setDoc(docRef, sanitizeFirestorePayload({
     ...config,
     updatedAt: new Date().toISOString()
-  }, { merge: true });
+  }), { merge: true });
 }
 
 // -------------------------------------------------------------
@@ -1739,11 +1927,11 @@ export async function createAccount(profile: UserProfile): Promise<boolean> {
       return false; // Duplicate
     }
     const docRef = doc(db, 'users', profile.studentId);
-    await setDoc(docRef, {
+    await setDoc(docRef, sanitizeFirestorePayload({
       ...profile,
       createdAt: new Date().toISOString(),
       lastLogin: new Date().toISOString()
-    });
+    }));
     return true;
   } catch (e) {
     console.error('[Firebase] createAccount error:', e);
@@ -1825,10 +2013,10 @@ export async function submitMVPVote(vote: MVPVote): Promise<void> {
   try {
     await ensureFirebaseAuth();
     const voteDocRef = doc(db, 'mvp_votes', `${vote.matchId}_${vote.voterStudentId}`);
-    await setDoc(voteDocRef, {
+    await setDoc(voteDocRef, sanitizeFirestorePayload({
       ...vote,
       createdAt: new Date().toISOString()
-    });
+    }));
   } catch (e) {
     console.error('[Firebase] submitMVPVote error:', e);
     throw e;
@@ -1857,7 +2045,7 @@ export async function setMatchReminder(reminder: MatchReminderItem): Promise<voi
   try {
     await ensureFirebaseAuth();
     const docRef = doc(db, 'reminders', `${reminder.studentId}_${reminder.matchId}`);
-    await setDoc(docRef, reminder);
+    await setDoc(docRef, sanitizeFirestorePayload(reminder));
   } catch (e) {
     console.error('[Firebase] setMatchReminder error:', e);
   }
@@ -2072,7 +2260,7 @@ export async function submitLoginInquiry(inquiry: {
     status: 'PENDING',
     createdAt: new Date().toISOString()
   };
-  await setDoc(docRef, data);
+  await setDoc(docRef, sanitizeFirestorePayload(data));
   return id;
 }
 
@@ -2222,7 +2410,7 @@ export async function resetAppDocument(docId: string, operatorName: string = '�
   };
 
   const docRef = doc(db, 'app_documents', docId);
-  await setDoc(docRef, restoredDoc);
+  await setDoc(docRef, sanitizeFirestorePayload(restoredDoc));
   return restoredDoc;
 }
 

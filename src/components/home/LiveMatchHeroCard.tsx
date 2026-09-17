@@ -11,7 +11,7 @@ export interface LiveMatchHeroCardProps {
   isVoting?: boolean;
   onOpenLiveScore?: () => void;
   onCheerReaction?: (reactionType: 'fire' | 'clap' | 'heart' | 'cheer') => void;
-  onToggleReminder?: (matchId: string) => void;
+  onToggleReminder?: (matchOrId: any) => void;
   isReminderSet?: boolean;
 }
 

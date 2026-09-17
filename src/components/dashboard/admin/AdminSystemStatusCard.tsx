@@ -14,6 +14,9 @@ export interface AdminSystemStatusCardProps {
   totalMatchesCount?: number;
   completedMatchesCount?: number;
   pendingMatchesCount?: number;
+  userCount?: number;
+  matchCount?: number;
+  inquiryCount?: number;
 }
 
 export const AdminSystemStatusCard: React.FC<AdminSystemStatusCardProps> = ({
@@ -22,8 +25,13 @@ export const AdminSystemStatusCard: React.FC<AdminSystemStatusCardProps> = ({
   unregisteredMembersCount,
   totalMatchesCount,
   completedMatchesCount,
-  pendingMatchesCount
+  pendingMatchesCount,
+  userCount,
+  matchCount,
+  inquiryCount
 }) => {
+  const displayMembers = totalMembersCount ?? userCount ?? 0;
+  const displayMatches = totalMatchesCount ?? matchCount ?? 0;
   return (
     <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/90 p-5 shadow-xs transition-all space-y-4">
       <div className="flex items-center gap-2">

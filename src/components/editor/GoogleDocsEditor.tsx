@@ -1233,7 +1233,7 @@ export const GoogleDocsEditor: React.FC<GoogleDocsEditorProps> = ({
                 fontFamily: currentFont,
                 lineHeight: 1.6
               }}
-              placeholder="내용을 입력하거나 서식을 적용하세요..."
+              data-placeholder="내용을 입력하거나 서식을 적용하세요..."
             />
           </div>
         </main>

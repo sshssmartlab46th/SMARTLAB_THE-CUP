@@ -30,10 +30,12 @@ import { ImageLightboxModal } from '../common/ImageLightboxModal';
 
 interface MessagesPageProps {
   currentUser: UserProfile | null;
+  onOpenLogin?: () => void;
 }
 
 export const MessagesPage: React.FC<MessagesPageProps> = ({
-  currentUser
+  currentUser,
+  onOpenLogin
 }) => {
   const [activeTab, setActiveTab] = useState<'inbox' | 'sent' | 'compose'>('inbox');
   const [messages, setMessages] = useState<DirectMessage[]>([]);
