@@ -426,3 +426,41 @@ export interface LoginInquiry {
   resolvedBy?: string;
 }
 
+export type AppDocId = 'rules' | 'smartlab' | 'privacy' | 'terms' | string;
+
+export interface AppDocumentSection {
+  id: string;
+  title: string;
+  badge?: string;
+  icon?: string;
+  items?: string[];
+  content?: string;
+  imageUrl?: string;
+  imageCaption?: string;
+}
+
+export interface AppDocumentGalleryImage {
+  id: string;
+  url: string;
+  title?: string;
+  caption?: string;
+  uploadedAt?: string;
+}
+
+export interface AppDocument {
+  id: AppDocId;
+  title: string;
+  subtitle: string;
+  badge?: string;
+  content?: string;
+  coverImage?: string;
+  images?: string[];
+  gallery?: AppDocumentGalleryImage[];
+  sections?: AppDocumentSection[];
+  footerNote?: string;
+  customCredits?: string;
+  updatedAt: string;
+  updatedBy: string;
+  version?: number;
+}
+

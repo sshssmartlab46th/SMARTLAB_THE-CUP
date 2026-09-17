@@ -22,9 +22,13 @@ export const FormationInputPage: React.FC<FormationInputPageProps> = ({
   // Normalize user class
   const activeClassNum = currentUser?.classNum || (userClass.length === 3 ? userClass.slice(1) : userClass.replace(/[^\d]/g, '').slice(-2)) || '02';
 
-  // Filter players in this class
+  // Filter players in this class & deduplicate by studentId
+  const seenStudentIds = new Set<string>();
   const classPlayers = allUsers.filter(u => {
     if (u.isTeacher || u.studentNum === '00') return false;
+    const sId = (u.studentId || u.uid || '').trim();
+    if (!sId || seenStudentIds.has(sId)) return false;
+    seenStudentIds.add(sId);
     const gradeMatch = currentUser?.grade ? u.grade === currentUser.grade : true;
     const classMatch = u.classNum === activeClassNum || u.classNum === userClass;
     return gradeMatch && classMatch;

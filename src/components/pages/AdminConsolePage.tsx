@@ -23,7 +23,8 @@ import {
   LayoutDashboard, 
   Bell,
   MessageSquare,
-  HelpCircle
+  HelpCircle,
+  BookOpen
 } from 'lucide-react';
 import { AdminLoginInquiriesTab } from '../admin/AdminLoginInquiriesTab';
 import { 
@@ -41,6 +42,7 @@ import { AdminStudentRosterTab } from '../admin/AdminStudentRosterTab';
 import { AdminBracketManagerTab } from '../admin/AdminBracketManagerTab';
 import { AdminPointsConfigTab } from '../admin/AdminPointsConfigTab';
 import { AdminNoticeManagerTab } from '../admin/AdminNoticeManagerTab';
+import { AdminDocumentManagerTab } from '../admin/AdminDocumentManagerTab';
 import { NoticeItem } from '../../types';
 
 interface AdminConsolePageProps {
@@ -49,6 +51,7 @@ interface AdminConsolePageProps {
   auditLogs: AuditLogEntry[];
   inquiries: SuggestionItem[];
   festivalConfig: FestivalConfig | null;
+  currentUser?: UserProfile | null;
   onRefresh?: () => void;
 }
 
@@ -57,9 +60,10 @@ export const AdminConsolePage: React.FC<AdminConsolePageProps> = ({
   notices = [],
   auditLogs,
   inquiries,
-  festivalConfig
+  festivalConfig,
+  currentUser
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'overview' | 'roster' | 'brackets' | 'notices' | 'points' | 'audit' | 'login_inquiries'>('roster');
+  const [activeSubTab, setActiveSubTab] = useState<'overview' | 'roster' | 'brackets' | 'notices' | 'documents' | 'points' | 'audit' | 'login_inquiries'>('roster');
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
   const [scoreRequests, setScoreRequests] = useState<ScoreApprovalRequestItem[]>([]);
   const [noticeMessage, setNoticeMessage] = useState<string | null>(null);
@@ -338,6 +342,7 @@ export const AdminConsolePage: React.FC<AdminConsolePageProps> = ({
             { key: 'roster', label: '반별 학생 명단 & 엑셀', icon: Users },
             { key: 'brackets', label: '대진표 관리 (남녀 구분)', icon: Trophy },
             { key: 'notices', label: '전교 공지사항 관리', icon: Bell },
+            { key: 'documents', label: '규정집 & 공식 문서 관리', icon: BookOpen },
             { key: 'points', label: '종목별 배점 설정', icon: Trophy },
             { key: 'overview', label: '종합 관제', icon: LayoutDashboard },
             { key: 'audit', label: '감사 로그', icon: History },
@@ -392,6 +397,13 @@ export const AdminConsolePage: React.FC<AdminConsolePageProps> = ({
         <AdminNoticeManagerTab
           notices={notices}
           onNotice={handleNotice}
+        />
+      )}
+
+      {/* Official Documents Subtab: Rules, Smartlab About, Privacy Policy, Terms */}
+      {activeSubTab === 'documents' && (
+        <AdminDocumentManagerTab
+          currentUser={currentUser}
         />
       )}
 

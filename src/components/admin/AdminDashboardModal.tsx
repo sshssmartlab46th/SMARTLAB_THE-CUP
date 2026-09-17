@@ -10,8 +10,9 @@ import {
 } from '../../services/firebaseService';
 import { getRoleBadgeInfo } from '../../utils/studentIdParser';
 import { formatKSTDateTime } from '../../utils/kstTime';
-import { Shield, Users, FileText, ToggleLeft, ToggleRight, Trash2, Check, X, Search, ShieldAlert, HelpCircle } from 'lucide-react';
+import { Shield, Users, FileText, ToggleLeft, ToggleRight, Trash2, Check, X, Search, ShieldAlert, HelpCircle, BookOpen } from 'lucide-react';
 import { AdminLoginInquiriesTab } from './AdminLoginInquiriesTab';
+import { AdminDocumentManagerTab } from './AdminDocumentManagerTab';
 
 interface AdminDashboardModalProps {
   currentUser: UserProfile;
@@ -24,7 +25,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
   isOpen,
   onClose
 }) => {
-  const [activeTab, setActiveTab] = useState<'system' | 'users' | 'audit' | 'inquiries'>('system');
+  const [activeTab, setActiveTab] = useState<'system' | 'users' | 'documents' | 'audit' | 'inquiries'>('system');
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
   const [festivalConfig, setFestivalConfig] = useState<FestivalConfig | null>(null);
@@ -79,9 +80,13 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
     setTimeout(() => setActionSuccess(null), 3000);
   };
 
+  const seenStudentIds = new Set<string>();
   const filteredUsers = users.filter((u) => {
+    const sId = (u.studentId || u.uid || '').trim();
+    if (!sId || seenStudentIds.has(sId)) return false;
+    seenStudentIds.add(sId);
     const q = searchQuery.toLowerCase();
-    return u.studentId.includes(q) || u.name.toLowerCase().includes(q) || u.role.includes(q);
+    return (u.studentId || '').includes(q) || (u.name || '').toLowerCase().includes(q) || (u.role || '').includes(q);
   });
 
   return (
@@ -142,6 +147,19 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
           >
             <Users className="w-3.5 h-3.5" />
             학번/회원 및 권한 관리 ({users.length}명)
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('documents')}
+            className={`px-3.5 py-1.5 rounded-lg font-bold flex items-center gap-1.5 transition ${
+              activeTab === 'documents'
+                ? 'bg-amber-500 text-white'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+            }`}
+          >
+            <BookOpen className="w-3.5 h-3.5" />
+            규정집 및 문서 관리
           </button>
 
           <button
@@ -240,10 +258,10 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {filteredUsers.map((u) => {
+                    {filteredUsers.map((u, idx) => {
                       const badge = getRoleBadgeInfo(u.role);
                       return (
-                        <tr key={u.studentId} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
+                        <tr key={`${u.studentId || 'u'}-${u.uid || idx}`} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
                           <td className="p-3 font-mono font-bold text-slate-900 dark:text-white">
                             {u.studentId}
                           </td>
@@ -342,6 +360,12 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                   ))
                 )}
               </div>
+            </div>
+          )}
+
+          {activeTab === 'documents' && (
+            <div className="space-y-4">
+              <AdminDocumentManagerTab currentUser={currentUser} />
             </div>
           )}
 

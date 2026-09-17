@@ -107,8 +107,7 @@ export const ContactInquiryPage: React.FC<ContactInquiryPageProps> = ({
         title: title.trim(),
         content: content.trim(),
         category: category,
-        imageUrl: attachedImage || undefined,
-        images: attachedImage ? [attachedImage] : undefined,
+        ...(attachedImage ? { imageUrl: attachedImage, images: [attachedImage] } : {}),
         authorName: currentUser?.name || '익명 학우',
         authorGrade: currentUser?.grade || '전체',
         authorClass: currentUser?.classNum || '0'

@@ -82,8 +82,15 @@ export const DirectMessageModal: React.FC<DirectMessageModalProps> = ({
     );
   }
 
-  // Filter users by active category
-  const categoryUsers = users.filter((u) => u.role === activeCategory);
+  // Filter users by active category and deduplicate by studentId
+  const seenStudentIds = new Set<string>();
+  const categoryUsers = users.filter((u) => {
+    if (u.role !== activeCategory) return false;
+    const sId = (u.studentId || u.uid || '').trim();
+    if (!sId || seenStudentIds.has(sId)) return false;
+    seenStudentIds.add(sId);
+    return true;
+  });
 
   const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -117,8 +124,7 @@ export const DirectMessageModal: React.FC<DirectMessageModalProps> = ({
         toClass: selectedRecipient === 'ALL' ? 'all' : selectedRecipient,
         toRole: activeCategory,
         content: messageText.trim(),
-        imageUrl: attachedImage || undefined,
-        images: attachedImage ? [attachedImage] : undefined
+        ...(attachedImage ? { imageUrl: attachedImage, images: [attachedImage] } : {})
       });
 
       setMessageText('');
@@ -203,9 +209,9 @@ export const DirectMessageModal: React.FC<DirectMessageModalProps> = ({
             {categoryUsers.length === 0 ? (
               <p className="text-slate-400 text-[11px] p-2 text-center">해당 카테고리 구성원이 없습니다.</p>
             ) : (
-              categoryUsers.map((u) => (
+              categoryUsers.map((u, idx) => (
                 <button
-                  key={u.studentId}
+                  key={`${u.studentId || 'u'}-${u.uid || idx}`}
                   type="button"
                   onClick={() => setSelectedRecipient(u.studentId)}
                   className={`w-full text-left p-2 rounded-xl border transition ${

@@ -85,8 +85,8 @@ export const NoticesPage: React.FC<NoticesPageProps> = ({
         authorId: currentUser?.studentId || 'sshsgym',
         important,
         category,
-        linkUrl: linkUrl.trim() || undefined,
-        linkLabel: linkLabel.trim() || undefined
+        ...(linkUrl.trim() ? { linkUrl: linkUrl.trim() } : {}),
+        ...(linkLabel.trim() ? { linkLabel: linkLabel.trim() } : {})
       });
 
       setTitle('');

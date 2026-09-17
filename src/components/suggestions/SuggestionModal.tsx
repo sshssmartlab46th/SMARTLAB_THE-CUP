@@ -82,8 +82,7 @@ export const SuggestionModal: React.FC<SuggestionModalProps> = ({
         authorStudentId: currentUser.studentId,
         title: title.trim(),
         content: content.trim(),
-        imageUrl: attachedImage || undefined,
-        images: attachedImage ? [attachedImage] : undefined
+        ...(attachedImage ? { imageUrl: attachedImage, images: [attachedImage] } : {})
       });
       setTitle('');
       setContent('');

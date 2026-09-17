@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ShieldCheck, 
   Lock, 
@@ -16,12 +16,82 @@ import {
   ChevronRight, 
   Sparkles, 
   Layers,
-  Printer
+  Printer,
+  Edit3,
+  Save,
+  RotateCcw,
+  X
 } from 'lucide-react';
+import { UserProfile, AppDocument } from '../../types';
+import { listenAppDocument, saveAppDocument, resetAppDocument } from '../../services/firebaseService';
+import { DEFAULT_APP_DOCUMENTS } from '../../data/defaultDocuments';
+import { formatKSTDateTime } from '../../utils/kstTime';
 
-export const PrivacyPage: React.FC = () => {
+interface PrivacyPageProps {
+  currentUser?: UserProfile | null;
+  onNavigateToAdmin?: () => void;
+}
+
+export const PrivacyPage: React.FC<PrivacyPageProps> = ({
+  currentUser,
+  onNavigateToAdmin
+}) => {
+  const [docData, setDocData] = useState<AppDocument>(DEFAULT_APP_DOCUMENTS['privacy']);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editBuffer, setEditBuffer] = useState<AppDocument | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [activeArticle, setActiveArticle] = useState<string>('all');
+
+  const isAdmin = currentUser?.role === 'admin' || currentUser?.studentId === 'sshsgym';
+
+  useEffect(() => {
+    const unsub = listenAppDocument('privacy', (doc) => {
+      setDocData(doc);
+    });
+    return () => unsub();
+  }, []);
+
+  const handleStartEdit = () => {
+    setEditBuffer(JSON.parse(JSON.stringify(docData)));
+    setIsEditing(true);
+  };
+
+  const handleSave = async () => {
+    if (!editBuffer) return;
+    setIsSaving(true);
+    try {
+      const operatorName = currentUser?.name ? `${currentUser.name} (${currentUser.role === 'admin' ? '총괄관리자' : '운영진'})` : '총괄본부';
+      await saveAppDocument({
+        ...editBuffer,
+        updatedBy: operatorName
+      });
+      setIsEditing(false);
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (e) {
+      console.error(e);
+      alert('개인정보 처리방침 저장 중 오류가 발생했습니다.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleReset = async () => {
+    if (window.confirm('개인정보 처리방침을 기본 원문으로 복원하시겠습니까?')) {
+      setIsSaving(true);
+      try {
+        const restored = await resetAppDocument('privacy', currentUser?.name || '총괄 관리자');
+        setEditBuffer(JSON.parse(JSON.stringify(restored)));
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setIsSaving(false);
+      }
+    }
+  };
 
   const articles = [
     { id: 'art-1', title: '제1조 (목적 및 정의)' },
@@ -73,27 +143,127 @@ export const PrivacyPage: React.FC = () => {
             className="w-full h-full object-cover opacity-85"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent flex flex-col justify-end p-6 sm:p-8">
-            <div className="flex items-center gap-3 mb-2">
-              <img 
-                src="/images/sangsan_logo.png" 
-                alt="상산고등학교 교표" 
-                className="w-8 h-8 object-contain drop-shadow-md"
-              />
-              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-red-600 text-white tracking-wide">
-                상산고등학교 공식 규정
-              </span>
-              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-800/80 backdrop-blur-xs text-slate-300 border border-slate-700">
-                시행일: 2026. 09. 14
-              </span>
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
+              <div className="flex items-center gap-3">
+                <img 
+                  src="/images/sangsan_logo.png" 
+                  alt="상산고등학교 교표" 
+                  className="w-8 h-8 object-contain drop-shadow-md"
+                />
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-red-600 text-white tracking-wide">
+                  {docData.badge || '상산고등학교 공식 규정'}
+                </span>
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-800/80 backdrop-blur-xs text-slate-300 border border-slate-700">
+                  {docData.updatedAt ? `최종 개정: ${formatKSTDateTime(docData.updatedAt)}` : '시행일: 2026. 09. 14'}
+                </span>
+              </div>
+
+              {isAdmin && !isEditing && (
+                <button
+                  type="button"
+                  onClick={handleStartEdit}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition cursor-pointer shadow-xs"
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                  <span>방침 수정하기</span>
+                </button>
+              )}
             </div>
+
             <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white tracking-tight">
-              THE SANGSAN 서비스 이용약관 및 개인정보 처리방침
+              {docData.title}
             </h1>
             <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-2xl leading-relaxed">
-              상산고등학교 체육대회, 동아리 축제, 상산컵 등 연간 학내 행사 및 차기 대회 연속 운영을 위한 데이터 처리 및 프라이버시 보호 기준
+              {docData.subtitle || docData.content}
             </p>
           </div>
         </div>
+
+        {/* Admin Inline Edit Panel */}
+        {isEditing && editBuffer && (
+          <div className="p-6 bg-red-50/40 dark:bg-red-950/20 border-b border-red-200 dark:border-red-900/60 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Edit3 className="w-4 h-4 text-red-600" />
+                개인정보 처리방침 수정 모드
+              </h3>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  disabled={isSaving}
+                  className="flex items-center gap-1 px-3 py-1.5 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 cursor-pointer"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>원문 복원</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(false)}
+                  disabled={isSaving}
+                  className="px-3 py-1.5 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-xl cursor-pointer"
+                >
+                  취소
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer disabled:opacity-50"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>{isSaving ? '저장 중...' : '저장 완료'}</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  공식 규정 명칭
+                </label>
+                <input
+                  type="text"
+                  value={editBuffer.title}
+                  onChange={(e) => setEditBuffer({ ...editBuffer, title: e.target.value })}
+                  className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  상단 배지 표기
+                </label>
+                <input
+                  type="text"
+                  value={editBuffer.badge || ''}
+                  onChange={(e) => setEditBuffer({ ...editBuffer, badge: e.target.value })}
+                  className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                방침 목적 및 개요 설명
+              </label>
+              <textarea
+                rows={2}
+                value={editBuffer.subtitle || ''}
+                onChange={(e) => setEditBuffer({ ...editBuffer, subtitle: e.target.value })}
+                className="w-full mt-1 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs leading-relaxed"
+              />
+            </div>
+          </div>
+        )}
+
+        {saveSuccess && (
+          <div className="p-3 bg-emerald-500 text-white text-xs font-bold flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4" />
+              <span>개인정보 처리방침이 성공적으로 수정·저장되었습니다.</span>
+            </div>
+          </div>
+        )}
 
         {/* Core Principles Summary Bar */}
         <div className="grid grid-cols-2 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-slate-100 dark:divide-slate-800 p-4 bg-slate-50/70 dark:bg-slate-800/40 text-center text-xs">

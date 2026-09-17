@@ -108,8 +108,7 @@ export const SuggestionBoxPage: React.FC<SuggestionBoxPageProps> = ({
         title: titleFilter.filteredText,
         content: contentFilter.filteredText,
         category: category,
-        imageUrl: attachedImage || undefined,
-        images: attachedImage ? [attachedImage] : undefined,
+        ...(attachedImage ? { imageUrl: attachedImage, images: [attachedImage] } : {}),
         authorName: currentUser?.name || '익명 학우',
         authorGrade: currentUser?.grade || '전체',
         authorClass: currentUser?.classNum || '0'

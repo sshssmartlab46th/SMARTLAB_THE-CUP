@@ -62,10 +62,12 @@ export * from './matches/LiveMatchStatusView';
 export * from './matches/StandingsView';
 export * from './admin/AdminDashboardModal';
 export * from './admin/AdminNoticeManagerTab';
+export * from './admin/AdminDocumentManagerTab';
 
 // Dedicated Standalone Pages
 export * from './pages/LoginPage';
 export * from './pages/SchedulePage';
+export * from './pages/MatchSchedulePage';
 export * from './pages/PrivacyPage';
 export * from './pages/RulesPage';
 export * from './pages/AboutSmartlabPage';

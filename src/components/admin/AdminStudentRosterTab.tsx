@@ -51,8 +51,13 @@ export const AdminStudentRosterTab: React.FC<AdminStudentRosterTabProps> = ({
     }
   };
 
-  // Filter students
+  // Filter students & deduplicate by studentId
+  const seenStudentIds = new Set<string>();
   const filteredUsers = allUsers.filter((u) => {
+    const sId = (u.studentId || u.uid || '').trim();
+    if (!sId || seenStudentIds.has(sId)) return false;
+    seenStudentIds.add(sId);
+
     if (selectedGrade !== 'all') {
       if (u.grade !== selectedGrade) return false;
     }
@@ -289,14 +294,14 @@ export const AdminStudentRosterTab: React.FC<AdminStudentRosterTabProps> = ({
                   </td>
                 </tr>
               ) : (
-                sortedUsers.map((u) => {
+                sortedUsers.map((u, idx) => {
                   const genderText = getGenderLabel(u.grade, u.classNum, u.isTeacher, u.role);
                   const isMale = genderText.includes('남');
                   const isFemale = genderText.includes('여');
 
                   return (
                     <tr 
-                      key={u.studentId}
+                      key={`${u.studentId || 'u'}-${u.uid || idx}`}
                       className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition"
                     >
                       <td className="py-3 px-3.5 font-mono font-bold text-slate-900 dark:text-white whitespace-nowrap">

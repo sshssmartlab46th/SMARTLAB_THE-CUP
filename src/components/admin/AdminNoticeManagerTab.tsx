@@ -48,8 +48,8 @@ export const AdminNoticeManagerTab: React.FC<AdminNoticeManagerTabProps> = ({
         authorId: 'sshsgym',
         important,
         category,
-        linkUrl: linkUrl.trim() || undefined,
-        linkLabel: linkLabel.trim() || undefined
+        ...(linkUrl.trim() ? { linkUrl: linkUrl.trim() } : {}),
+        ...(linkLabel.trim() ? { linkLabel: linkLabel.trim() } : {})
       });
 
       setTitle('');

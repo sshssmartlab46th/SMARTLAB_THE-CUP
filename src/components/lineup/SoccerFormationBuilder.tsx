@@ -100,8 +100,15 @@ export const SoccerFormationBuilder: React.FC<SoccerFormationBuilderProps> = ({
     return () => unsub();
   }, [matchId, userClassNum]);
 
-  // Filter out teachers from eligible players
-  const eligibleStudents = classPlayers.filter((p) => !p.isTeacher && p.studentNum !== '00');
+  // Filter out teachers from eligible players & deduplicate by studentId
+  const seenStudentIds = new Set<string>();
+  const eligibleStudents = classPlayers.filter((p) => {
+    if (p.isTeacher || p.studentNum === '00') return false;
+    const sId = (p.studentId || p.uid || '').trim();
+    if (!sId || seenStudentIds.has(sId)) return false;
+    seenStudentIds.add(sId);
+    return true;
+  });
 
   // Fallback generation if no registered students yet in class
   const activeStudentsList = eligibleStudents.length > 0 ? eligibleStudents : Array.from({ length: 22 }, (_, idx) => {
@@ -304,13 +311,13 @@ export const SoccerFormationBuilder: React.FC<SoccerFormationBuilderProps> = ({
                 벤치에 남은 선수가 없습니다.
               </div>
             ) : (
-              benchPlayers.map((player) => {
+              benchPlayers.map((player, idx) => {
                 const fullName = `${player.studentId} ${player.name}`;
                 const isSelected = selectedPlayer === fullName;
 
                 return (
                   <button
-                    key={player.studentId}
+                    key={`${player.studentId || 'p'}-${player.uid || idx}`}
                     type="button"
                     onClick={() =>
                       setSelectedPlayer(isSelected ? null : fullName)

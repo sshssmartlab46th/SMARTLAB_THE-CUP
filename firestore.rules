@@ -98,5 +98,10 @@ service cloud.firestore {
     match /login_inquiries/{inquiryId} {
       allow read, write: if true;
     }
+
+    // App Documents (체육대회 규정집, 스마트랩 소개, 개인정보처리방침 등)
+    match /app_documents/{docId} {
+      allow read, write: if true;
+    }
   }
 }

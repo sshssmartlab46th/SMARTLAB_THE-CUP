@@ -1,31 +1,38 @@
 /**
- * Utility for compressing uploaded images on the client side
- * Converts image file to high-quality compressed JPEG Base64 data URL
- * (~50KB - 150KB), safe for Firestore documents and instant preview rendering.
+ * Image processing & compression utility for client-side uploads.
+ * Safely scales images to maximum dimensions and compresses to JPEG/WebP data URL
+ * to prevent exceeding Firestore document size limits.
  */
 
-export interface CompressOptions {
+export interface CompressImageOptions {
   maxWidth?: number;
   maxHeight?: number;
-  quality?: number;
+  quality?: number; // 0.1 to 1.0
+  mimeType?: 'image/jpeg' | 'image/webp' | 'image/png';
 }
 
 export function compressImageFile(
   file: File,
-  options: CompressOptions = {}
+  options: CompressImageOptions = {}
 ): Promise<string> {
-  const { maxWidth = 1200, maxHeight = 1200, quality = 0.75 } = options;
+  const {
+    maxWidth = 1280,
+    maxHeight = 1280,
+    quality = 0.82,
+    mimeType = 'image/jpeg'
+  } = options;
 
   return new Promise((resolve, reject) => {
+    // If not an image file, reject
     if (!file.type.startsWith('image/')) {
-      reject(new Error('이미지 파일만 업로드할 수 있습니다.'));
-      return;
+      return reject(new Error('이미지 파일(PNG, JPG, WebP 등)만 첨부할 수 있습니다.'));
     }
 
     const reader = new FileReader();
-
-    reader.onload = (event) => {
+    reader.onerror = () => reject(new Error('파일을 읽는 도중 오류가 발생했습니다.'));
+    reader.onload = (e) => {
       const img = new Image();
+      img.onerror = () => reject(new Error('이미지 파싱에 실패했습니다.'));
       img.onload = () => {
         let width = img.width;
         let height = img.height;
@@ -43,31 +50,28 @@ export function compressImageFile(
         const canvas = document.createElement('canvas');
         canvas.width = width;
         canvas.height = height;
-
         const ctx = canvas.getContext('2d');
         if (!ctx) {
-          resolve(event.target?.result as string);
-          return;
+          return resolve(e.target?.result as string);
         }
 
-        // Draw with high quality smoothing
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
+        // Fill white background for transparent PNG to JPEG conversion
+        if (mimeType === 'image/jpeg') {
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(0, 0, width, height);
+        }
+
         ctx.drawImage(img, 0, 0, width, height);
-
-        const dataUrl = canvas.toDataURL('image/jpeg', quality);
-        resolve(dataUrl);
+        try {
+          const dataUrl = canvas.toDataURL(mimeType, quality);
+          resolve(dataUrl);
+        } catch (err) {
+          // Fallback to raw data url if canvas toDataURL fails
+          resolve(e.target?.result as string);
+        }
       };
 
-      img.onerror = () => {
-        reject(new Error('이미지를 불러오는 중 오류가 발생했습니다.'));
-      };
-
-      img.src = event.target?.result as string;
-    };
-
-    reader.onerror = () => {
-      reject(new Error('파일을 읽는 중 오류가 발생했습니다.'));
+      img.src = e.target?.result as string;
     };
 
     reader.readAsDataURL(file);

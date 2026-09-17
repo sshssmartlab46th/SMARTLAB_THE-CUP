@@ -176,8 +176,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
         toClass: finalToClass,
         toRole: finalToRole,
         content: messageContent.trim(),
-        imageUrl: attachedImage || undefined,
-        images: attachedImage ? [attachedImage] : undefined
+        ...(attachedImage ? { imageUrl: attachedImage, images: [attachedImage] } : {})
       });
 
       setMessageContent('');

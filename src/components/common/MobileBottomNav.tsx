@@ -17,8 +17,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   const navItems = [
     { tab: 'home' as MainNavTab, label: '홈', icon: Home },
     { tab: 'notices' as MainNavTab, label: '공지', icon: Bell },
-    { tab: 'bracket' as MainNavTab, label: '대진표', icon: Trophy },
-    { tab: 'schedule' as MainNavTab, label: '일정', icon: Calendar },
+    { tab: 'schedule' as MainNavTab, label: '경기 일정', icon: Calendar },
     { tab: 'live' as MainNavTab, label: '실시간', icon: Activity },
     { tab: 'standings' as MainNavTab, label: '순위', icon: Award },
     { tab: 'messages' as MainNavTab, label: '쪽지', icon: MessageSquare }
@@ -31,7 +30,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
     >
       {navItems.map((item) => {
         const Icon = item.icon;
-        const isActive = activeTab === item.tab;
+        const isActive = activeTab === item.tab || (item.tab === 'schedule' && activeTab === 'bracket');
         return (
           <button
             key={item.tab}

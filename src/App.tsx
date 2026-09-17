@@ -38,6 +38,7 @@ import {
   // Independent pages
   LoginPage,
   SchedulePage,
+  MatchSchedulePage,
   PrivacyPage,
   RulesPage,
   AboutSmartlabPage,
@@ -617,11 +618,18 @@ export default function App() {
           />
         )}
 
-        {activeTab === 'schedule' && (
-          <SchedulePage
+        {/* COMBINED MATCH SCHEDULE & BRACKET VIEW */}
+        {(activeTab === 'schedule' || activeTab === 'bracket') && (
+          <MatchSchedulePage
             matches={matches}
+            sport={selectedSport}
+            onSelectSport={setSelectedSport}
             userReminders={userReminders}
             onToggleReminder={handleToggleReminder}
+            onOpenMatchDetail={(m) => {
+              setActiveMatchForLive(m);
+              navigateTo('live');
+            }}
             onSelectMatch={(m) => {
               setActiveMatchForLive(m);
               navigateTo('live');
@@ -629,11 +637,25 @@ export default function App() {
           />
         )}
 
-        {activeTab === 'privacy' && <PrivacyPage />}
+        {activeTab === 'privacy' && (
+          <PrivacyPage 
+            currentUser={currentUser} 
+            onNavigateToAdmin={() => navigateTo('admin')} 
+          />
+        )}
 
-        {activeTab === 'rules' && <RulesPage />}
+        {activeTab === 'rules' && (
+          <RulesPage 
+            currentUser={currentUser} 
+            onNavigateToAdmin={() => navigateTo('admin')} 
+          />
+        )}
 
-        {activeTab === 'smartlab' && <AboutSmartlabPage />}
+        {activeTab === 'smartlab' && (
+          <AboutSmartlabPage 
+            currentUser={currentUser} 
+          />
+        )}
 
         {activeTab === 'contact' && (
           <ContactInquiryPage
@@ -682,6 +704,7 @@ export default function App() {
             auditLogs={auditLogs}
             inquiries={inquiries}
             festivalConfig={festivalConfig}
+            currentUser={currentUser}
           />
         )}
 
@@ -691,21 +714,6 @@ export default function App() {
             matches={matches}
             notices={notices}
             onBackToHome={() => navigateTo('home')}
-          />
-        )}
-
-        {/* BRACKET VIEW */}
-        {activeTab === 'bracket' && (
-          <TournamentBracketView
-            matches={matches}
-            sport={selectedSport}
-            onSelectSport={setSelectedSport}
-            userReminders={userReminders}
-            onToggleReminder={handleToggleReminder}
-            onOpenMatchDetail={(m) => {
-              setActiveMatchForLive(m);
-              navigateTo('live');
-            }}
           />
         )}
 
@@ -727,7 +735,7 @@ export default function App() {
                 lastLogin: new Date().toISOString()
               }}
               match={currentLiveMatch}
-              onBack={() => navigateTo('bracket')}
+              onBack={() => navigateTo('schedule')}
             />
           ) : (
             <div className="py-20 text-center text-xs text-slate-400">
@@ -940,7 +948,7 @@ export default function App() {
                   matches={matches}
                   selectedSport={selectedSport}
                   onSelectSport={setSelectedSport}
-                  onOpenFullBracket={() => navigateTo('bracket')}
+                  onOpenFullBracket={() => navigateTo('schedule')}
                 />
               </div>
 

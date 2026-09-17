@@ -34,8 +34,10 @@ import {
   MatchReminderItem,
   UserRole,
   CheerMessageItem,
-  LoginInquiry
+  LoginInquiry,
+  AppDocument
 } from '../types';
+import { DEFAULT_APP_DOCUMENTS } from '../data/defaultDocuments';
 
 // Ensure Firebase Anonymous Auth for Firestore security rules
 let currentUser: User | null = null;
@@ -112,6 +114,37 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   };
   console.error('Firestore Error: ', JSON.stringify(errInfo));
   throw new Error(JSON.stringify(errInfo));
+}
+
+/**
+ * Recursively strips undefined fields from an object or array so Firestore
+ * setDoc/updateDoc never throws "Unsupported field value: undefined".
+ */
+export function sanitizeFirestorePayload<T>(val: T): T {
+  if (val === undefined) {
+    return undefined as unknown as T;
+  }
+  if (val === null || typeof val !== 'object') {
+    return val;
+  }
+  if (Array.isArray(val)) {
+    return val
+      .filter((item) => item !== undefined)
+      .map((item) => sanitizeFirestorePayload(item)) as unknown as T;
+  }
+  if (val instanceof Date) {
+    return val;
+  }
+  const res: Record<string, any> = {};
+  for (const [k, v] of Object.entries(val as Record<string, any>)) {
+    if (v !== undefined) {
+      const sanitizedChild = sanitizeFirestorePayload(v);
+      if (sanitizedChild !== undefined) {
+        res[k] = sanitizedChild;
+      }
+    }
+  }
+  return res as T;
 }
 
 export async function testFirestoreConnection() {
@@ -652,11 +685,20 @@ export async function seedInitialDataIfEmpty(): Promise<boolean> {
 export async function syncUserProfile(profile: UserProfile): Promise<void> {
   try {
     await ensureFirebaseAuth();
-    const userDocRef = doc(db, 'users', profile.uid || profile.studentId);
-    await setDoc(userDocRef, {
+    const studentId = (profile.studentId || '').trim();
+    const docId = studentId || profile.uid || 'unknown';
+    const userDocRef = doc(db, 'users', docId);
+    const payload = sanitizeFirestorePayload({
       ...profile,
+      studentId: docId,
       lastLogin: new Date().toISOString()
-    }, { merge: true });
+    });
+    await setDoc(userDocRef, payload, { merge: true });
+
+    // Clean up duplicate legacy doc if profile.uid exists and differs from docId (e.g. 'user_10208')
+    if (studentId && profile.uid && profile.uid !== studentId) {
+      deleteDoc(doc(db, 'users', profile.uid)).catch(() => {});
+    }
   } catch (err) {
     console.warn('[Firebase] syncUserProfile offline save:', err);
   }
@@ -1280,11 +1322,12 @@ export function listenNotices(callback: (notices: NoticeItem[]) => void): () => 
 export async function createNotice(notice: Omit<NoticeItem, 'id' | 'createdAt'>): Promise<void> {
   const id = `notice-${Date.now()}`;
   const docRef = doc(db, 'notices', id);
-  await setDoc(docRef, {
+  const payload = sanitizeFirestorePayload({
     ...notice,
     id,
     createdAt: new Date().toISOString()
   });
+  await setDoc(docRef, payload);
 }
 
 export const sendNotice = createNotice;
@@ -1577,20 +1620,22 @@ export function listenSuggestions(callback: (items: SuggestionItem[]) => void): 
 export async function submitSuggestion(item: Omit<SuggestionItem, 'id' | 'createdAt'>): Promise<void> {
   const id = `sug-${Date.now()}`;
   const docRef = doc(db, 'suggestions', id);
-  await setDoc(docRef, {
+  const payload = sanitizeFirestorePayload({
     ...item,
     id,
     createdAt: new Date().toISOString()
   });
+  await setDoc(docRef, payload);
 }
 
 export async function answerSuggestion(id: string, answer: string, answeredBy: string): Promise<void> {
   const docRef = doc(db, 'suggestions', id);
-  await updateDoc(docRef, {
+  const payload = sanitizeFirestorePayload({
     answer,
     answeredBy,
     answeredAt: new Date().toISOString()
   });
+  await updateDoc(docRef, payload);
 }
 
 export function listenAuditLogs(callback: (logs: AuditLogEntry[]) => void): () => void {
@@ -1721,8 +1766,35 @@ export function listenAllUsers(callback: (users: UserProfile[]) => void): () => 
   try {
     const q = collection(db, 'users');
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const list: UserProfile[] = [];
-      snapshot.forEach((d) => list.push(d.data() as UserProfile));
+      const userMap = new Map<string, UserProfile>();
+      snapshot.forEach((d) => {
+        const raw = d.data() as UserProfile;
+        const studentId = (raw.studentId || d.id).trim();
+        if (!studentId) return;
+
+        const profile: UserProfile = {
+          ...raw,
+          studentId,
+          uid: raw.uid || d.id
+        };
+
+        const existing = userMap.get(studentId);
+        if (!existing) {
+          userMap.set(studentId, profile);
+        } else {
+          // Merge duplicates: prioritize admin/special roles and newer activity
+          const existingScore = (existing.role && existing.role !== 'student' ? 100 : 0) + (existing.lastLogin ? new Date(existing.lastLogin).getTime() : 0);
+          const newScore = (profile.role && profile.role !== 'student' ? 100 : 0) + (profile.lastLogin ? new Date(profile.lastLogin).getTime() : 0);
+          const winner = newScore >= existingScore ? { ...existing, ...profile } : { ...profile, ...existing };
+          userMap.set(studentId, winner);
+
+          // If this document ID is a legacy duplicate (not equal to studentId), remove it quietly
+          if (d.id !== studentId) {
+            deleteDoc(d.ref).catch(() => {});
+          }
+        }
+      });
+      const list = Array.from(userMap.values());
       callback(list);
     }, () => callback([]));
     return unsubscribe;
@@ -1827,7 +1899,7 @@ export async function sendDirectMessage(msg: Omit<DirectMessage, 'id' | 'created
       ...msg,
       createdAt: new Date().toISOString()
     };
-    await setDoc(docRef, fullMsg);
+    await setDoc(docRef, sanitizeFirestorePayload(fullMsg));
     return docRef.id;
   } catch (e) {
     console.error('[Firebase] sendDirectMessage error:', e);
@@ -2046,6 +2118,112 @@ export async function updateStudentName(studentId: string, newName: string): Pro
     name: newName.trim(),
     lastLogin: new Date().toISOString()
   });
+}
+
+// -------------------------------------------------------------
+// App Official Documents (규정집, 스마트랩 소개, 개인정보처리방침 등 어드민 관리)
+// -------------------------------------------------------------
+
+export function listenAppDocument(
+  docId: string, 
+  callback: (doc: AppDocument) => void
+): () => void {
+  const fallback = DEFAULT_APP_DOCUMENTS[docId] || {
+    id: docId,
+    title: docId,
+    subtitle: '',
+    content: '',
+    updatedAt: new Date().toISOString(),
+    updatedBy: '시스템'
+  };
+
+  try {
+    ensureFirebaseAuth().catch(console.error);
+    const docRef = doc(db, 'app_documents', docId);
+    const unsubscribe = onSnapshot(docRef, (snap) => {
+      if (snap.exists()) {
+        const data = snap.data() as AppDocument;
+        callback({
+          ...fallback,
+          ...data,
+          id: docId
+        });
+      } else {
+        callback(fallback);
+      }
+    }, (error) => {
+      console.warn(`[Firebase] listenAppDocument(${docId}) error:`, error);
+      callback(fallback);
+    });
+    return unsubscribe;
+  } catch (e) {
+    console.warn(`[Firebase] listenAppDocument init error:`, e);
+    callback(fallback);
+    return () => {};
+  }
+}
+
+export function listenAllAppDocuments(
+  callback: (docs: Record<string, AppDocument>) => void
+): () => void {
+  const initialMap: Record<string, AppDocument> = { ...DEFAULT_APP_DOCUMENTS };
+
+  try {
+    ensureFirebaseAuth().catch(console.error);
+    const colRef = collection(db, 'app_documents');
+    const unsubscribe = onSnapshot(colRef, (snapshot) => {
+      const merged: Record<string, AppDocument> = { ...DEFAULT_APP_DOCUMENTS };
+      snapshot.forEach((d) => {
+        const data = d.data() as AppDocument;
+        merged[d.id] = {
+          ...(merged[d.id] || {}),
+          ...data,
+          id: d.id
+        };
+      });
+      callback(merged);
+    }, (error) => {
+      console.warn('[Firebase] listenAllAppDocuments error:', error);
+      callback(initialMap);
+    });
+    return unsubscribe;
+  } catch (e) {
+    console.warn('[Firebase] listenAllAppDocuments init error:', e);
+    callback(initialMap);
+    return () => {};
+  }
+}
+
+export async function saveAppDocument(docData: Partial<AppDocument> & { id: string }): Promise<void> {
+  await ensureFirebaseAuth();
+  const docRef = doc(db, 'app_documents', docData.id);
+  const now = new Date().toISOString();
+  
+  const payload: Partial<AppDocument> = sanitizeFirestorePayload({
+    ...docData,
+    updatedAt: now,
+    updatedBy: docData.updatedBy || '총괄 관리자'
+  });
+
+  await setDoc(docRef, payload, { merge: true });
+}
+
+export async function resetAppDocument(docId: string, operatorName: string = '총괄 관리자'): Promise<AppDocument> {
+  await ensureFirebaseAuth();
+  const defaultDoc = DEFAULT_APP_DOCUMENTS[docId];
+  if (!defaultDoc) {
+    throw new Error(`기본 문서 데이터가 존재하지 않습니다: ${docId}`);
+  }
+
+  const restoredDoc: AppDocument = {
+    ...defaultDoc,
+    updatedAt: new Date().toISOString(),
+    updatedBy: `${operatorName} (기본값 초기화)`
+  };
+
+  const docRef = doc(db, 'app_documents', docId);
+  await setDoc(docRef, restoredDoc);
+  return restoredDoc;
 }
 
 

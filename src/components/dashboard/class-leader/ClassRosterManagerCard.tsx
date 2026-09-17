@@ -67,8 +67,8 @@ export const ClassRosterManagerCard: React.FC<ClassRosterManagerCardProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-              {roster.map((p) => (
-                <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition">
+              {roster.map((p, idx) => (
+                <tr key={`${p.id || 'p'}-${idx}`} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition">
                   <td className="py-2.5 font-bold text-slate-900 dark:text-white">
                     {p.name}
                   </td>

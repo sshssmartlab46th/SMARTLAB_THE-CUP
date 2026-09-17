@@ -162,24 +162,26 @@ export const Navbar: React.FC<NavbarProps> = ({
               {[
                 { tab: 'home', label: '종합 홈' },
                 { tab: 'notices', label: '공지사항' },
-                { tab: 'bracket', label: '대진표' },
-                { tab: 'schedule', label: '전체 일정' },
+                { tab: 'schedule', label: '경기 일정' },
                 { tab: 'live', label: '실시간 현황' },
                 { tab: 'standings', label: '학급 순위' }
-              ].map(t => (
-                <button
-                  key={t.tab}
-                  type="button"
-                  onClick={() => onTabChange(t.tab as MainNavTab)}
-                  className={`px-3 py-1.5 text-xs font-semibold rounded-full transition cursor-pointer whitespace-nowrap ${
-                    activeTab === t.tab
-                      ? 'bg-red-600 dark:bg-emerald-500 text-white dark:text-slate-950 shadow-xs'
-                      : 'text-slate-700 dark:text-slate-300 hover:text-red-600 dark:hover:text-emerald-400'
-                  }`}
-                >
-                  {t.label}
-                </button>
-              ))}
+              ].map(t => {
+                const isTabActive = activeTab === t.tab || (t.tab === 'schedule' && activeTab === 'bracket');
+                return (
+                  <button
+                    key={t.tab}
+                    type="button"
+                    onClick={() => onTabChange(t.tab as MainNavTab)}
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-full transition cursor-pointer whitespace-nowrap ${
+                      isTabActive
+                        ? 'bg-red-600 dark:bg-emerald-500 text-white dark:text-slate-950 shadow-xs'
+                        : 'text-slate-700 dark:text-slate-300 hover:text-red-600 dark:hover:text-emerald-400'
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                );
+              })}
             </nav>
           )}
         </div>
