@@ -11,7 +11,8 @@ export interface UserProfile {
   uid: string;
   studentId: string; // 5-digit integer (e.g. '20305') or 'sshsgym'
   name: string;
-  role: UserRole;
+  role: UserRole;    // 대표 역할 (하위 호환성 유지)
+  roles?: UserRole[]; // 겸직 가능한 복수 역할 (단, 선생님 제외. 베이스는 학생)
   grade: string;     // '1', '2', '3' or '교사', '관리자'
   classNum: string;  // '1' ~ '12'
   studentNum: string;// '01' ~ '35' (or '00' for teacher)
@@ -21,6 +22,55 @@ export interface UserProfile {
   assignedMatchId?: string;
   createdAt: string;
   lastLogin: string;
+}
+
+// -------------------------------------------------------------
+// 역할 겸직 및 권한 판별 헬퍼 (베이스는 학생, 선생님 제외)
+// -------------------------------------------------------------
+
+/**
+ * 사용자의 전체 역할 목록 반환 (베이스는 학생, 단 선생님은 교원 단독)
+ */
+export function getUserRoles(user: UserProfile | null | undefined): UserRole[] {
+  if (!user) return [];
+  // 선생님은 학생으로 분류되지 않으며 겸직 불가
+  if (user.isTeacher || user.role === 'teacher') {
+    return ['teacher'];
+  }
+  // 학생 베이스: 선생님을 제외한 모든 계정(학생회, 반장, 관리자 등)은 학생을 베이스로 겸직
+  const set = new Set<UserRole>();
+  if (user.roles && Array.isArray(user.roles)) {
+    user.roles.forEach((r) => set.add(r));
+  }
+  if (user.role) {
+    set.add(user.role);
+  }
+  // 선생님이 아니면 기본 베이스는 항상 'student'
+  set.add('student');
+  return Array.from(set);
+}
+
+/**
+ * 사용자가 특정 역할을 보유하고 있는지 검사 (겸직 포함)
+ */
+export function hasUserRole(user: UserProfile | null | undefined, targetRole: UserRole): boolean {
+  if (!user) return false;
+  const roles = getUserRoles(user);
+  return roles.includes(targetRole);
+}
+
+/**
+ * 기본적으로 학생은 쪽지를 쓸 수 없음.
+ * 반장, 선생님, 학생회, 관리자만 쪽지 작성(발송) 가능.
+ */
+export function canWriteDirectMessage(user: UserProfile | null | undefined): boolean {
+  if (!user) return false;
+  return (
+    hasUserRole(user, 'class_president') ||
+    hasUserRole(user, 'teacher') ||
+    hasUserRole(user, 'student_council') ||
+    hasUserRole(user, 'admin')
+  );
 }
 
 export interface FestivalConfig {

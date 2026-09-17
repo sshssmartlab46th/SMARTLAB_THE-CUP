@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { parseStudentId } from '../../utils/studentIdParser';
-import { UserProfile } from '../../types';
+import { UserProfile, getUserRoles } from '../../types';
 import { checkStudentIdExists, createAccount, getUserProfile, syncUserProfile } from '../../services/firebaseService';
 import { SangsanLogo } from '../common/SangsanLogo';
 import { SmartlabLogo } from '../common/SmartlabLogo';
@@ -68,6 +68,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onCancel }) => 
         // Name matches: update lastLogin and log in
         const updatedProfile: UserProfile = {
           ...existingUser,
+          roles: existingUser.isTeacher ? ['teacher'] : getUserRoles(existingUser),
           lastLogin: new Date().toISOString()
         };
         await syncUserProfile(updatedProfile);
@@ -87,6 +88,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onCancel }) => 
         studentId: trimmedId,
         name: trimmedName,
         role: role,
+        roles: isTeacher ? ['teacher'] : ['student'],
         grade: actualGrade,
         classNum: parsed.classNum,
         studentNum: parsed.studentNum,
@@ -144,6 +146,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onCancel }) => 
         studentId: 'sshsgym',
         name: '총괄 관리자',
         role: 'admin',
+        roles: ['admin', 'student'],
         grade: '본부',
         classNum: '00',
         studentNum: '00',

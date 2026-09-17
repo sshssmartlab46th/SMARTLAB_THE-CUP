@@ -720,6 +720,7 @@ export default function App() {
           <MessagesPage
             currentUser={currentUser}
             onOpenLogin={() => navigateTo('login')}
+            onOpenSuggestions={() => navigateTo('suggestions')}
           />
         )}
 
@@ -731,6 +732,7 @@ export default function App() {
             inquiries={inquiries}
             festivalConfig={festivalConfig}
             currentUser={currentUser}
+            onNavigateToTab={(t) => navigateTo(t as any)}
           />
         )}
 

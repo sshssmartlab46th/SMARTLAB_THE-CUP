@@ -1,5 +1,5 @@
 import React from 'react';
-import { UserProfile, UserRole, WeatherInfo } from '../../types';
+import { UserProfile, UserRole, WeatherInfo, getUserRoles, hasUserRole } from '../../types';
 import { SangsanLogo } from './SangsanLogo';
 import { SmartlabLogo } from './SmartlabLogo';
 import { 
@@ -12,7 +12,10 @@ import {
   LogOut,
   Settings,
   LogIn,
-  Shield
+  Shield,
+  LayoutDashboard,
+  Eye,
+  Sliders
 } from 'lucide-react';
 
 export type MainNavTab = 
@@ -43,8 +46,8 @@ export interface NavbarProps {
   onRoleChange: (role: UserRole) => void;
   userProfile?: UserProfile | null;
   weather?: WeatherInfo | null;
-  isDarkMode: boolean;
-  onToggleDarkMode: () => void;
+  isDarkMode?: boolean;
+  onToggleDarkMode?: () => void;
   onOpenMessages?: () => void;
   onOpenSuggestions?: () => void;
   onOpenInjuries?: () => void;
@@ -67,58 +70,13 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenAdminConsole,
   onLogout
 }) => {
-  const isDashboardRole = currentRole !== 'student';
-
-  const getRoleHeaderInfo = (role: UserRole) => {
-    switch (role) {
-      case 'admin':
-        return {
-          title: 'SYSTEM ADMINISTRATOR',
-          scope: '전교 시스템 제어 & 전교 데이터',
-          badgeColor: 'bg-red-600 text-white font-bold',
-          lastActive: '방금 전'
-        };
-      case 'class_president':
-        return {
-          title: 'CLASS LEADER (반대표)',
-          scope: '소속 학급 전용 라인업 및 선수 소집',
-          badgeColor: 'bg-amber-400 text-slate-950 font-bold',
-          lastActive: '3분 전'
-        };
-      case 'student_council':
-        return {
-          title: 'STUDENT COUNCIL & SPORTS COMMITTEE',
-          scope: '경기 진행 지원 및 점수 확정',
-          badgeColor: 'bg-blue-600 text-white font-bold',
-          lastActive: '방금 전'
-        };
-      case 'teacher':
-        return {
-          title: 'FACULTY & ADVISOR (지도교사 · 교원)',
-          scope: '학급 경기 지도 및 학생 격려, 전교 일정 참관',
-          badgeColor: 'bg-purple-600 text-white font-bold',
-          lastActive: '방금 전'
-        };
-      case 'referee':
-        return {
-          title: 'MATCH OPERATOR (공식 심판 · 기록원)',
-          scope: '현장 실시간 스코어 기록(+1/-1), 판정 및 경기 운영',
-          badgeColor: 'bg-amber-600 text-white font-bold',
-          lastActive: '1분 전'
-        };
-      case 'health_officer':
-        return {
-          title: 'SAFETY & MEDICAL OFFICER (보건 안전 의무 본부)',
-          scope: '실시간 트리아지 및 응급조치',
-          badgeColor: 'bg-sky-500 text-white font-bold',
-          lastActive: '방금 전'
-        };
-      default:
-        return null;
-    }
-  };
-
-  const roleInfo = isDashboardRole ? getRoleHeaderInfo(currentRole) : null;
+  const userRoles = getUserRoles(userProfile);
+  const isAdmin = hasUserRole(userProfile, 'admin');
+  const isClassPresident = hasUserRole(userProfile, 'class_president');
+  const isStudentCouncil = hasUserRole(userProfile, 'student_council');
+  const isReferee = hasUserRole(userProfile, 'referee');
+  const isHealthOfficer = hasUserRole(userProfile, 'health_officer');
+  const isTeacher = userProfile?.isTeacher || currentRole === 'teacher';
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-[#0b0f19]/90 backdrop-blur-md transition-colors">
@@ -134,56 +92,75 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span className="font-serif font-black text-slate-900 dark:text-white tracking-tight text-base sm:text-lg">
                 상산 체육대회
               </span>
-              {isDashboardRole && (
-                <span className="text-[11px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                  대시보드
+              {isAdmin && (
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-600 text-white shadow-2xs">
+                  총괄본부
                 </span>
               )}
             </div>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium tracking-tight">
-              {isDashboardRole ? '상산고등학교 스마트 운영 시스템' : '상산고등학교 스마트 보드'}
+              {isAdmin ? '상산고 스마트 운영 플랫폼 (어드민 겸용)' : '상산고등학교 스마트 대회 플랫폼'}
             </p>
           </div>
         </div>
 
-        {/* Center: Main Nav Tabs */}
+        {/* Center: Main Student Navigation Tabs - Always visible to all users (Admins are students too) */}
         <div className="hidden md:flex items-center justify-center flex-1">
-          {roleInfo ? (
-            <div className="flex items-center gap-3 text-xs">
-              <span className={`px-3 py-1 rounded-full text-[11px] tracking-wide uppercase ${roleInfo.badgeColor}`}>
-                {roleInfo.title}
-              </span>
-              <span className="text-slate-600 dark:text-slate-400 font-medium hidden lg:inline">
-                {roleInfo.scope}
-              </span>
-            </div>
-          ) : (
-            <nav className="flex items-center gap-1 overflow-x-auto py-1">
-              {[
-                { tab: 'home', label: '종합 홈' },
-                { tab: 'notices', label: '공지사항' },
-                { tab: 'schedule', label: '경기 일정' },
-                { tab: 'live', label: '실시간 현황' },
-                { tab: 'standings', label: '학급 순위' }
-              ].map(t => {
-                const isTabActive = activeTab === t.tab || (t.tab === 'schedule' && activeTab === 'bracket');
-                return (
-                  <button
-                    key={t.tab}
-                    type="button"
-                    onClick={() => onTabChange(t.tab as MainNavTab)}
-                    className={`px-3 py-1.5 text-xs font-semibold rounded-full transition cursor-pointer whitespace-nowrap ${
-                      isTabActive
-                        ? 'bg-red-600 dark:bg-emerald-500 text-white dark:text-slate-950 shadow-xs'
-                        : 'text-slate-700 dark:text-slate-300 hover:text-red-600 dark:hover:text-emerald-400'
-                    }`}
-                  >
-                    {t.label}
-                  </button>
-                );
-              })}
-            </nav>
-          )}
+          <nav className="flex items-center gap-1 overflow-x-auto py-1">
+            {[
+              { tab: 'home', label: '종합 홈' },
+              { tab: 'notices', label: '공지사항' },
+              { tab: 'schedule', label: '경기 일정' },
+              { tab: 'live', label: '실시간 현황' },
+              { tab: 'standings', label: '학급 순위' }
+            ].map(t => {
+              const isTabActive = activeTab === t.tab || (t.tab === 'schedule' && activeTab === 'bracket');
+              return (
+                <button
+                  key={t.tab}
+                  type="button"
+                  onClick={() => onTabChange(t.tab as MainNavTab)}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-full transition cursor-pointer whitespace-nowrap ${
+                    isTabActive
+                      ? 'bg-red-600 dark:bg-emerald-500 text-white dark:text-slate-950 shadow-xs'
+                      : 'text-slate-700 dark:text-slate-300 hover:text-red-600 dark:hover:text-emerald-400'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              );
+            })}
+
+            {/* Special Role Tabs attached seamlessly */}
+            {isClassPresident && (
+              <button
+                type="button"
+                onClick={() => onTabChange('formation')}
+                className={`ml-1 px-3 py-1.5 text-xs font-bold rounded-full transition cursor-pointer whitespace-nowrap flex items-center gap-1 ${
+                  activeTab === 'formation'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100'
+                }`}
+              >
+                <span>라인업 제출</span>
+              </button>
+            )}
+
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => onTabChange('admin')}
+                className={`ml-1 px-3 py-1.5 text-xs font-bold rounded-full transition cursor-pointer whitespace-nowrap flex items-center gap-1 ${
+                  activeTab === 'admin'
+                    ? 'bg-red-600 text-white shadow-xs'
+                    : 'bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 hover:bg-red-100'
+                }`}
+              >
+                <Sliders className="w-3.5 h-3.5" />
+                <span>어드민 콘솔</span>
+              </button>
+            )}
+          </nav>
         </div>
 
         {/* Right Tools & Shortcuts */}
@@ -241,41 +218,65 @@ export const Navbar: React.FC<NavbarProps> = ({
             <HelpCircle className="w-4 h-4" />
           </button>
 
-          {['class_president', 'student_council', 'admin', 'teacher', 'referee', 'student'].includes(currentRole) && (
-            <button
-              type="button"
-              onClick={() => onTabChange('messages')}
-              title="실시간 쪽지함"
-              className={`p-1.5 rounded-lg border transition cursor-pointer ${
-                activeTab === 'messages'
-                  ? 'bg-red-50 dark:bg-red-950/40 border-red-500 text-red-600 dark:text-red-400'
-                  : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-red-600'
-              }`}
-            >
-              <MessageSquare className="w-4 h-4" />
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => onTabChange('messages')}
+            title="실시간 쪽지함"
+            className={`p-1.5 rounded-lg border transition cursor-pointer ${
+              activeTab === 'messages'
+                ? 'bg-red-50 dark:bg-red-950/40 border-red-500 text-red-600 dark:text-red-400'
+                : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-red-600'
+            }`}
+          >
+            <MessageSquare className="w-4 h-4" />
+          </button>
 
-          {/* User Role Badge (Assigned strictly by Admin) */}
+          {/* User Role & Profile Badge with Concurrent Roles Display */}
           {userProfile ? (
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
-                <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                  currentRole === 'admin' ? 'bg-red-600 text-white' :
-                  currentRole === 'student_council' ? 'bg-blue-600 text-white' :
-                  currentRole === 'class_president' ? 'bg-emerald-600 text-white' :
-                  currentRole === 'teacher' ? 'bg-purple-600 text-white' :
-                  currentRole === 'referee' ? 'bg-amber-600 text-white' :
-                  currentRole === 'health_officer' ? 'bg-rose-600 text-white' :
-                  'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
-                }`}>
-                  {currentRole === 'admin' ? '총괄관리자' :
-                   currentRole === 'student_council' ? '학생회' :
-                   currentRole === 'class_president' ? '반장' :
-                   currentRole === 'teacher' ? '교사' :
-                   currentRole === 'referee' ? '심판/기록원' :
-                   currentRole === 'health_officer' ? '보건담당' : '학생'}
-                </span>
+                {/* Role Badges */}
+                <div className="flex items-center gap-1">
+                  {isTeacher ? (
+                    <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-600 text-white">
+                      교사
+                    </span>
+                  ) : (
+                    <>
+                      {isAdmin && (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-600 text-white">
+                          총괄관리자
+                        </span>
+                      )}
+                      {isStudentCouncil && (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-600 text-white">
+                          학생회
+                        </span>
+                      )}
+                      {isClassPresident && (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-600 text-white">
+                          반장
+                        </span>
+                      )}
+                      {isReferee && (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-600 text-white">
+                          심판
+                        </span>
+                      )}
+                      {isHealthOfficer && (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-600 text-white">
+                          보건
+                        </span>
+                      )}
+                      {!isAdmin && !isStudentCouncil && !isClassPresident && !isReferee && !isHealthOfficer && (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                          학생
+                        </span>
+                      )}
+                    </>
+                  )}
+                </div>
+
                 <span className="text-xs font-bold text-slate-800 dark:text-slate-200 font-mono">
                   {userProfile.studentId}
                 </span>
@@ -284,35 +285,29 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </span>
               </div>
 
-              {/* Admin Console Shortcut if Admin */}
-              {currentRole === 'admin' && (
+              {/* Admin Quick Switcher Button */}
+              {isAdmin && (
                 <button
                   type="button"
-                  onClick={() => onTabChange('admin')}
-                  className={`px-2 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                  onClick={() => onTabChange(activeTab === 'admin' ? 'home' : 'admin')}
+                  className={`px-2.5 py-1 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1 ${
                     activeTab === 'admin'
-                      ? 'bg-red-600 text-white'
-                      : 'bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 hover:bg-red-100'
+                      ? 'bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200'
+                      : 'bg-red-600 hover:bg-red-700 text-white shadow-xs'
                   }`}
-                  title="관리자 콘솔 열기"
+                  title={activeTab === 'admin' ? '학생 화면(종합 홈)으로 전환' : '관리자 콘솔 열기'}
                 >
-                  어드민
-                </button>
-              )}
-
-              {/* Class President Formation Shortcut */}
-              {currentRole === 'class_president' && (
-                <button
-                  type="button"
-                  onClick={() => onTabChange('formation')}
-                  className={`px-2 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
-                    activeTab === 'formation'
-                      ? 'bg-emerald-600 text-white'
-                      : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100'
-                  }`}
-                  title="학급 라인업 제출"
-                >
-                  라인업
+                  {activeTab === 'admin' ? (
+                    <>
+                      <Eye className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">학생 화면 보기</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sliders className="w-3.5 h-3.5" />
+                      <span>어드민 콘솔</span>
+                    </>
+                  )}
                 </button>
               )}
 

@@ -1927,8 +1927,16 @@ export async function createAccount(profile: UserProfile): Promise<boolean> {
       return false; // Duplicate
     }
     const docRef = doc(db, 'users', profile.studentId);
+    const roles: UserRole[] = profile.isTeacher
+      ? ['teacher']
+      : (profile.roles && profile.roles.length > 0
+          ? Array.from(new Set<UserRole>(['student', ...profile.roles]))
+          : [profile.role || 'student']);
+
     await setDoc(docRef, sanitizeFirestorePayload({
       ...profile,
+      role: profile.role || (profile.isTeacher ? 'teacher' : 'student'),
+      roles,
       createdAt: new Date().toISOString(),
       lastLogin: new Date().toISOString()
     }));
@@ -1995,13 +2003,66 @@ export function listenAllUsers(callback: (users: UserProfile[]) => void): () => 
 export async function updateUserRole(studentId: string, role: UserRole, canAnswerSuggestion?: boolean): Promise<void> {
   try {
     const docRef = doc(db, 'users', studentId);
-    const payload: Partial<UserProfile> = { role };
+    // 선생님은 교원 단독, 일반 학생 베이스는 항상 'student' 포함
+    const roles: UserRole[] = role === 'teacher' 
+      ? ['teacher'] 
+      : Array.from(new Set<UserRole>(['student', role]));
+    const payload: Partial<UserProfile> = { role, roles };
     if (canAnswerSuggestion !== undefined) {
       payload.canAnswerSuggestion = canAnswerSuggestion;
     }
-    await updateDoc(docRef, payload);
+    await updateDoc(docRef, sanitizeFirestorePayload(payload));
   } catch (e) {
     console.error('[Firebase] updateUserRole error:', e);
+    throw e;
+  }
+}
+
+/**
+ * 복수 역할(겸직) 갱신 함수 (베이스는 학생, 단 선생님 제외)
+ */
+export async function updateUserRoles(
+  studentId: string, 
+  newRoles: UserRole[], 
+  canAnswerSuggestion?: boolean
+): Promise<void> {
+  try {
+    const docRef = doc(db, 'users', studentId);
+    
+    // 선생님 여부 확인: 만약 'teacher' 역할이 포함되어 있다면 선생님은 학생이 아니며 겸직 불가
+    const isTeacher = newRoles.includes('teacher');
+    let finalRoles: UserRole[];
+    let primaryRole: UserRole;
+
+    if (isTeacher) {
+      finalRoles = ['teacher'];
+      primaryRole = 'teacher';
+    } else {
+      // 베이스는 학생: 선생님을 제외한 모든 학생은 'student'가 기본 포함됨
+      const set = new Set<UserRole>(['student']);
+      newRoles.forEach((r) => {
+        if (r !== 'teacher') set.add(r);
+      });
+      finalRoles = Array.from(set);
+
+      // 대표 역할 결정 (우선순위: admin > student_council > class_president > referee > health_officer > student)
+      const priorityOrder: UserRole[] = ['admin', 'student_council', 'class_president', 'referee', 'health_officer', 'student'];
+      primaryRole = priorityOrder.find((p) => finalRoles.includes(p)) || 'student';
+    }
+
+    const payload: Partial<UserProfile> = {
+      role: primaryRole,
+      roles: finalRoles,
+      isTeacher
+    };
+
+    if (canAnswerSuggestion !== undefined) {
+      payload.canAnswerSuggestion = canAnswerSuggestion;
+    }
+
+    await updateDoc(docRef, sanitizeFirestorePayload(payload));
+  } catch (e) {
+    console.error('[Firebase] updateUserRoles error:', e);
     throw e;
   }
 }

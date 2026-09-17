@@ -24,7 +24,8 @@ import {
   Bell,
   MessageSquare,
   HelpCircle,
-  BookOpen
+  BookOpen,
+  Eye
 } from 'lucide-react';
 import { AdminLoginInquiriesTab } from '../admin/AdminLoginInquiriesTab';
 import { 
@@ -53,6 +54,7 @@ interface AdminConsolePageProps {
   festivalConfig: FestivalConfig | null;
   currentUser?: UserProfile | null;
   onRefresh?: () => void;
+  onNavigateToTab?: (tab: string) => void;
 }
 
 export const AdminConsolePage: React.FC<AdminConsolePageProps> = ({
@@ -61,7 +63,8 @@ export const AdminConsolePage: React.FC<AdminConsolePageProps> = ({
   auditLogs,
   inquiries,
   festivalConfig,
-  currentUser
+  currentUser,
+  onNavigateToTab
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'overview' | 'roster' | 'brackets' | 'notices' | 'documents' | 'points' | 'audit' | 'login_inquiries'>('roster');
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
@@ -330,10 +333,23 @@ export const AdminConsolePage: React.FC<AdminConsolePageProps> = ({
               전교 데이터 & 대진 제어
             </span>
           </div>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2 mt-1">
-            <ShieldAlert className="w-6 h-6 text-red-600 dark:text-red-400" />
-            상산고 체육대회 통합 어드민 콘솔
-          </h2>
+          <div className="flex items-center gap-3 mt-1">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <ShieldAlert className="w-6 h-6 text-red-600 dark:text-red-400" />
+              상산고 체육대회 통합 어드민 콘솔
+            </h2>
+            {onNavigateToTab && (
+              <button
+                type="button"
+                onClick={() => onNavigateToTab('home')}
+                className="flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition cursor-pointer"
+                title="학생들이 보는 일반 화면(종합 홈)으로 전환"
+              >
+                <Eye className="w-3.5 h-3.5 text-blue-600" />
+                <span>학생 화면 보기</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Sub Navigation Tabs */}

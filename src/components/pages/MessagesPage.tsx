@@ -1,5 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { DirectMessage, UserProfile } from '../../types';
+import { 
+  DirectMessage, 
+  UserProfile, 
+  canWriteDirectMessage, 
+  getUserRoles, 
+  hasUserRole 
+} from '../../types';
 import { 
   Send, 
   Inbox, 
@@ -17,7 +23,10 @@ import {
   X,
   ZoomIn,
   Loader2,
-  Paperclip
+  Paperclip,
+  Lock,
+  HelpCircle,
+  ShieldCheck
 } from 'lucide-react';
 import { 
   sendDirectMessage, 
@@ -31,15 +40,22 @@ import { ImageLightboxModal } from '../common/ImageLightboxModal';
 interface MessagesPageProps {
   currentUser: UserProfile | null;
   onOpenLogin?: () => void;
+  onOpenSuggestions?: () => void;
 }
 
 export const MessagesPage: React.FC<MessagesPageProps> = ({
   currentUser,
-  onOpenLogin
+  onOpenLogin,
+  onOpenSuggestions
 }) => {
   const [activeTab, setActiveTab] = useState<'inbox' | 'sent' | 'compose'>('inbox');
   const [messages, setMessages] = useState<DirectMessage[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
+
+  // 권한 확인: 기본적으로 학생은 쪽지를 쓸 수 없음 (선생님, 반장, 학생회, 관리자만 가능)
+  const canWrite = canWriteDirectMessage(currentUser);
+  const userRoles = getUserRoles(currentUser);
+  const isAdmin = hasUserRole(currentUser, 'admin');
 
   // Compose fields
   const [targetType, setTargetType] = useState<string>('class'); // 'class', 'teachers', 'council', 'all'
@@ -124,11 +140,11 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
   const inboxMessages = messages.filter((m) => {
     if (!currentUser) return false;
     // Admins see all
-    if (currentUser.role === 'admin') return true;
+    if (isAdmin) return true;
     // Sent to user's class
     if (m.toClass === userClassCode || m.toClass === 'all') return true;
-    // Sent to role
-    if (m.toRole === currentUser.role || m.toRole === 'all') return true;
+    // Sent to role (겸직 중인 모든 역할에 발송된 쪽지 수신 지원)
+    if (m.toRole === 'all' || userRoles.includes(m.toRole as any)) return true;
     // If teacher and sent to teachers
     if (currentUser.isTeacher && (m.toRole === 'teacher' || m.toClass === 'teacher')) return true;
     return false;
@@ -142,6 +158,11 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
     e.preventDefault();
     if (!currentUser) {
       alert('로그인이 필요합니다.');
+      return;
+    }
+    // 학생 쓰기 차단 규칙 검증
+    if (!canWrite) {
+      alert('기본적으로 학생은 쪽지를 쓸 수 없습니다. (반장, 선생님, 학생회, 관리자만 발송 가능)');
       return;
     }
     if (!messageContent.trim()) {
@@ -206,6 +227,10 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
   };
 
   const handleReplyTo = (msg: DirectMessage) => {
+    if (!canWrite) {
+      alert('기본적으로 일반 학생은 쪽지 답장을 발송할 수 없습니다. (반장, 선생님, 학생회, 관리자 전용)');
+      return;
+    }
     setActiveTab('compose');
     setTargetType('class');
     setMessageContent(`[답장] ${msg.fromName} 학우/선생님께:\n> ${msg.content.slice(0, 30)}...\n\n`);
@@ -223,6 +248,12 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
             <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">
               반장·교사·학생회 상호 연락망
             </span>
+            {!canWrite && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                <Lock className="w-3 h-3" />
+                학생 읽기 전용
+              </span>
+            )}
           </div>
           <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2 mt-1">
             <Mail className="w-6 h-6 text-red-600" />
@@ -258,15 +289,29 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab('compose')}
+            onClick={() => {
+              setActiveTab('compose');
+            }}
             className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
               activeTab === 'compose'
                 ? 'bg-red-600 text-white shadow-xs'
-                : 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40'
+                : canWrite
+                  ? 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40'
+                  : 'text-slate-400 dark:text-slate-500 hover:bg-slate-200/50'
             }`}
+            title={canWrite ? '새 쪽지 작성' : '학생은 쪽지 작성이 제한됩니다'}
           >
-            <Send className="w-3.5 h-3.5" />
+            {canWrite ? (
+              <Send className="w-3.5 h-3.5" />
+            ) : (
+              <Lock className="w-3.5 h-3.5 text-amber-500" />
+            )}
             <span>새 쪽지 쓰기</span>
+            {!canWrite && (
+              <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-200/60 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300">
+                제한
+              </span>
+            )}
           </button>
         </div>
       </div>
@@ -312,14 +357,24 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                   </div>
 
                   <div className="flex items-center gap-2 self-end sm:self-auto">
-                    <button
-                      type="button"
-                      onClick={() => handleReplyTo(msg)}
-                      className="flex items-center gap-1 px-2.5 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 transition cursor-pointer"
-                    >
-                      <Reply className="w-3.5 h-3.5" />
-                      <span>답장</span>
-                    </button>
+                    {canWrite ? (
+                      <button
+                        type="button"
+                        onClick={() => handleReplyTo(msg)}
+                        className="flex items-center gap-1 px-2.5 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 transition cursor-pointer"
+                      >
+                        <Reply className="w-3.5 h-3.5" />
+                        <span>답장</span>
+                      </button>
+                    ) : (
+                      <span 
+                        className="flex items-center gap-1 px-2.5 py-1 bg-slate-100/80 dark:bg-slate-800/50 rounded-lg text-[11px] text-slate-400 dark:text-slate-500 cursor-not-allowed"
+                        title="기본적으로 학생은 쪽지 작성이 제한됩니다"
+                      >
+                        <Lock className="w-3 h-3 text-amber-500/70" />
+                        <span>답장 제한</span>
+                      </span>
+                    )}
                     {(currentUser?.role === 'admin' || currentUser?.studentId === msg.fromId) && (
                       <button
                         type="button"
@@ -429,6 +484,52 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
 
       {/* Tab 3: Compose */}
       {activeTab === 'compose' && (
+        !canWrite ? (
+          <div className="rounded-2xl border border-amber-200 dark:border-amber-900/50 bg-amber-50/70 dark:bg-amber-950/20 p-6 sm:p-8 text-center space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto shadow-xs">
+              <Lock className="w-6 h-6" />
+            </div>
+            <div className="max-w-md mx-auto space-y-2">
+              <h3 className="font-bold text-base text-slate-900 dark:text-white">
+                학생 쪽지 발송 제한 안내
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                상산고등학교 축제·체육대회 운영 규정에 따라 <strong>기본적으로 학생은 쪽지를 발송할 수 없습니다.</strong>
+              </p>
+              <div className="p-3.5 bg-white/90 dark:bg-slate-900/90 rounded-xl border border-amber-200/80 dark:border-amber-800/60 text-left text-xs text-slate-700 dark:text-slate-300 space-y-2 mt-3">
+                <div className="flex items-center gap-1.5 font-bold text-amber-800 dark:text-amber-300">
+                  <ShieldCheck className="w-4 h-4 text-amber-600" />
+                  <span>쪽지 발송 권한 규정</span>
+                </div>
+                <ul className="text-[11px] text-slate-600 dark:text-slate-400 space-y-1 pl-1">
+                  <li>• <strong>발송 가능 직책:</strong> 학급 반장, 담임 및 교원, 학생회/체육부, 총괄 관리자</li>
+                  <li>• <strong>일반 학생 건의/질문:</strong> 대회 운영 의견이나 건의사항은 <strong>[건의함]</strong>을 통해 등록해 주시기 바랍니다.</li>
+                  <li>• <strong>학급/경기 긴급 연락:</strong> 소속 학급 <strong>반장</strong> 또는 <strong>담임 선생님</strong>께 문의하시면 쪽지망을 통해 총괄본부나 상대 학급으로 전달됩니다.</li>
+                </ul>
+              </div>
+            </div>
+            <div className="flex items-center justify-center gap-3 pt-2">
+              {onOpenSuggestions && (
+                <button
+                  type="button"
+                  onClick={onOpenSuggestions}
+                  className="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-xs transition cursor-pointer flex items-center gap-1.5"
+                >
+                  <HelpCircle className="w-4 h-4" />
+                  <span>건의함 바로가기</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setActiveTab('inbox')}
+                className="px-4 py-2.5 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs transition cursor-pointer flex items-center gap-1.5"
+              >
+                <Inbox className="w-4 h-4" />
+                <span>받은 쪽지함 보기</span>
+              </button>
+            </div>
+          </div>
+        ) : (
         <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 sm:p-6 shadow-xs space-y-4">
           <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
             <Send className="w-4 h-4 text-red-600" />
@@ -642,6 +743,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
             </div>
           </form>
         </div>
+        )
       )}
 
       {/* Image Lightbox Modal */}
