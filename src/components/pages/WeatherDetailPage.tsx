@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Sun,
   Moon,
@@ -26,7 +26,10 @@ import {
   Calendar,
   Clock,
   Activity,
-  Layers
+  Layers,
+  ChevronLeft,
+  ChevronRight,
+  Target
 } from 'lucide-react';
 import { WeatherInfo } from '../../types';
 
@@ -44,6 +47,46 @@ export const WeatherDetailPage: React.FC<WeatherDetailPageProps> = ({
   onBack
 }) => {
   const [activeViewTab, setActiveViewTab] = useState<'forecast' | 'sports'>('forecast');
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const currentCardRef = useRef<HTMLDivElement>(null);
+
+  // Scroll to current hour card centering logic
+  const scrollToCurrentHour = useCallback((smooth: boolean = true) => {
+    const container = scrollContainerRef.current;
+    const currentCard = currentCardRef.current;
+    if (!container || !currentCard) return;
+
+    const containerWidth = container.clientWidth;
+    const cardOffsetLeft = currentCard.offsetLeft;
+    const cardWidth = currentCard.offsetWidth;
+
+    // Calculate position so the card is right in the center of the scroll container
+    // If it's near edges, Math.max(0, target) & scrollWidth clamp handle it naturally
+    const targetScrollLeft = cardOffsetLeft - (containerWidth / 2) + (cardWidth / 2);
+
+    container.scrollTo({
+      left: Math.max(0, targetScrollLeft),
+      behavior: smooth ? 'smooth' : 'auto'
+    });
+  }, []);
+
+  // Auto-scroll to center the current hour when entering or when forecast data arrives
+  useEffect(() => {
+    if (!weather?.hourlyForecast || weather.hourlyForecast.length === 0) return;
+
+    // A small delay ensures the DOM layout and card dimensions are computed
+    const timer = setTimeout(() => {
+      scrollToCurrentHour(true);
+    }, 120);
+
+    return () => clearTimeout(timer);
+  }, [weather?.hourlyForecast, scrollToCurrentHour]);
+
+  const scrollByAmount = (offset: number) => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({ left: offset, behavior: 'smooth' });
+    }
+  };
 
   // Helper for weather icons
   const getWeatherIcon = (code: number = 0, isDay: boolean = true, className = 'w-7 h-7') => {
@@ -303,46 +346,128 @@ export const WeatherDetailPage: React.FC<WeatherDetailPageProps> = ({
             </div>
           </div>
 
-          {/* 24-Hour Hourly Forecast Section */}
+          {/* 24-Hour Hourly Forecast Section (0h ~ 24h) */}
           <div className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-red-600 dark:text-emerald-400" />
-                <h3 className="font-bold text-sm text-slate-900 dark:text-white">
-                  시간대별 24시간 상세 예보
-                </h3>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-red-600 dark:text-red-400" />
+                  <h3 className="font-bold text-sm text-slate-900 dark:text-white">
+                    시간대별 24시간 상세 예보 (0시 ~ 24시)
+                  </h3>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                    당일 24개 시간대
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                  현재 시각이 중앙에 위치하며, 좌우로 스크롤하여 하루 전체 날씨 변화를 확인할 수 있습니다.
+                </p>
               </div>
-              <span className="text-[11px] text-slate-400">좌우로 스크롤하여 확인 가능</span>
+
+              {/* Action Controls */}
+              <div className="flex items-center gap-2 self-end sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => scrollToCurrentHour(true)}
+                  className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-red-50 hover:bg-red-100 dark:bg-red-950/50 dark:hover:bg-red-900/60 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-900/60 transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                  title="현재 시간대(지금)를 화면 중앙으로 스크롤"
+                >
+                  <Target className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
+                  <span>지금 시간대로</span>
+                </button>
+
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => scrollByAmount(-220)}
+                    className="p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition cursor-pointer"
+                    title="이전 시간대 보기"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => scrollByAmount(220)}
+                    className="p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition cursor-pointer"
+                    title="다음 시간대 보기"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
             </div>
 
-            <div className="flex items-center gap-3 overflow-x-auto pb-3 pt-1 scrollbar-thin">
-              {(weather?.hourlyForecast || []).map((hf, idx) => (
-                <div
-                  key={idx}
-                  className={`flex-shrink-0 w-24 p-3 rounded-xl border text-center transition ${
-                    idx === 0
-                      ? 'border-red-400 dark:border-red-800 bg-red-50/50 dark:bg-red-950/30'
-                      : 'border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800'
-                  }`}
-                >
-                  <div className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                    {idx === 0 ? '지금' : hf.hourLabel}
+            {/* Scrollable Hourly Container */}
+            <div
+              ref={scrollContainerRef}
+              className="flex items-stretch gap-3 overflow-x-auto pb-4 pt-2 scrollbar-thin scroll-smooth"
+            >
+              {(weather?.hourlyForecast || []).map((hf, idx) => {
+                const isCurrent = Boolean(hf.isCurrentHour);
+                const isPast = Boolean(hf.isPast);
+
+                return (
+                  <div
+                    key={hf.hourNum ?? idx}
+                    ref={isCurrent ? currentCardRef : null}
+                    className={`flex-shrink-0 w-28 p-3 rounded-2xl border text-center transition-all flex flex-col justify-between ${
+                      isCurrent
+                        ? 'border-2 border-red-600 dark:border-red-500 bg-red-50/90 dark:bg-red-950/40 shadow-md ring-4 ring-red-500/20 transform -translate-y-0.5'
+                        : isPast
+                        ? 'border-slate-200/60 dark:border-slate-800/60 bg-slate-50/40 dark:bg-slate-900/30 opacity-70 hover:opacity-100'
+                        : 'border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-850 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    <div>
+                      {/* Top Time & Status Badge */}
+                      <div className="flex items-center justify-center gap-1 mb-1.5">
+                        {isCurrent ? (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-red-600 text-white animate-pulse shadow-2xs">
+                            ● 지금
+                          </span>
+                        ) : isPast ? (
+                          <span className="text-[10px] text-slate-400 font-medium">
+                            지남
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-slate-400 font-medium">
+                            예정
+                          </span>
+                        )}
+                      </div>
+
+                      <div className={`text-xs font-bold ${
+                        isCurrent ? 'text-red-700 dark:text-red-300 font-black' : 'text-slate-700 dark:text-slate-300'
+                      }`}>
+                        {hf.hourLabel}
+                      </div>
+
+                      {/* Weather Condition Icon */}
+                      <div className="my-2 flex justify-center">
+                        {getWeatherIcon(hf.weatherCode, hf.isDay, isCurrent ? 'w-7 h-7' : 'w-6 h-6')}
+                      </div>
+
+                      {/* Temperature */}
+                      <div className={`text-lg font-black font-mono ${
+                        isCurrent ? 'text-red-700 dark:text-red-200' : 'text-slate-900 dark:text-white'
+                      }`}>
+                        {hf.temp}°C
+                      </div>
+
+                      {/* Condition Text */}
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 truncate font-medium">
+                        {hf.condition}
+                      </div>
+                    </div>
+
+                    {/* Bottom Rain Prob */}
+                    <div className="mt-2.5 pt-2 border-t border-slate-200/70 dark:border-slate-700/70 flex items-center justify-center gap-1 text-[11px] font-bold text-blue-600 dark:text-blue-400">
+                      <Droplets className="w-3 h-3" />
+                      <span>{hf.rainProb}%</span>
+                    </div>
                   </div>
-                  <div className="my-2 flex justify-center">
-                    {getWeatherIcon(hf.weatherCode, hf.isDay, 'w-6 h-6')}
-                  </div>
-                  <div className="text-base font-black font-mono text-slate-900 dark:text-white">
-                    {hf.temp}°C
-                  </div>
-                  <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
-                    {hf.condition}
-                  </div>
-                  <div className="mt-2 pt-2 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center justify-center gap-1 text-[11px] font-bold text-blue-600 dark:text-blue-400">
-                    <Droplets className="w-3 h-3" />
-                    <span>{hf.rainProb}%</span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 

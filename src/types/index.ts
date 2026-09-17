@@ -295,6 +295,7 @@ export interface AuditLogEntry {
 export interface HourlyForecastItem {
   time: string;
   hourLabel: string;
+  hourNum?: number;
   temp: number;
   apparentTemp: number;
   rainProb: number;
@@ -304,6 +305,8 @@ export interface HourlyForecastItem {
   isDay: boolean;
   windSpeed: number;
   uvIndex?: number;
+  isCurrentHour?: boolean;
+  isPast?: boolean;
 }
 
 export interface DailyForecastItem {

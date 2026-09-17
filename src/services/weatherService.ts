@@ -1,5 +1,5 @@
-import { WeatherInfo } from '../types';
-import { formatKSTTime } from '../utils/kstTime';
+import { WeatherInfo, HourlyForecastItem } from '../types';
+import { formatKSTTime, getKSTNowParts } from '../utils/kstTime';
 
 /**
  * Open-Meteo Free Weather API Client
@@ -140,17 +140,15 @@ export async function fetchLiveOpenMeteoWeather(): Promise<WeatherInfo> {
 
     // Calculate precipitation probability from hourly forecast for current time
     let rainProb = 0;
-    let currentHourIndex = 0;
+    const kstNow = getKSTNowParts();
+    const todayDateStr = kstNow.dateStr; // e.g. '2026-09-17'
+    const currentKstHour = kstNow.hour;  // 0 ~ 23
+
     if (hourly && Array.isArray(hourly.time)) {
-      const nowIso = new Date().toISOString();
-      // Format to match "YYYY-MM-DDTHH"
-      const nowHourPrefix = `${nowIso.slice(0, 10)}T${nowIso.slice(11, 13)}`;
-      const idx = hourly.time.findIndex((t: string) => t.startsWith(nowHourPrefix));
-      if (idx !== -1) {
-        currentHourIndex = idx;
-        if (Array.isArray(hourly.precipitation_probability)) {
-          rainProb = Math.round(Number(hourly.precipitation_probability[idx] || 0));
-        }
+      const targetNowStr = `${todayDateStr}T${String(currentKstHour).padStart(2, '0')}`;
+      const idx = hourly.time.findIndex((t: string) => t.startsWith(targetNowStr));
+      if (idx !== -1 && Array.isArray(hourly.precipitation_probability)) {
+        rainProb = Math.round(Number(hourly.precipitation_probability[idx] || 0));
       } else if (Array.isArray(hourly.precipitation_probability)) {
         rainProb = Math.round(Number(hourly.precipitation_probability[0] || 0));
       }
@@ -159,31 +157,65 @@ export async function fetchLiveOpenMeteoWeather(): Promise<WeatherInfo> {
     const desc = getWmoWeatherDescription(weatherCode, isDay);
     const assessment = evaluateFestivalOutdoorStatus(temp, rainProb, precipMm, windSpeed);
 
-    // Parse Hourly Forecast (Next 24 hours from current index)
-    const hourlyForecast = [];
+    // Parse Hourly Forecast: 오늘 당일 0시부터 24시(0시~23시) 전체 24시간 예보
+    const hourlyForecast: HourlyForecastItem[] = [];
     if (hourly && Array.isArray(hourly.time)) {
-      const startIdx = Math.max(0, currentHourIndex);
-      const endIdx = Math.min(hourly.time.length, startIdx + 24);
-      for (let i = startIdx; i < endIdx; i++) {
-        const timeStr = hourly.time[i];
-        const hourPart = timeStr.split('T')[1] || '';
-        const hourNum = parseInt(hourPart.split(':')[0], 10) || 0;
-        const hCode = Number(hourly.weather_code?.[i] ?? 0);
-        const hIsDay = hourNum >= 6 && hourNum < 19;
-        const hDesc = getWmoWeatherDescription(hCode, hIsDay);
+      for (let h = 0; h < 24; h++) {
+        const targetHourStr = `${todayDateStr}T${String(h).padStart(2, '0')}`;
+        let idx = hourly.time.findIndex((t: string) => t.startsWith(targetHourStr));
+        
+        // If not matched by exact date (e.g. at date crossover), fallback to array index
+        if (idx === -1 && h < hourly.time.length) {
+          idx = h;
+        }
 
+        if (idx !== -1) {
+          const timeStr = hourly.time[idx];
+          const hCode = Number(hourly.weather_code?.[idx] ?? 0);
+          const hIsDay = h >= 6 && h < 19;
+          const hDesc = getWmoWeatherDescription(hCode, hIsDay);
+          const isCurrentHour = h === currentKstHour;
+          const isPast = h < currentKstHour;
+
+          hourlyForecast.push({
+            time: timeStr,
+            hourLabel: `${h}시`,
+            hourNum: h,
+            temp: Math.round(Number(hourly.temperature_2m?.[idx] || temp)),
+            apparentTemp: Math.round(Number(hourly.apparent_temperature?.[idx] || hourly.temperature_2m?.[idx] || temp)),
+            rainProb: Math.round(Number(hourly.precipitation_probability?.[idx] || 0)),
+            precipMm: Math.round(Number(hourly.precipitation?.[idx] || 0) * 10) / 10,
+            weatherCode: hCode,
+            condition: hDesc.text,
+            isDay: hIsDay,
+            windSpeed: Math.round(Number(hourly.wind_speed_10m?.[idx] || 0)),
+            uvIndex: typeof hourly.uv_index?.[idx] === 'number' ? Math.round(hourly.uv_index[idx] * 10) / 10 : 0,
+            isCurrentHour,
+            isPast
+          });
+        }
+      }
+    }
+
+    // If hourlyForecast is empty, populate default 24 hours
+    if (hourlyForecast.length === 0) {
+      for (let h = 0; h < 24; h++) {
+        const hIsDay = h >= 6 && h < 19;
         hourlyForecast.push({
-          time: timeStr,
-          hourLabel: `${hourNum}시`,
-          temp: Math.round(Number(hourly.temperature_2m?.[i] || 0)),
-          apparentTemp: Math.round(Number(hourly.apparent_temperature?.[i] || hourly.temperature_2m?.[i] || 0)),
-          rainProb: Math.round(Number(hourly.precipitation_probability?.[i] || 0)),
-          precipMm: Math.round(Number(hourly.precipitation?.[i] || 0) * 10) / 10,
-          weatherCode: hCode,
-          condition: hDesc.text,
+          time: `${todayDateStr}T${String(h).padStart(2, '0')}:00`,
+          hourLabel: `${h}시`,
+          hourNum: h,
+          temp: temp + (hIsDay ? Math.round(Math.sin((h - 6) / 13 * Math.PI) * 4) : -3),
+          apparentTemp: temp + (hIsDay ? Math.round(Math.sin((h - 6) / 13 * Math.PI) * 4) : -3),
+          rainProb: h >= 13 && h <= 16 ? 20 : 5,
+          precipMm: 0,
+          weatherCode: weatherCode || 0,
+          condition: desc.text,
           isDay: hIsDay,
-          windSpeed: Math.round(Number(hourly.wind_speed_10m?.[i] || 0)),
-          uvIndex: typeof hourly.uv_index?.[i] === 'number' ? Math.round(hourly.uv_index[i] * 10) / 10 : 0
+          windSpeed: hIsDay ? 10 : 5,
+          uvIndex: hIsDay && h >= 11 && h <= 15 ? 5.5 : 0.8,
+          isCurrentHour: h === currentKstHour,
+          isPast: h < currentKstHour
         });
       }
     }
@@ -256,6 +288,28 @@ export async function fetchLiveOpenMeteoWeather(): Promise<WeatherInfo> {
     };
   } catch (error) {
     console.warn('[Weather] Direct fetch failed, using fallback:', error);
+    const fbKst = getKSTNowParts();
+    const fbHourly: HourlyForecastItem[] = [];
+    for (let h = 0; h < 24; h++) {
+      const isDay = h >= 6 && h < 19;
+      fbHourly.push({
+        time: `${fbKst.dateStr}T${String(h).padStart(2, '0')}:00`,
+        hourLabel: `${h}시`,
+        hourNum: h,
+        temp: 22 + (isDay ? Math.round(Math.sin((h - 6) / 13 * Math.PI) * 4) : -3),
+        apparentTemp: 22 + (isDay ? Math.round(Math.sin((h - 6) / 13 * Math.PI) * 4) : -3),
+        rainProb: h >= 13 && h <= 16 ? 20 : 5,
+        precipMm: 0,
+        weatherCode: 0,
+        condition: '맑음',
+        isDay,
+        windSpeed: isDay ? 10 : 5,
+        uvIndex: isDay && h >= 11 && h <= 15 ? 5.5 : 0.8,
+        isCurrentHour: h === fbKst.hour,
+        isPast: h < fbKst.hour
+      });
+    }
+
     return {
       temperature: 22,
       temp: 22,
@@ -271,7 +325,8 @@ export async function fetchLiveOpenMeteoWeather(): Promise<WeatherInfo> {
       statusText: '야외 체육활동 최적: 대운동장 및 농구장 경기 진행에 완벽한 날씨입니다',
       lastUpdated: formatKSTTime(new Date()),
       uvIndex: '보통',
-      uvIndexValue: 4.2
+      uvIndexValue: 4.2,
+      hourlyForecast: fbHourly
     };
   }
 }
