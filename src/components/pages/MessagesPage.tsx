@@ -31,7 +31,8 @@ import {
 import { 
   sendDirectMessage, 
   listenAllDirectMessages, 
-  deleteDirectMessage 
+  deleteDirectMessage,
+  hideDirectMessageForUser 
 } from '../../services/firebaseService';
 import { formatKSTDateTime } from '../../utils/kstTime';
 import { compressImageFile } from '../../utils/imageCompressor';
@@ -56,6 +57,37 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
   const canWrite = canWriteDirectMessage(currentUser);
   const userRoles = getUserRoles(currentUser);
   const isAdmin = hasUserRole(currentUser, 'admin');
+
+  // Local storage prefix for hidden/deleted messages
+  const LOCAL_STORAGE_HIDDEN_PREFIX = 'thesangsan_hidden_dms_';
+
+  const [locallyHiddenIds, setLocallyHiddenIds] = useState<string[]>(() => {
+    if (!currentUser?.studentId) return [];
+    try {
+      const raw = localStorage.getItem(`${LOCAL_STORAGE_HIDDEN_PREFIX}${currentUser.studentId}`);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Persist locally hidden IDs per studentId
+  useEffect(() => {
+    if (!currentUser?.studentId) return;
+    try {
+      localStorage.setItem(
+        `${LOCAL_STORAGE_HIDDEN_PREFIX}${currentUser.studentId}`,
+        JSON.stringify(locallyHiddenIds)
+      );
+    } catch {}
+  }, [locallyHiddenIds, currentUser?.studentId]);
+
+  // Delete modal state (replaces window.confirm)
+  const [deleteModal, setDeleteModal] = useState<{
+    msg: DirectMessage;
+    scope: 'inbox' | 'sent';
+  } | null>(null);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
   // Compose fields
   const [targetType, setTargetType] = useState<string>('class'); // 'class', 'teachers', 'council', 'all'
@@ -139,6 +171,10 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
 
   const inboxMessages = messages.filter((m) => {
     if (!currentUser) return false;
+    // Check if hidden locally or in Firestore for this user
+    if (locallyHiddenIds.includes(m.id)) return false;
+    if (m.deletedFor && m.deletedFor.includes(currentUser.studentId)) return false;
+
     // Admins see all
     if (isAdmin) return true;
     // Sent to user's class
@@ -151,7 +187,10 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
   });
 
   const sentMessages = messages.filter((m) => {
-    return m.fromId === currentUser?.studentId;
+    if (!currentUser) return false;
+    if (m.fromId !== currentUser.studentId) return false;
+    if (locallyHiddenIds.includes(m.id)) return false;
+    return true;
   });
 
   const handleSend = async (e: React.FormEvent) => {
@@ -214,15 +253,33 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (window.confirm('이 쪽지를 삭제하시겠습니까?')) {
-      try {
-        await deleteDirectMessage(id);
-        showNotice('쪽지가 삭제되었습니다.');
-      } catch (err) {
-        console.error(err);
-        alert('삭제 실패');
+  const handleExecuteDelete = async (mode: 'permanent' | 'hide') => {
+    if (!deleteModal || !currentUser) return;
+    const { msg } = deleteModal;
+    setIsDeleting(true);
+
+    try {
+      if (mode === 'permanent') {
+        // 완전 영구 삭제: Firestore 문서 삭제
+        await deleteDirectMessage(msg.id);
+        setLocallyHiddenIds((prev) => Array.from(new Set([...prev, msg.id])));
+        setMessages((prev) => prev.filter((m) => m.id !== msg.id));
+        showNotice('쪽지가 완전히 삭제되었습니다.');
+      } else {
+        // 내 쪽지함에서만 삭제/숨김
+        setLocallyHiddenIds((prev) => Array.from(new Set([...prev, msg.id])));
+        await hideDirectMessageForUser(msg.id, currentUser.studentId);
+        showNotice('내 쪽지함에서 쪽지가 삭제되었습니다.');
       }
+      setDeleteModal(null);
+    } catch (err) {
+      console.error('Delete error:', err);
+      // 로컬 숨김은 즉각 반영
+      setLocallyHiddenIds((prev) => Array.from(new Set([...prev, msg.id])));
+      showNotice('쪽지가 삭제 처리되었습니다.');
+      setDeleteModal(null);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -375,12 +432,13 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                         <span>답장 제한</span>
                       </span>
                     )}
-                    {(currentUser?.role === 'admin' || currentUser?.studentId === msg.fromId) && (
+                    {/* 쪽지 삭제 버튼: 수신자는 내 쪽지함에서 삭제, 관리자/발신자는 완전 삭제 가능 */}
+                    {currentUser && (
                       <button
                         type="button"
-                        onClick={() => handleDelete(msg.id)}
-                        className="p-1 rounded-lg text-slate-400 hover:text-red-600 transition cursor-pointer"
-                        title="쪽지 삭제"
+                        onClick={() => setDeleteModal({ msg, scope: 'inbox' })}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition cursor-pointer"
+                        title={isAdmin || currentUser.studentId === msg.fromId ? "쪽지 삭제 / 관리" : "내 쪽지함에서 삭제"}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -442,14 +500,16 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
                     </span>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(msg.id)}
-                    className="p-1 rounded-lg text-slate-400 hover:text-red-600 transition cursor-pointer"
-                    title="쪽지 삭제"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  {(isAdmin || currentUser?.studentId === msg.fromId) && (
+                    <button
+                      type="button"
+                      onClick={() => setDeleteModal({ msg, scope: 'sent' })}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition cursor-pointer"
+                      title="보낸 쪽지 삭제"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </div>
 
                 <p className="text-xs sm:text-[13px] text-slate-800 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">
@@ -744,6 +804,122 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({
           </form>
         </div>
         )
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteModal && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
+          onClick={() => !isDeleting && setDeleteModal(null)}
+        >
+          <div 
+            className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-red-100 dark:bg-red-950/70 text-red-600 dark:text-red-400">
+                  <Trash2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-slate-900 dark:text-white">
+                    {deleteModal.scope === 'sent' 
+                      ? '보낸 쪽지 삭제' 
+                      : (isAdmin || deleteModal.msg.fromId === currentUser?.studentId) 
+                        ? '쪽지 삭제 관리' 
+                        : '받은 쪽지함에서 삭제'}
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    선택한 쪽지를 삭제 처리합니다.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setDeleteModal(null)}
+                className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Message Preview Box */}
+            <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 text-xs space-y-2">
+              <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 pb-1.5 border-b border-slate-200/50 dark:border-slate-700/50">
+                <span className="font-semibold text-slate-700 dark:text-slate-300">
+                  {deleteModal.scope === 'sent' 
+                    ? `수신: ${deleteModal.msg.toClass === 'all' ? '전체 대상' : deleteModal.msg.toClass}` 
+                    : `발신: ${deleteModal.msg.fromName}`}
+                </span>
+                <span>{deleteModal.msg.createdAt ? formatKSTDateTime(deleteModal.msg.createdAt) : ''}</span>
+              </div>
+              <p className="text-slate-700 dark:text-slate-300 line-clamp-3 leading-relaxed">
+                {deleteModal.msg.content}
+              </p>
+              {(deleteModal.msg.imageUrl || (deleteModal.msg.images && deleteModal.msg.images.length > 0)) && (
+                <div className="text-[10px] text-blue-600 dark:text-blue-400 font-medium flex items-center gap-1 pt-0.5">
+                  <ImageIcon className="w-3.5 h-3.5" />
+                  <span>사진 첨부 1장 포함</span>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Actions */}
+            {deleteModal.scope === 'sent' || isAdmin || deleteModal.msg.fromId === currentUser?.studentId ? (
+              <div className="space-y-2 pt-1">
+                <button
+                  type="button"
+                  disabled={isDeleting}
+                  onClick={() => handleExecuteDelete('permanent')}
+                  className="w-full py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-700 active:scale-[0.99] text-white text-xs font-bold transition flex items-center justify-center gap-2 shadow-xs cursor-pointer disabled:opacity-50"
+                >
+                  {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                  <span>모두에게서 완전 삭제 (영구 삭제)</span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={isDeleting}
+                  onClick={() => handleExecuteDelete('hide')}
+                  className="w-full py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  <span>내 목록에서만 삭제 (숨기기)</span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={isDeleting}
+                  onClick={() => setDeleteModal(null)}
+                  className="w-full py-2 rounded-xl text-slate-500 hover:text-slate-700 dark:text-slate-400 text-xs transition cursor-pointer font-medium"
+                >
+                  취소
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2 pt-1">
+                <button
+                  type="button"
+                  disabled={isDeleting}
+                  onClick={() => handleExecuteDelete('hide')}
+                  className="w-full py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-700 active:scale-[0.99] text-white text-xs font-bold transition flex items-center justify-center gap-2 shadow-xs cursor-pointer disabled:opacity-50"
+                >
+                  {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                  <span>내 쪽지함에서 삭제하기</span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={isDeleting}
+                  onClick={() => setDeleteModal(null)}
+                  className="w-full py-2 rounded-xl text-slate-500 hover:text-slate-700 dark:text-slate-400 text-xs transition cursor-pointer font-medium"
+                >
+                  취소
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       {/* Image Lightbox Modal */}

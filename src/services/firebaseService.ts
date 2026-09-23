@@ -14,7 +14,8 @@ import {
   limit,
   serverTimestamp,
   getDocFromServer,
-  increment 
+  increment,
+  arrayUnion 
 } from 'firebase/firestore';
 import { signInAnonymously, onAuthStateChanged, User } from 'firebase/auth';
 import { auth, db } from '../lib/firebase';
@@ -1561,14 +1562,17 @@ export async function saveLineup(lineup: ClassLineup): Promise<void> {
 // -------------------------------------------------------------
 export function listenMessages(userClass: string, isLeaderOrTeacher: boolean, callback: (msgs: DirectMessage[]) => void): () => void {
   try {
-    const q = collection(db, 'messages');
+    const q = collection(db, 'direct_messages');
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const list: DirectMessage[] = [];
       snapshot.forEach((d) => {
         const item = d.data() as DirectMessage;
         // Filter: class-specific or if leader/teacher/council
         if (isLeaderOrTeacher || item.toClass === userClass || item.toClass === 'all') {
-          list.push(item);
+          list.push({
+            ...item,
+            id: d.id || item.id
+          });
         }
       });
       list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -2161,7 +2165,13 @@ export function listenAllDirectMessages(callback: (messages: DirectMessage[]) =>
     const q = collection(db, 'direct_messages');
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const list: DirectMessage[] = [];
-      snapshot.forEach((d) => list.push(d.data() as DirectMessage));
+      snapshot.forEach((d) => {
+        const raw = d.data() as DirectMessage;
+        list.push({
+          ...raw,
+          id: d.id || raw.id
+        });
+      });
       list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       callback(list);
     }, () => callback([]));
@@ -2173,12 +2183,33 @@ export function listenAllDirectMessages(callback: (messages: DirectMessage[]) =>
 }
 
 export async function deleteDirectMessage(id: string): Promise<void> {
+  if (!id || typeof id !== 'string') {
+    console.warn('[Firebase] deleteDirectMessage received empty or invalid id:', id);
+    return;
+  }
   try {
+    await ensureFirebaseAuth().catch(() => {});
     const docRef = doc(db, 'direct_messages', id);
     await deleteDoc(docRef);
+    try {
+      await deleteDoc(doc(db, 'messages', id));
+    } catch (_) {}
   } catch (e) {
     console.error('[Firebase] deleteDirectMessage error:', e);
     throw e;
+  }
+}
+
+export async function hideDirectMessageForUser(id: string, userIdentifier: string): Promise<void> {
+  if (!id || !userIdentifier) return;
+  try {
+    await ensureFirebaseAuth().catch(() => {});
+    const docRef = doc(db, 'direct_messages', id);
+    await updateDoc(docRef, {
+      deletedFor: arrayUnion(userIdentifier)
+    });
+  } catch (e) {
+    console.warn('[Firebase] hideDirectMessageForUser error:', e);
   }
 }
 

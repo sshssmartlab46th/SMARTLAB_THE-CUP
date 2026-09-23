@@ -211,6 +211,7 @@ export interface DirectMessage {
   imageUrl?: string;
   images?: string[];
   createdAt: string;
+  deletedFor?: string[]; // studentIds who have deleted/hidden this message from their inbox
 }
 
 export interface CheerCount {
