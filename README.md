@@ -14,7 +14,7 @@
     </tr>
   </table>
 
-  # 🏆 UNNAMED
+  # 🏆 The CUP
   ### 상산고등학교 체육대회 및 학교 체육 관련 모든 대회 실시간 관전·운영·통합 플랫폼
   *Authoritative, Clean, and Real-Time Event Operating System for Sangsan High School*
 
