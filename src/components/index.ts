@@ -27,30 +27,6 @@ export * from './dashboard/admin/AdminQuickActionsCard';
 export * from './dashboard/admin/AdminAuditLogCard';
 export * from './dashboard/admin/AdminInquiryListCard';
 
-// Class leader dashboard components
-export * from './dashboard/class-leader/ClassScopeNoticeCard';
-export * from './dashboard/class-leader/ClassRosterManagerCard';
-export * from './dashboard/class-leader/ClassLeaderSpecialActionsCard';
-export * from './dashboard/class-leader/ClassScheduleInquiryCard';
-
-// Student council & sports committee staff dashboard components
-export * from './dashboard/staff/StaffPendingResultsCard';
-export * from './dashboard/staff/StaffInventoryCard';
-export * from './dashboard/staff/StaffQuickControlCard';
-export * from './dashboard/staff/StaffFieldIssuesCard';
-
-// Referee / match operator dashboard components
-export * from './dashboard/referee/RefereeScoreboardCard';
-export * from './dashboard/referee/RefereeSubstitutionsCard';
-export * from './dashboard/referee/RefereeAssignedMatchesCard';
-export * from './dashboard/referee/RefereeSubmissionQueueCard';
-
-// Safety & medical officer dashboard components
-export * from './dashboard/medical/MedicalTriageQueueCard';
-export * from './dashboard/medical/MedicalSuppliesCard';
-export * from './dashboard/medical/MedicalEmergencyHotlineCard';
-export * from './dashboard/medical/MedicalPatientTimelineCard';
-
 // Auth, Modals & Advanced Match Components
 export * from './auth/AuthModal';
 export * from './messages/DirectMessageModal';

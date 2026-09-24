@@ -53,23 +53,6 @@ import {
   MessagesPage,
   WeatherDetailPage,
   NoticesPage,
-  // Role Dashboard cards
-  ClassScopeNoticeCard,
-  ClassRosterManagerCard,
-  ClassLeaderSpecialActionsCard,
-  ClassScheduleInquiryCard,
-  StaffPendingResultsCard,
-  StaffInventoryCard,
-  StaffQuickControlCard,
-  StaffFieldIssuesCard,
-  RefereeAssignedMatchesCard,
-  RefereeScoreboardCard,
-  RefereeSubmissionQueueCard,
-  RefereeSubstitutionsCard,
-  MedicalTriageQueueCard,
-  MedicalSuppliesCard,
-  MedicalEmergencyHotlineCard,
-  MedicalPatientTimelineCard,
   AdminEmergencyControlCard,
   AdminSystemStatusCard,
   AdminScoreApprovalCard,
@@ -762,6 +745,7 @@ export default function App() {
             matches={matches}
             notices={notices}
             onBackToHome={() => navigateTo('home')}
+            onNavigateToTab={(t) => navigateTo(t as any)}
           />
         )}
 
@@ -872,14 +856,14 @@ export default function App() {
                       </button>
                     </>
                   )}
-                  {currentUser.role === 'student_council' && (
+                  {(currentUser.role === 'student_council' || currentUser.role === 'referee') && (
                     <>
                       <button
                         type="button"
                         onClick={() => navigateTo('roledashboard')}
                         className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition cursor-pointer shadow-xs"
                       >
-                        학생회 진행 대시보드
+                        학생회 / 진행 대시보드
                       </button>
                       <button
                         type="button"
@@ -894,31 +878,6 @@ export default function App() {
                         className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl transition cursor-pointer shadow-xs"
                       >
                         스코어보드 제어 (+1/-1)
-                      </button>
-                    </>
-                  )}
-                  {currentUser.role === 'referee' && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => navigateTo('roledashboard')}
-                        className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl transition cursor-pointer shadow-xs"
-                      >
-                        심판 전용 대시보드
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (currentLiveMatch) {
-                            setActiveMatchForLive(currentLiveMatch);
-                            navigateTo('live');
-                          } else {
-                            navigateTo('schedule');
-                          }
-                        }}
-                        className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl transition cursor-pointer shadow-xs"
-                      >
-                        실시간 기록판 제어
                       </button>
                     </>
                   )}
