@@ -122,7 +122,7 @@ export const AdminConsolePage: React.FC<AdminConsolePageProps> = ({
     const target = scoreRequests.find(r => r.id === id);
     if (!target) return;
     try {
-      await approveScoreRequest(id, target.matchId, target.homeScore, target.awayScore);
+      await approveScoreRequest(id, target.matchId, target.homeScore, target.awayScore, target);
       setScoreRequests(prev => prev.filter(r => r.id !== id));
       handleNotice(`[승인 완료] ${target.title} (${target.homeScore}:${target.awayScore}) 점수가 공식 확정되었습니다.`);
     } catch (err) {
@@ -135,7 +135,7 @@ export const AdminConsolePage: React.FC<AdminConsolePageProps> = ({
     const target = scoreRequests.find(r => r.id === id);
     if (!target) return;
     try {
-      await rejectScoreRequest(id, '총괄본부 재확인 요청으로 반려');
+      await rejectScoreRequest(id, '총괄본부 재확인 요청으로 반려', target);
       setScoreRequests(prev => prev.filter(r => r.id !== id));
       handleNotice(`[반려 완료] ${target.title} 점수 승인 요청이 심판진으로 반려되었습니다.`);
     } catch (err) {

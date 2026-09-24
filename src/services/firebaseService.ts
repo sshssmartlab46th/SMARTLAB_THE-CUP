@@ -2255,7 +2255,10 @@ export function listenScoreApprovals(callback: (requests: any[]) => void): () =>
     const q = collection(db, 'score_approvals');
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const list: any[] = [];
-      snapshot.forEach((d) => list.push(d.data()));
+      snapshot.forEach((d) => {
+        const data = d.data();
+        list.push({ ...data, id: d.id });
+      });
       list.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
       callback(list);
     }, () => callback([]));
@@ -2271,12 +2274,12 @@ export async function submitScoreApprovalRequest(req: any): Promise<void> {
     await ensureFirebaseAuth();
     const id = req.id || `req-${Date.now()}`;
     const docRef = doc(db, 'score_approvals', id);
-    await setDoc(docRef, {
+    await setDoc(docRef, sanitizeFirestorePayload({
       ...req,
       id,
       status: req.status || 'PENDING',
       createdAt: req.createdAt || new Date().toISOString()
-    });
+    }), { merge: true });
   } catch (e) {
     console.error('[Firebase] submitScoreApprovalRequest error:', e);
     throw e;
@@ -2287,28 +2290,38 @@ export async function approveScoreRequest(
   requestId: string,
   matchId: string,
   homeScore: number,
-  awayScore: number
+  awayScore: number,
+  fallbackData?: any
 ): Promise<void> {
   try {
     await ensureFirebaseAuth();
-    // 1. Mark approval as APPROVED
+    // 1. Mark approval as APPROVED using setDoc with merge: true so it works whether doc exists or not
     const appRef = doc(db, 'score_approvals', requestId);
-    await updateDoc(appRef, {
+    const payload: Record<string, any> = {
+      id: requestId,
       status: 'APPROVED',
       approvedAt: new Date().toISOString()
-    });
+    };
+    if (fallbackData) {
+      Object.assign(payload, sanitizeFirestorePayload(fallbackData));
+      payload.id = requestId;
+      payload.status = 'APPROVED';
+      payload.approvedAt = new Date().toISOString();
+    }
+    await setDoc(appRef, payload, { merge: true });
 
     // 2. Update match score and status
     if (matchId) {
       const matchRef = doc(db, 'matches', matchId);
-      await updateDoc(matchRef, {
+      await setDoc(matchRef, sanitizeFirestorePayload({
+        id: matchId,
         homeScore,
         awayScore,
         status: 'FINISHED',
         period: '경기 종료',
         timerRunning: false,
         updatedAt: new Date().toISOString()
-      });
+      }), { merge: true });
     }
   } catch (e) {
     console.error('[Firebase] approveScoreRequest error:', e);
@@ -2316,15 +2329,28 @@ export async function approveScoreRequest(
   }
 }
 
-export async function rejectScoreRequest(requestId: string, reason?: string): Promise<void> {
+export async function rejectScoreRequest(
+  requestId: string, 
+  reason?: string,
+  fallbackData?: any
+): Promise<void> {
   try {
     await ensureFirebaseAuth();
     const appRef = doc(db, 'score_approvals', requestId);
-    await updateDoc(appRef, {
+    const payload: Record<string, any> = {
+      id: requestId,
       status: 'REJECTED',
       rejectionReason: reason || '본부 확인 결과 반려',
       rejectedAt: new Date().toISOString()
-    });
+    };
+    if (fallbackData) {
+      Object.assign(payload, sanitizeFirestorePayload(fallbackData));
+      payload.id = requestId;
+      payload.status = 'REJECTED';
+      payload.rejectionReason = reason || '본부 확인 결과 반려';
+      payload.rejectedAt = new Date().toISOString();
+    }
+    await setDoc(appRef, payload, { merge: true });
   } catch (e) {
     console.error('[Firebase] rejectScoreRequest error:', e);
     throw e;

@@ -144,9 +144,39 @@
         "timestamp": { "type": "string" }
       },
       "required": ["operatorName", "action", "timestamp"]
+    },
+    "ScoreApproval": {
+      "title": "ScoreApproval",
+      "description": "Referee match score approval pipeline requests for administrative confirmation",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "reqCode": { "type": "string" },
+        "matchId": { "type": "string" },
+        "sport": { "type": "string" },
+        "title": { "type": "string" },
+        "homeTeam": { "type": "string" },
+        "homeScore": { "type": "number" },
+        "awayTeam": { "type": "string" },
+        "awayScore": { "type": "number" },
+        "reporterName": { "type": "string" },
+        "reporterRole": { "type": "string" },
+        "notes": { "type": "string" },
+        "status": { "type": "string", "enum": ["PENDING", "APPROVED", "REJECTED"] },
+        "pointsToAward": { "type": "number" },
+        "createdAt": { "type": "string" },
+        "approvedAt": { "type": "string" },
+        "rejectedAt": { "type": "string" },
+        "rejectionReason": { "type": "string" }
+      },
+      "required": ["matchId", "homeScore", "awayScore", "status"]
     }
   },
   "firestore": {
+    "/score_approvals/{approvalId}": {
+      "schema": "ScoreApproval",
+      "description": "Referee score approval requests"
+    },
     "/users/{userId}": {
       "schema": "User",
       "description": "User profiles"
