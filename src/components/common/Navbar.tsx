@@ -4,18 +4,14 @@ import { SangsanLogo } from './SangsanLogo';
 import { SmartlabLogo } from './SmartlabLogo';
 import { 
   Sun, 
-  Moon,
-  Bell,
-  MessageSquare,
-  HelpCircle,
-  Activity,
-  LogOut,
-  Settings,
-  LogIn,
-  Shield,
-  LayoutDashboard,
-  Eye,
-  Sliders
+  Moon, 
+  Bell, 
+  MessageSquare, 
+  Activity, 
+  LogOut, 
+  LogIn, 
+  Eye, 
+  Sliders 
 } from 'lucide-react';
 
 export type MainNavTab = 
@@ -48,6 +44,7 @@ export interface NavbarProps {
   weather?: WeatherInfo | null;
   isDarkMode?: boolean;
   onToggleDarkMode?: () => void;
+  onOpenMobileMenu?: () => void;
   onOpenMessages?: () => void;
   onOpenSuggestions?: () => void;
   onOpenInjuries?: () => void;
@@ -64,13 +61,12 @@ export const Navbar: React.FC<NavbarProps> = ({
   weather: propWeather,
   isDarkMode,
   onToggleDarkMode,
+  onOpenMobileMenu,
   onOpenMessages,
-  onOpenSuggestions,
   onOpenInjuries,
   onOpenAdminConsole,
   onLogout
 }) => {
-  const userRoles = getUserRoles(userProfile);
   const isAdmin = hasUserRole(userProfile, 'admin');
   const isClassPresident = hasUserRole(userProfile, 'class_president');
   const isStudentCouncil = hasUserRole(userProfile, 'student_council');
@@ -79,14 +75,14 @@ export const Navbar: React.FC<NavbarProps> = ({
   const isTeacher = userProfile?.isTeacher || currentRole === 'teacher';
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-[#0b0f19]/90 backdrop-blur-md transition-colors">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+    <header className="sticky top-0 z-40 w-full border-b border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-[#0b0f19]/95 backdrop-blur-md transition-colors">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 h-16 flex items-center justify-between gap-2 sm:gap-4">
         {/* Left: Sangsan Crest & App Title */}
         <div 
           onClick={() => onTabChange('home')}
-          className="flex items-center gap-3 shrink-0 cursor-pointer select-none"
+          className="flex items-center gap-2.5 sm:gap-3 shrink-0 cursor-pointer select-none"
         >
-          <SangsanLogo size={36} />
+          <SangsanLogo size={34} />
           <div>
             <div className="flex items-center gap-1.5">
               <span className="font-serif font-black text-slate-900 dark:text-white tracking-tight text-base sm:text-lg">
@@ -98,15 +94,15 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </span>
               )}
             </div>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium tracking-tight">
-              {isAdmin ? '상산고 스마트 운영 플랫폼 (어드민 겸용)' : '상산고등학교 스마트 대회 플랫폼'}
+            <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 font-medium tracking-tight">
+              {isAdmin ? '스마트 운영 플랫폼 (어드민 겸용)' : '상산고등학교 스마트 대회 플랫폼'}
             </p>
           </div>
         </div>
 
-        {/* Center: Main Student Navigation Tabs - Always visible to all users (Admins are students too) */}
+        {/* Center: Main Student Navigation Tabs - Visible on Desktop */}
         <div className="hidden md:flex items-center justify-center flex-1">
-          <nav className="flex items-center gap-1 overflow-x-auto py-1">
+          <nav className="flex items-center gap-1 py-1">
             {[
               { tab: 'home', label: '종합 홈' },
               { tab: 'notices', label: '공지사항' },
@@ -164,7 +160,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         {/* Right Tools & Shortcuts */}
-        <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {/* Simple Live Temperature Badge */}
           {propWeather && (
             <button
@@ -178,64 +174,62 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           )}
 
-          {/* Quick Shortcuts */}
+          {/* Quick Dark Mode Toggle (Header) */}
           <button
             type="button"
-            onClick={() => onTabChange('notices')}
-            title="공지사항 전체 목록"
-            className={`p-1.5 rounded-lg border transition cursor-pointer ${
-              activeTab === 'notices'
-                ? 'bg-red-50 dark:bg-red-950/40 border-red-500 text-red-600 dark:text-red-400'
-                : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-red-600'
-            }`}
+            onClick={onToggleDarkMode}
+            title={isDarkMode ? '라이트 모드로 전환' : '다크 모드로 전환'}
+            className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
           >
-            <Bell className="w-4 h-4" />
+            {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
           </button>
 
-          <button
-            type="button"
-            onClick={() => onTabChange('injury')}
-            title="부상백과"
-            className={`p-1.5 rounded-lg border transition cursor-pointer ${
-              activeTab === 'injury'
-                ? 'bg-red-50 dark:bg-red-950/40 border-red-500 text-red-600'
-                : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-red-600'
-            }`}
-          >
-            <Activity className="w-4 h-4" />
-          </button>
+          {/* Desktop-only Secondary Buttons */}
+          <div className="hidden md:flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => onTabChange('notices')}
+              title="공지사항 전체 목록"
+              className={`p-1.5 rounded-lg border transition cursor-pointer ${
+                activeTab === 'notices'
+                  ? 'bg-red-50 dark:bg-red-950/40 border-red-500 text-red-600 dark:text-red-400'
+                  : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-red-600'
+              }`}
+            >
+              <Bell className="w-4 h-4" />
+            </button>
 
-          <button
-            type="button"
-            onClick={() => onTabChange('suggestions')}
-            title="건의함"
-            className={`p-1.5 rounded-lg border transition cursor-pointer ${
-              activeTab === 'suggestions'
-                ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500 text-emerald-600'
-                : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-emerald-500'
-            }`}
-          >
-            <HelpCircle className="w-4 h-4" />
-          </button>
+            <button
+              type="button"
+              onClick={() => onTabChange('injury')}
+              title="부상백과"
+              className={`p-1.5 rounded-lg border transition cursor-pointer ${
+                activeTab === 'injury'
+                  ? 'bg-red-50 dark:bg-red-950/40 border-red-500 text-red-600'
+                  : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-red-600'
+              }`}
+            >
+              <Activity className="w-4 h-4" />
+            </button>
 
-          <button
-            type="button"
-            onClick={() => onTabChange('messages')}
-            title="실시간 쪽지함"
-            className={`p-1.5 rounded-lg border transition cursor-pointer ${
-              activeTab === 'messages'
-                ? 'bg-red-50 dark:bg-red-950/40 border-red-500 text-red-600 dark:text-red-400'
-                : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-red-600'
-            }`}
-          >
-            <MessageSquare className="w-4 h-4" />
-          </button>
+            <button
+              type="button"
+              onClick={() => onTabChange('messages')}
+              title="실시간 쪽지함"
+              className={`p-1.5 rounded-lg border transition cursor-pointer ${
+                activeTab === 'messages'
+                  ? 'bg-red-50 dark:bg-red-950/40 border-red-500 text-red-600 dark:text-red-400'
+                  : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-red-600'
+              }`}
+            >
+              <MessageSquare className="w-4 h-4" />
+            </button>
+          </div>
 
-          {/* User Role & Profile Badge with Concurrent Roles Display */}
+          {/* User Role & Profile Badge (Desktop) */}
           {userProfile ? (
-            <div className="flex items-center gap-2">
+            <div className="hidden md:flex items-center gap-2">
               <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
-                {/* Role Badges */}
                 <div className="flex items-center gap-1">
                   {isTeacher ? (
                     <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-600 text-white">
@@ -280,7 +274,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span className="text-xs font-bold text-slate-800 dark:text-slate-200 font-mono">
                   {userProfile.studentId}
                 </span>
-                <span className="text-xs text-slate-600 dark:text-slate-400 hidden sm:inline">
+                <span className="text-xs text-slate-600 dark:text-slate-400">
                   {userProfile.name}
                 </span>
               </div>
@@ -300,7 +294,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   {activeTab === 'admin' ? (
                     <>
                       <Eye className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">학생 화면 보기</span>
+                      <span>학생 화면</span>
                     </>
                   ) : (
                     <>
@@ -325,15 +319,26 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               type="button"
               onClick={() => onTabChange('login')}
-              className="px-3 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs transition"
+              className="px-2.5 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs flex items-center gap-1 cursor-pointer shadow-xs transition"
             >
               <LogIn className="w-3.5 h-3.5" />
-              로그인 / 인증
+              <span className="hidden sm:inline">로그인 / 인증</span>
+              <span className="sm:hidden">로그인</span>
             </button>
           )}
 
+          {/* Mobile-only Hamburger Menu Button (≡) */}
+          <button
+            type="button"
+            onClick={onOpenMobileMenu}
+            title="전체 메뉴 (≡)"
+            className="md:hidden p-2 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer flex items-center justify-center"
+          >
+            <span className="font-mono text-lg font-black leading-none">≡</span>
+          </button>
+
           {/* Smartlab official logo */}
-          <div onClick={() => onTabChange('smartlab')} className="cursor-pointer">
+          <div onClick={() => onTabChange('smartlab')} className="hidden sm:block cursor-pointer">
             <SmartlabLogo size={28} showText={true} />
           </div>
         </div>

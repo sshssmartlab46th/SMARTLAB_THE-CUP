@@ -3,6 +3,7 @@ export * from './common/SangsanLogo';
 export * from './common/SmartlabLogo';
 export * from './common/Navbar';
 export * from './common/MobileBottomNav';
+export * from './common/MobileMenuDrawer';
 export * from './common/NoticeTickerBanner';
 export * from './common/NoticeModal';
 export * from './common/Footer';

@@ -14,6 +14,7 @@ import {
 import { 
   Navbar, 
   MobileBottomNav,
+  MobileMenuDrawer,
   MainNavTab, 
   NoticeTickerBanner, 
   NoticeModal,
@@ -159,10 +160,28 @@ export default function App() {
     setActiveTabState(tab);
   };
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
-    return document.documentElement.classList.contains('dark');
+    try {
+      const savedTheme = localStorage.getItem('sangsan_theme');
+      if (savedTheme) return savedTheme === 'dark';
+      return document.documentElement.classList.contains('dark') || 
+             window.matchMedia('(prefers-color-scheme: dark)').matches;
+    } catch {
+      return true;
+    }
   });
 
+  const handleToggleDarkMode = () => {
+    setIsDarkMode((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('sangsan_theme', next ? 'dark' : 'light');
+      } catch {}
+      return next;
+    });
+  };
+
   // 3. Modals state
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showDirectMessageModal, setShowDirectMessageModal] = useState(false);
   const [showSuggestionModal, setShowSuggestionModal] = useState(false);
@@ -604,7 +623,8 @@ export default function App() {
         userProfile={currentUser}
         weather={weather}
         isDarkMode={isDarkMode}
-        onToggleDarkMode={() => setIsDarkMode(!isDarkMode)}
+        onToggleDarkMode={handleToggleDarkMode}
+        onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
         onOpenMessages={() => {
           if (!currentUser) {
             navigateTo('login');
@@ -1002,14 +1022,46 @@ export default function App() {
       {/* 4. Footer with made by SMARTLAB */}
       <Footer links={footerLinks} customCredit="made by SMARTLAB" />
 
-      {/* 5. Mobile Bottom Navigation */}
-      <MobileBottomNav
-        activeTab={activeTab}
-        onTabChange={navigateTo}
-        userProfile={currentUser}
+      {/* 5. Mobile Bottom Navigation (Only when logged in) */}
+      {currentUser && (
+        <MobileBottomNav
+          activeTab={activeTab}
+          onTabChange={navigateTo}
+          userProfile={currentUser}
+          onOpenMenu={() => setIsMobileMenuOpen(true)}
+          isMenuOpen={isMobileMenuOpen}
+          activeRemindersCount={userReminders.length}
+        />
+      )}
+
+      {/* 6. Mobile Slide-Over Menu Drawer (≡ 버튼) */}
+      <MobileMenuDrawer
+        isOpen={isMobileMenuOpen}
+        onClose={() => setIsMobileMenuOpen(false)}
+        currentUser={currentUser}
+        currentRole={currentRole}
+        onRoleChange={setCurrentRole}
+        isDarkMode={isDarkMode}
+        onToggleDarkMode={handleToggleDarkMode}
+        matches={matches}
+        userReminders={userReminders}
+        onToggleReminder={handleToggleReminder}
+        suggestions={inquiries}
+        onNavigateToTab={(tab) => {
+          navigateTo(tab);
+          setIsMobileMenuOpen(false);
+        }}
+        onOpenSuggestionModal={() => {
+          if (!currentUser) {
+            navigateTo('login');
+          } else {
+            setShowSuggestionModal(true);
+          }
+        }}
+        onLogout={handleLogout}
       />
 
-      {/* 6. Notice Popup Modal (가장 최근 공지만 단일 표시) */}
+      {/* 7. Notice Popup Modal (가장 최근 공지만 단일 표시) */}
       {selectedNoticeForPopup && (
         <NoticeModal
           isOpen={Boolean(selectedNoticeForPopup)}
@@ -1030,12 +1082,21 @@ export default function App() {
         />
       )}
 
-      {/* 6. Direct Message Modal */}
+      {/* 8. Direct Message Modal */}
       {showDirectMessageModal && currentUser && (
         <DirectMessageModal
           currentUser={currentUser}
           isOpen={showDirectMessageModal}
           onClose={() => setShowDirectMessageModal(false)}
+        />
+      )}
+
+      {/* 9. Suggestion Modal */}
+      {showSuggestionModal && currentUser && (
+        <SuggestionModal
+          currentUser={currentUser}
+          isOpen={showSuggestionModal}
+          onClose={() => setShowSuggestionModal(false)}
         />
       )}
     </div>
