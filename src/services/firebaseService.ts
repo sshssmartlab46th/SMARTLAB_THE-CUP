@@ -287,24 +287,6 @@ export async function seedInitialDataIfEmpty(): Promise<boolean> {
         startTime: toKSTIsoString(today, '14:30')
       },
       {
-        id: 'seed-soccer-bronze',
-        sport: 'soccer',
-        matchType: 'tournament',
-        title: '1학년 축구 3·4위전',
-        round: '3·4위전',
-        tournamentSlot: 'BRONZE',
-        court: '대운동장 A',
-        homeTeam: '4강 1G 패자',
-        awayTeam: '4강 2G 패자',
-        homeClass: 'TBD',
-        awayClass: 'TBD',
-        homeScore: 0,
-        awayScore: 0,
-        status: 'SCHEDULED',
-        period: '경기전',
-        startTime: toKSTIsoString(today, '15:30')
-      },
-      {
         id: 'seed-soccer-final',
         sport: 'soccer',
         matchType: 'tournament',
@@ -489,24 +471,6 @@ export async function seedInitialDataIfEmpty(): Promise<boolean> {
         startTime: toKSTIsoString(today, '11:00')
       },
       {
-        id: 'seed-dodge-bronze',
-        sport: 'dodgeball',
-        matchType: 'tournament',
-        title: '1학년 피구 3·4위전',
-        round: '3·4위전',
-        tournamentSlot: 'BRONZE',
-        court: '체육관 2층',
-        homeTeam: '4강 1G 패자',
-        awayTeam: '4강 2G 패자',
-        homeClass: 'TBD',
-        awayClass: 'TBD',
-        homeScore: 0,
-        awayScore: 0,
-        status: 'SCHEDULED',
-        period: '경기전',
-        startTime: toKSTIsoString(today, '13:30')
-      },
-      {
         id: 'seed-dodge-final',
         sport: 'dodgeball',
         matchType: 'tournament',
@@ -682,12 +646,54 @@ export async function seedInitialDataIfEmpty(): Promise<boolean> {
 }
 
 // -------------------------------------------------------------
-// User Profile Sync
+// User Profile Sync & Local Registry Backup
 // -------------------------------------------------------------
+const LOCAL_USERS_REGISTRY_KEY = 'sangsan_registered_users_registry';
+
+export function getLocalUsersRegistry(): Record<string, UserProfile> {
+  try {
+    const raw = localStorage.getItem(LOCAL_USERS_REGISTRY_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function saveLocalUserRecord(studentId: string, profile: UserProfile): void {
+  try {
+    const cleanId = studentId.trim();
+    if (!cleanId) return;
+    const map = getLocalUsersRegistry();
+    map[cleanId] = {
+      ...profile,
+      studentId: cleanId,
+      lastLogin: new Date().toISOString()
+    };
+    localStorage.setItem(LOCAL_USERS_REGISTRY_KEY, JSON.stringify(map));
+  } catch (e) {
+    console.warn('saveLocalUserRecord error:', e);
+  }
+}
+
+export function removeLocalUserRecord(studentId: string): void {
+  try {
+    const cleanId = studentId.trim();
+    if (!cleanId) return;
+    const map = getLocalUsersRegistry();
+    delete map[cleanId];
+    localStorage.setItem(LOCAL_USERS_REGISTRY_KEY, JSON.stringify(map));
+  } catch (e) {
+    console.warn('removeLocalUserRecord error:', e);
+  }
+}
+
 export async function syncUserProfile(profile: UserProfile): Promise<void> {
+  const studentId = (profile.studentId || '').trim();
+  if (studentId) {
+    saveLocalUserRecord(studentId, profile);
+  }
   try {
     await ensureFirebaseAuth();
-    const studentId = (profile.studentId || '').trim();
     const docId = studentId || profile.uid || 'unknown';
     const userDocRef = doc(db, 'users', docId);
     const payload = sanitizeFirestorePayload({
@@ -919,11 +925,57 @@ export async function resumeMatch(matchId: string): Promise<void> {
 }
 
 /**
- * Mark a match as finished and automatically synchronize tournament round advancement if an n-gang round completes
+ * Mark a match as finished and automatically synchronize tournament round advancement if an n-gang round completes.
+ * If match is soccer and tied without shootout winner, automatically shifts to penalty shootout instead of finishing prematurely.
  */
 export async function finishMatch(matchId: string): Promise<void> {
   if (!matchId) return;
   try {
+    const matchDoc = await getDoc(doc(db, 'matches', matchId));
+    if (matchDoc.exists()) {
+      const match = matchDoc.data() as MatchItem;
+      const home = Number(match.homeScore) || 0;
+      const away = Number(match.awayScore) || 0;
+
+      // 축구 경기이고 무승부이며 아직 승부차기 승자가 결정되지 않았다면 -> 승부차기 모드로 자동 전환!
+      if (match.sport === 'soccer' && home === away) {
+        const pkWinner = match.penaltyShootout?.winner || (
+          match.penaltyShootout && match.penaltyShootout.homeScore !== match.penaltyShootout.awayScore
+            ? (match.penaltyShootout.homeScore > match.penaltyShootout.awayScore ? 'home' : 'away')
+            : null
+        );
+
+        if (!pkWinner) {
+          await updateMatch(matchId, {
+            status: 'LIVE',
+            period: '승부차기',
+            timerRunning: false,
+            isPenaltyShootout: true,
+            penaltyShootout: match.penaltyShootout || {
+              isActive: true,
+              homeScore: 0,
+              awayScore: 0,
+              homeKicks: [
+                { order: 1, result: 'pending' },
+                { order: 2, result: 'pending' },
+                { order: 3, result: 'pending' },
+                { order: 4, result: 'pending' },
+                { order: 5, result: 'pending' }
+              ],
+              awayKicks: [
+                { order: 1, result: 'pending' },
+                { order: 2, result: 'pending' },
+                { order: 3, result: 'pending' },
+                { order: 4, result: 'pending' },
+                { order: 5, result: 'pending' }
+              ]
+            }
+          });
+          return;
+        }
+      }
+    }
+
     await updateMatch(matchId, {
       status: 'FINISHED',
       period: '경기 종료',
@@ -1076,6 +1128,16 @@ export function getMatchWinner(m: MatchItem): { name: string; classId: string } 
   } else if (away > home) {
     return { name: m.awayTeam, classId: m.awayClass };
   }
+  // 무승부 시: 축구 승부차기(Penalty Shootout) 결과로 승자 판별
+  if (m.penaltyShootout) {
+    const pkHome = Number(m.penaltyShootout.homeScore) || 0;
+    const pkAway = Number(m.penaltyShootout.awayScore) || 0;
+    if (m.penaltyShootout.winner === 'home' || pkHome > pkAway) {
+      return { name: m.homeTeam, classId: m.homeClass };
+    } else if (m.penaltyShootout.winner === 'away' || pkAway > pkHome) {
+      return { name: m.awayTeam, classId: m.awayClass };
+    }
+  }
   return null;
 }
 
@@ -1087,6 +1149,16 @@ export function getMatchLoser(m: MatchItem): { name: string; classId: string } |
     return { name: m.awayTeam, classId: m.awayClass };
   } else if (away > home) {
     return { name: m.homeTeam, classId: m.homeClass };
+  }
+  // 무승부 시: 축구 승부차기(Penalty Shootout) 결과로 패자 판별
+  if (m.penaltyShootout) {
+    const pkHome = Number(m.penaltyShootout.homeScore) || 0;
+    const pkAway = Number(m.penaltyShootout.awayScore) || 0;
+    if (m.penaltyShootout.winner === 'home' || pkHome > pkAway) {
+      return { name: m.awayTeam, classId: m.awayClass };
+    } else if (m.penaltyShootout.winner === 'away' || pkAway > pkHome) {
+      return { name: m.homeTeam, classId: m.homeClass };
+    }
   }
   return null;
 }
@@ -1135,12 +1207,17 @@ export function getRoundCompletionStatus(
   });
 
   const total = targetMatches.length;
-  // A match is finished only when status is 'FINISHED' and a winner is decided
+  // A match is finished only when status is 'FINISHED' and a winner is decided (including PK winner)
   const finishedMatches = targetMatches.filter(
-    (m) => m.status === 'FINISHED' && (Number(m.homeScore) || 0) !== (Number(m.awayScore) || 0)
+    (m) => m.status === 'FINISHED' && (
+      (Number(m.homeScore) || 0) !== (Number(m.awayScore) || 0) ||
+      Boolean(getMatchWinner(m))
+    )
   );
   const missingWinners = targetMatches.filter(
-    (m) => m.status !== 'FINISHED' || (Number(m.homeScore) || 0) === (Number(m.awayScore) || 0)
+    (m) => m.status !== 'FINISHED' || (
+      (Number(m.homeScore) || 0) === (Number(m.awayScore) || 0) && !getMatchWinner(m)
+    )
   );
 
   const isComplete = total > 0 && finishedMatches.length === total;
@@ -1258,17 +1335,12 @@ export async function syncCompletedTournamentRounds(
         const finalMatch = allMatches.find(
           (m) => m.sport === sportKey && getMatchGrade(m) === grade && getMatchTournamentSlot(m) === 'FINAL'
         );
-        const bronzeMatch = allMatches.find(
-          (m) => m.sport === sportKey && getMatchGrade(m) === grade && getMatchTournamentSlot(m) === 'BRONZE'
-        );
 
         if (sf1 && sf2) {
           const w1 = getMatchWinner(sf1);
-          const l1 = getMatchLoser(sf1);
           const w2 = getMatchWinner(sf2);
-          const l2 = getMatchLoser(sf2);
 
-          // Final: SF1 Winner (Home) vs SF2 Winner (Away)
+          // Final: SF1 Winner (Home) vs SF2 Winner (Away) - 3·4위전은 미진행 정책
           if (finalMatch && w1 && (finalMatch.homeTeam !== w1.name || finalMatch.homeClass !== w1.classId)) {
             await updateMatch(finalMatch.id, { homeTeam: w1.name, homeClass: w1.classId });
             totalUpdated++;
@@ -1279,22 +1351,10 @@ export async function syncCompletedTournamentRounds(
             totalUpdated++;
             allLogs.push(`[${grade}학년 ${sportMetaLabel} 4강 전 경기 종료] 4강 2경기 승자 ${w2.name} → 결승전(원정) 자동 진출`);
           }
-
-          // Bronze (3·4위전): SF1 Loser (Home) vs SF2 Loser (Away)
-          if (bronzeMatch && l1 && (bronzeMatch.homeTeam !== l1.name || bronzeMatch.homeClass !== l1.classId)) {
-            await updateMatch(bronzeMatch.id, { homeTeam: l1.name, homeClass: l1.classId });
-            totalUpdated++;
-            allLogs.push(`[${grade}학년 ${sportMetaLabel} 4강 전 경기 종료] 4강 1경기 패자 ${l1.name} → 3·4위전(홈) 자동 배정`);
-          }
-          if (bronzeMatch && l2 && (bronzeMatch.awayTeam !== l2.name || bronzeMatch.awayClass !== l2.classId)) {
-            await updateMatch(bronzeMatch.id, { awayTeam: l2.name, awayClass: l2.classId });
-            totalUpdated++;
-            allLogs.push(`[${grade}학년 ${sportMetaLabel} 4강 전 경기 종료] 4강 2경기 패자 ${l2.name} → 3·4위전(원정) 자동 배정`);
-          }
         }
       } else {
         pendingInfo.push(
-          `[${grade}학년 ${sportMetaLabel}] 4강전 진행중 (${sfStatus.finished}/${sfStatus.total} 완료) - 전 경기 종료 시 결승전 및 3·4위전으로 자동 진출합니다.`
+          `[${grade}학년 ${sportMetaLabel}] 4강전 진행중 (${sfStatus.finished}/${sfStatus.total} 완료) - 전 경기 종료 시 결승전으로 자동 진출합니다.`
         );
       }
     }
@@ -1897,64 +1957,89 @@ export async function updateFestivalConfig(config: Partial<FestivalConfig>): Pro
 // User Management & Duplicate Student ID Check
 // -------------------------------------------------------------
 export async function checkStudentIdExists(studentId: string): Promise<boolean> {
+  const cleanId = (studentId || '').trim();
+  if (!cleanId) return false;
   try {
     await ensureFirebaseAuth();
-    const docRef = doc(db, 'users', studentId);
+    const docRef = doc(db, 'users', cleanId);
     const snap = await getDoc(docRef);
-    return snap.exists();
+    if (snap.exists()) return true;
+    const localMap = getLocalUsersRegistry();
+    return Boolean(localMap[cleanId]);
   } catch (e) {
     console.warn('[Firebase] checkStudentIdExists error:', e);
-    return false;
+    const localMap = getLocalUsersRegistry();
+    return Boolean(localMap[cleanId]);
   }
 }
 
 export async function getUserProfile(studentId: string): Promise<UserProfile | null> {
+  const cleanId = (studentId || '').trim();
+  if (!cleanId) return null;
   try {
     await ensureFirebaseAuth();
-    const docRef = doc(db, 'users', studentId);
+    const docRef = doc(db, 'users', cleanId);
     const snap = await getDoc(docRef);
     if (snap.exists()) {
-      return snap.data() as UserProfile;
+      const data = snap.data() as UserProfile;
+      saveLocalUserRecord(cleanId, data);
+      return data;
+    }
+    // Check local registry fallback
+    const localMap = getLocalUsersRegistry();
+    if (localMap[cleanId]) {
+      return localMap[cleanId];
     }
     return null;
   } catch (e) {
     console.warn('[Firebase] getUserProfile error:', e);
-    return null;
+    const localMap = getLocalUsersRegistry();
+    return localMap[cleanId] || null;
   }
 }
 
 export async function createAccount(profile: UserProfile): Promise<boolean> {
+  const cleanId = (profile.studentId || '').trim();
+  if (!cleanId) return false;
+
   try {
     await ensureFirebaseAuth();
-    const exists = await checkStudentIdExists(profile.studentId);
+    const exists = await checkStudentIdExists(cleanId);
     if (exists) {
       return false; // Duplicate
     }
-    const docRef = doc(db, 'users', profile.studentId);
+    const docRef = doc(db, 'users', cleanId);
     const roles: UserRole[] = profile.isTeacher
       ? ['teacher']
       : (profile.roles && profile.roles.length > 0
           ? Array.from(new Set<UserRole>(['student', ...profile.roles]))
           : [profile.role || 'student']);
 
-    await setDoc(docRef, sanitizeFirestorePayload({
+    const fullProfile: UserProfile = {
       ...profile,
+      studentId: cleanId,
       role: profile.role || (profile.isTeacher ? 'teacher' : 'student'),
       roles,
       createdAt: new Date().toISOString(),
       lastLogin: new Date().toISOString()
-    }));
+    };
+
+    await setDoc(docRef, sanitizeFirestorePayload(fullProfile));
+    saveLocalUserRecord(cleanId, fullProfile);
     return true;
   } catch (e) {
     console.error('[Firebase] createAccount error:', e);
+    saveLocalUserRecord(cleanId, profile);
     throw e;
   }
 }
 
 export async function deleteUser(studentId: string): Promise<void> {
+  const cleanId = (studentId || '').trim();
+  removeLocalUserRecord(cleanId);
   try {
     await ensureFirebaseAuth();
-    const docRef = doc(db, 'users', studentId);
+    const docRef = doc(db, 'users', cleanId);
     await deleteDoc(docRef);
   } catch (e) {
     console.error('[Firebase] deleteUser error:', e);
@@ -2412,18 +2497,35 @@ export async function resolveLoginInquiry(inquiryId: string, resolvedBy: string 
 }
 
 export async function resetStudentAccount(studentId: string): Promise<void> {
-  await ensureFirebaseAuth();
-  const docRef = doc(db, 'users', studentId.trim());
-  await deleteDoc(docRef);
+  const cleanId = studentId.trim();
+  removeLocalUserRecord(cleanId);
+  try {
+    await ensureFirebaseAuth();
+    const docRef = doc(db, 'users', cleanId);
+    await deleteDoc(docRef);
+  } catch (e) {
+    console.warn('[Firebase] resetStudentAccount error:', e);
+  }
 }
 
 export async function updateStudentName(studentId: string, newName: string): Promise<void> {
-  await ensureFirebaseAuth();
-  const docRef = doc(db, 'users', studentId.trim());
-  await updateDoc(docRef, {
-    name: newName.trim(),
-    lastLogin: new Date().toISOString()
-  });
+  const cleanId = studentId.trim();
+  const cleanName = newName.trim();
+  const localMap = getLocalUsersRegistry();
+  if (localMap[cleanId]) {
+    localMap[cleanId].name = cleanName;
+    saveLocalUserRecord(cleanId, localMap[cleanId]);
+  }
+  try {
+    await ensureFirebaseAuth();
+    const docRef = doc(db, 'users', cleanId);
+    await updateDoc(docRef, {
+      name: cleanName,
+      lastLogin: new Date().toISOString()
+    });
+  } catch (e) {
+    console.warn('[Firebase] updateStudentName error:', e);
+  }
 }
 
 // -------------------------------------------------------------

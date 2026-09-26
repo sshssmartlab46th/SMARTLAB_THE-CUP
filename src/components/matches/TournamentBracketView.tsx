@@ -19,7 +19,8 @@ import {
   getMatchTournamentSlot,
   getMatchGrade,
   formatKSTTime,
-  seedInitialDataIfEmpty
+  seedInitialDataIfEmpty,
+  getMatchWinner
 } from '../../services/firebaseService';
 
 interface TournamentBracketViewProps {
@@ -77,13 +78,8 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
   const bronzeMatches = sportMatches.filter(m => m.round?.includes('3') || m.title?.includes('3'));
 
   const mFinal = findMatchBySlot('FINAL') || finalMatches[0];
-  const championTeam = mFinal && mFinal.status === 'FINISHED'
-    ? mFinal.homeScore > mFinal.awayScore
-      ? mFinal.homeTeam
-      : mFinal.awayScore > mFinal.homeScore
-      ? mFinal.awayTeam
-      : null
-    : null;
+  const championWinner = mFinal && mFinal.status === 'FINISHED' ? getMatchWinner(mFinal) : null;
+  const championTeam = championWinner?.name || null;
 
   const handleSeedDefaults = async () => {
     setIsSeeding(true);
@@ -107,8 +103,9 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
     }
 
     const hasReminder = userReminders.includes(m.id);
-    const isTopWinner = m.status === 'FINISHED' && m.homeScore > m.awayScore;
-    const isBottomWinner = m.status === 'FINISHED' && m.awayScore > m.homeScore;
+    const winnerObj = m.status === 'FINISHED' ? getMatchWinner(m) : null;
+    const isTopWinner = Boolean(winnerObj && winnerObj.name === m.homeTeam);
+    const isBottomWinner = Boolean(winnerObj && winnerObj.name === m.awayTeam);
 
     return (
       <div 
@@ -169,6 +166,19 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
             {m.status === 'FINISHED' || m.status === 'LIVE' ? m.awayScore : '-'}
           </span>
         </div>
+
+        {/* Penalty Shootout Mini Score Badge */}
+        {((m.penaltyShootout && (m.homeScore === m.awayScore || m.isPenaltyShootout)) || m.period?.includes('승부차기')) && (
+          <div className="mt-1 px-2 py-0.5 rounded-lg bg-slate-900 border border-slate-700 text-white flex items-center justify-between text-[10px] font-bold">
+            <span className="text-amber-300 flex items-center gap-1">
+              <span>⚽</span>
+              <span>승부차기</span>
+            </span>
+            <span className="font-mono text-emerald-400">
+              {m.penaltyShootout?.homeScore ?? 0} : {m.penaltyShootout?.awayScore ?? 0}
+            </span>
+          </div>
+        )}
 
         <div className="pt-1.5 mt-1 border-t border-slate-50 dark:border-slate-800/80 flex items-center justify-between text-[10px] text-slate-400">
           <span>{m.court || '대운동장'}</span>
@@ -443,11 +453,11 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
                   </div>
                 </div>
 
-                {/* Column 3: 결승전 & 3위 결정전 (Finals) */}
+                {/* Column 3: 결승전 (Final) - 3·4위전 미진행 정책 */}
                 <div className="flex flex-col justify-around gap-6">
                   <div className="text-center font-bold text-xs text-red-600 dark:text-red-400 pb-2 border-b border-red-200 dark:border-red-900/60 flex items-center justify-center gap-1">
                     <Trophy className="w-3.5 h-3.5 text-amber-500" />
-                    <span>결승전 & 3·4위전</span>
+                    <span>결승전</span>
                   </div>
                   <div className="flex flex-col justify-center h-full py-8 space-y-8">
                     {/* Final Match Card */}
@@ -458,17 +468,6 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
                       {renderBracketMatchCard(
                         findMatchBySlot('FINAL') || finalMatches[0] || (sportMatches.length > (isDodgeball ? 3 : 6) ? sportMatches[isDodgeball ? 3 : 6] : undefined),
                         '결승전 (우승 결정전)'
-                      )}
-                    </div>
-
-                    {/* Bronze Match Card */}
-                    <div className="relative pt-4 border-t border-slate-100 dark:border-slate-800">
-                      <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1 flex items-center gap-1">
-                        <Medal className="w-3 h-3 text-amber-700" /> 3·4위 결정전
-                      </div>
-                      {renderBracketMatchCard(
-                        findMatchBySlot('BRONZE') || bronzeMatches[0] || (sportMatches.length > (isDodgeball ? 2 : 7) ? sportMatches[isDodgeball ? 2 : 7] : undefined),
-                        '3·4위 결정전'
                       )}
                     </div>
                   </div>

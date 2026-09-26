@@ -272,25 +272,7 @@ export const AdminBracketManagerTab: React.FC<AdminBracketManagerTabProps> = ({
           startTime: sf2Time
         });
 
-        // 3) 3·4위전 (4강 1G 패자 vs 4강 2G 패자)
-        const bronzeTime = toKSTIsoString(matchDate, '15:30');
-        await createMatch({
-          sport: targetSport,
-          matchType: 'tournament',
-          title: `${targetGrade}학년 ${sportName} 3·4위전`,
-          round: '3·4위전',
-          tournamentSlot: 'BRONZE',
-          homeTeam: '4강 1G 패자',
-          awayTeam: '4강 2G 패자',
-          homeClass: 'TBD',
-          awayClass: 'TBD',
-          court: courtName,
-          status: 'SCHEDULED',
-          period: '경기전',
-          startTime: bronzeTime
-        });
-
-        // 4) 결승전 (4강 1G 승자 vs 4강 2G 승자)
+        // 3) 결승전 (4강 1G 승자 vs 4강 2G 승자) - 3·4위전 미진행 정책
         const finalTime = toKSTIsoString(matchDate, '16:30');
         await createMatch({
           sport: targetSport,
@@ -308,9 +290,9 @@ export const AdminBracketManagerTab: React.FC<AdminBracketManagerTabProps> = ({
           startTime: finalTime
         });
 
-        onNotice(`${targetGrade}학년 ${sportName} 전체 8강 토너먼트(8강 4경기, 4강 2경기, 결승, 3위전 총 8경기)가 완벽히 자동 추첨 생성되었습니다.`);
+        onNotice(`${targetGrade}학년 ${sportName} 전체 8강 토너먼트(8강 4경기, 4강 2경기, 결승전 총 7경기)가 완벽히 자동 추첨 생성되었습니다. (3·4위전 미진행)`);
       } else {
-        // 4 Classes -> 2 SF + 1 Final + 1 Bronze (Total 4 matches)
+        // 4 Classes -> 2 SF + 1 Final (Total 3 matches, 3·4위전 미진행)
         // 1) 4강 2경기
         for (let i = 0; i < 2; i++) {
           const home = shuffled[i * 2];
@@ -334,25 +316,7 @@ export const AdminBracketManagerTab: React.FC<AdminBracketManagerTabProps> = ({
           });
         }
 
-        // 2) 3·4위전
-        const bronzeTime = toKSTIsoString(matchDate, '13:30');
-        await createMatch({
-          sport: targetSport,
-          matchType: 'tournament',
-          title: `${targetGrade}학년 ${sportName} 3·4위전`,
-          round: '3·4위전',
-          tournamentSlot: 'BRONZE',
-          homeTeam: '4강 1G 패자',
-          awayTeam: '4강 2G 패자',
-          homeClass: 'TBD',
-          awayClass: 'TBD',
-          court: courtName,
-          status: 'SCHEDULED',
-          period: '경기전',
-          startTime: bronzeTime
-        });
-
-        // 3) 결승전
+        // 2) 결승전
         const finalTime = toKSTIsoString(matchDate, '14:30');
         await createMatch({
           sport: targetSport,
@@ -370,7 +334,7 @@ export const AdminBracketManagerTab: React.FC<AdminBracketManagerTabProps> = ({
           startTime: finalTime
         });
 
-        onNotice(`${targetGrade}학년 ${sportName} 전체 4강 토너먼트(4강 2경기, 결승, 3위전 총 4경기)가 완벽히 자동 추첨 생성되었습니다.`);
+        onNotice(`${targetGrade}학년 ${sportName} 전체 4강 토너먼트(4강 2경기, 결승전 총 3경기)가 완벽히 자동 추첨 생성되었습니다. (3·4위전 미진행)`);
       }
     } catch (err) {
       console.error(err);

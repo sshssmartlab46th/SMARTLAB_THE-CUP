@@ -62,7 +62,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess, isOpen = true }
       if (existingUser) {
         // Validation rule: 최초 가입 시 입력된 이름과 다르면 로그인 거부
         if (existingUser.name && existingUser.name.trim() !== trimmedName) {
-          setErrorMessage('로그인 정보가 잘못되었습니다');
+          setErrorMessage(`학번 '${trimmedId}'은(는) 이미 '${existingUser.name}' 학생으로 가입되어 있습니다. 등록된 본인의 이름으로 로그인해주세요.`);
           setIsSubmitting(false);
           return;
         }

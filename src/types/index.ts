@@ -152,6 +152,30 @@ export interface MatchItem {
   tournamentSlot?: 'QF1' | 'QF2' | 'QF3' | 'QF4' | 'SF1' | 'SF2' | 'FINAL' | 'BRONZE';
   events: TimelineEvent[];
   updatedAt: string;
+  // Penalty Shootout (승부차기 - 축구 무승부 시 자동 적용)
+  isPenaltyShootout?: boolean;
+  penaltyShootout?: PenaltyShootoutData;
+}
+
+export type PenaltyKickResult = 'scored' | 'missed' | 'pending';
+
+export interface PenaltyShootoutKick {
+  order: number; // 1, 2, 3, 4, 5 ...
+  result: PenaltyKickResult; // 'scored' (초록 다이아몬드), 'missed' (빨간 다이아몬드), 'pending' (대기)
+  kickerName?: string;
+  scoredAt?: string;
+}
+
+export interface PenaltyShootoutData {
+  isActive: boolean;
+  homeScore: number; // 승부차기 득점수
+  awayScore: number; // 승부차기 득점수
+  homeKicks: PenaltyShootoutKick[]; // 홈팀 키커들 (기본 1~5)
+  awayKicks: PenaltyShootoutKick[]; // 원정팀 키커들 (기본 1~5)
+  currentTurn?: 'home' | 'away';
+  currentOrder?: number;
+  winner?: 'home' | 'away'; // 승부차기 최종 승자
+  completedAt?: string;
 }
 
 export interface ClassLineup {

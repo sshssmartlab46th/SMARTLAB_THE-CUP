@@ -220,14 +220,26 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onCancel }) => 
 
     setIsSubmitting(true);
     try {
-      // 1. Check if user already exists in DB (to preserve admin-assigned roles)
+      // 1. Check if user already exists in DB (to verify registered name & preserve roles)
       const existingUser = await getUserProfile(trimmedId);
       if (existingUser) {
-        // If existing user has admin-assigned roles, keep them!
+        const registeredName = (existingUser.name || '').trim();
+
+        // [핵심 보안 규칙]: 이미 등록된 학번인 경우, 최초 등록된 이름과 반드시 일치해야 함!
+        // 다른 이름으로 로그인 시도 시 즉시 로그인 거부 및 에러 표시
+        if (registeredName && registeredName !== trimmedName) {
+          setIsSubmitting(false);
+          setErrorMessage(
+            `학번 '${trimmedId}'은(는) 이미 '${registeredName}' 학생으로 가입되어 있습니다. 입력하신 이름('${trimmedName}')과 일치하지 않아 로그인이 차단되었습니다.`
+          );
+          return;
+        }
+
+        // 이름 일치 -> 로그인 성공 및 최종 접속시간 갱신
         const existingRoles = getUserRoles(existingUser);
         const updatedProfile: UserProfile = {
           ...existingUser,
-          name: trimmedName || existingUser.name,
+          name: registeredName || trimmedName,
           roles: existingUser.isTeacher ? ['teacher'] : existingRoles,
           role: existingUser.role || (existingUser.isTeacher ? 'teacher' : 'student'),
           lastLogin: new Date().toISOString()
@@ -267,7 +279,15 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onCancel }) => 
       setShowConfirmModal(true);
     } catch (err) {
       console.error(err);
-      // Fallback: If network failed, allow instant entrance with parsed profile
+      // Fallback: If network failed, check local registry first!
+      const cached = await getUserProfile(trimmedId);
+      if (cached && cached.name && cached.name.trim() !== trimmedName) {
+        setIsSubmitting(false);
+        setErrorMessage(
+          `학번 '${trimmedId}'은(는) 이미 '${cached.name}' 학생으로 등록되어 있습니다. 입력하신 이름('${trimmedName}')과 일치하지 않습니다.`
+        );
+        return;
+      }
       const isTeacher = parsed.isTeacher;
       const fallbackProfile: UserProfile = {
         uid: `user_${trimmedId}`,
@@ -296,15 +316,54 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onCancel }) => 
     setErrorMessage(null);
 
     try {
-      await createAccount(pendingProfile);
+      // Re-verify immediately before registration
+      const existingUser = await getUserProfile(pendingProfile.studentId);
+      if (existingUser && existingUser.name) {
+        if (existingUser.name.trim() !== pendingProfile.name.trim()) {
+          setErrorMessage(
+            `학번 '${pendingProfile.studentId}'은(는) 이미 '${existingUser.name}' 학생으로 가입되어 있습니다. 다른 이름으로 가입할 수 없습니다.`
+          );
+          setIsSubmitting(false);
+          setShowConfirmModal(false);
+          return;
+        }
+      }
+
+      const created = await createAccount(pendingProfile);
+      if (!created) {
+        // 이미 등록된 학번인 경우
+        const existing = await getUserProfile(pendingProfile.studentId);
+        if (existing && existing.name && existing.name.trim() !== pendingProfile.name.trim()) {
+          setErrorMessage(
+            `학번 '${pendingProfile.studentId}'은(는) 이미 '${existing.name}' 학생으로 가입되어 있습니다. 다른 이름으로 로그인할 수 없습니다.`
+          );
+          setIsSubmitting(false);
+          setShowConfirmModal(false);
+          return;
+        }
+      }
+
+      localStorage.setItem('sangsan_current_user', JSON.stringify(pendingProfile));
+      setIsSubmitting(false);
+      setShowConfirmModal(false);
+      onSuccess(pendingProfile);
     } catch (err) {
       console.warn('createAccount error, syncing instead:', err);
+      // Even in catch, verify if cached profile matches
+      const cached = await getUserProfile(pendingProfile.studentId);
+      if (cached && cached.name && cached.name.trim() !== pendingProfile.name.trim()) {
+        setErrorMessage(
+          `학번 '${pendingProfile.studentId}'은(는) 이미 '${cached.name}' 학생으로 등록되어 있습니다.`
+        );
+        setIsSubmitting(false);
+        setShowConfirmModal(false);
+        return;
+      }
       try {
         await syncUserProfile(pendingProfile);
       } catch (e2) {
         console.warn('syncUserProfile fallback:', e2);
       }
-    } finally {
       localStorage.setItem('sangsan_current_user', JSON.stringify(pendingProfile));
       setIsSubmitting(false);
       setShowConfirmModal(false);
@@ -416,9 +475,25 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onCancel }) => 
         {/* Form Container */}
         <div className="p-5 sm:p-6 space-y-4">
           {errorMessage && (
-            <div className="p-3 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 text-xs flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 shrink-0" />
-              <span>{errorMessage}</span>
+            <div className="p-3.5 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 text-xs space-y-2">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                <span className="leading-relaxed font-medium">{errorMessage}</span>
+              </div>
+              {(errorMessage.includes('일치하지 않아') || errorMessage.includes('등록되어 있습니다')) && (
+                <div className="pt-2 border-t border-red-200/60 dark:border-red-900/40 flex items-center justify-between">
+                  <span className="text-[11px] text-red-500 dark:text-red-400">
+                    오타 또는 타인의 학번 선점인 경우:
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowProblemModal(true)}
+                    className="text-[11px] font-bold underline hover:text-red-800 dark:hover:text-red-200 cursor-pointer"
+                  >
+                    관리자에게 사연 접수하기 &rarr;
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

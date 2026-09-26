@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { HelpCircle, Send, CheckCircle2, AlertCircle, X, ShieldAlert } from 'lucide-react';
 import { getUserProfile, submitLoginInquiry } from '../../services/firebaseService';
 
@@ -21,6 +21,15 @@ export const LoginProblemModal: React.FC<LoginProblemModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      if (defaultStudentId) setStudentId(defaultStudentId);
+      if (defaultName) setClaimedName(defaultName);
+      setIsSubmitted(false);
+      setErrorMessage(null);
+    }
+  }, [isOpen, defaultStudentId, defaultName]);
 
   if (!isOpen) return null;
 

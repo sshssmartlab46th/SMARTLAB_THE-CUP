@@ -10,11 +10,13 @@ import {
   pauseMatch,
   resumeMatch,
   finishMatch,
+  updateMatch,
   parseMatchStartTime,
   removeMatchEventWithAudit
 } from '../../services/firebaseService';
 import { MVPVotingModal } from './MVPVotingModal';
 import { GoalScorerModal } from './GoalScorerModal';
+import { PenaltyShootoutBoard } from './PenaltyShootoutBoard';
 import { 
   Flame, 
   Heart, 
@@ -181,6 +183,52 @@ export const LiveMatchStatusView: React.FC<LiveMatchStatusViewProps> = ({
 
   const handleFinishCurrentMatch = async () => {
     if (!canEditScore || isUpdatingStatus) return;
+
+    // 축구 경기이고 무승부인 경우, 승부차기 승자가 없으면 승부차기로 자동 전환!
+    if (match.sport === 'soccer' && (match.homeScore ?? 0) === (match.awayScore ?? 0)) {
+      const hasWinner = match.penaltyShootout?.winner || (
+        match.penaltyShootout && match.penaltyShootout.homeScore !== match.penaltyShootout.awayScore
+      );
+
+      if (!hasWinner) {
+        setIsUpdatingStatus(true);
+        try {
+          await updateMatch(match.id, {
+            status: 'LIVE',
+            period: '승부차기',
+            timerRunning: false,
+            isPenaltyShootout: true,
+            penaltyShootout: match.penaltyShootout || {
+              isActive: true,
+              homeScore: 0,
+              awayScore: 0,
+              homeKicks: [
+                { order: 1, result: 'pending' },
+                { order: 2, result: 'pending' },
+                { order: 3, result: 'pending' },
+                { order: 4, result: 'pending' },
+                { order: 5, result: 'pending' }
+              ],
+              awayKicks: [
+                { order: 1, result: 'pending' },
+                { order: 2, result: 'pending' },
+                { order: 3, result: 'pending' },
+                { order: 4, result: 'pending' },
+                { order: 5, result: 'pending' }
+              ]
+            }
+          });
+          showToast('⚽ 정규시간 무승부: 축구 규정에 따라 승부차기(PK)로 자동 돌입합니다!', 'success');
+        } catch (err) {
+          console.error(err);
+          showToast('승부차기 전환 중 오류가 발생했습니다.', 'error');
+        } finally {
+          setIsUpdatingStatus(false);
+        }
+        return;
+      }
+    }
+
     setIsUpdatingStatus(true);
     try {
       await finishMatch(match.id);
@@ -489,6 +537,15 @@ export const LiveMatchStatusView: React.FC<LiveMatchStatusViewProps> = ({
             </button>
           </div>
         </div>
+
+        {/* Qatar 2022 World Cup Broadcast Style Penalty Shootout Board (축구 무승부 시 자동) */}
+        {(match.sport === 'soccer' || match.penaltyShootout) && (
+          <PenaltyShootoutBoard
+            match={match}
+            canEdit={canEditScore}
+            onNotice={(txt) => showToast(txt, 'success')}
+          />
+        )}
 
         {/* Action bar (Score Edit & MVP Vote) */}
         <div className="flex flex-wrap items-center justify-between gap-2 pt-1">

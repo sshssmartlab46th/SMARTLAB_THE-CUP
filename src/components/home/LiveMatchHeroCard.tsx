@@ -243,6 +243,16 @@ export const LiveMatchHeroCard: React.FC<LiveMatchHeroCardProps> = ({
               VS
             </div>
           )}
+          {((match.penaltyShootout && (match.homeScore === match.awayScore || match.isPenaltyShootout)) || match.period?.includes('승부차기')) && (
+            <div>
+              <span className="px-2 py-0.5 rounded-md bg-slate-900 border border-amber-400/50 text-amber-300 text-[10px] font-black inline-flex items-center gap-1 shadow-xs">
+                <span>PK</span>
+                <span className="text-white font-mono">
+                  {match.penaltyShootout?.homeScore ?? 0} : {match.penaltyShootout?.awayScore ?? 0}
+                </span>
+              </span>
+            </div>
+          )}
           {matchCourt && (
             <div className="text-xs text-slate-700 dark:text-slate-300 font-medium">
               {matchCourt}

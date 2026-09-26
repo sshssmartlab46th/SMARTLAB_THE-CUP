@@ -140,15 +140,22 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({
                   </h3>
 
                   <div className="mt-2 text-xs text-slate-700 dark:text-slate-300 font-semibold flex items-center justify-between">
-                    <span>{m.homeTeam}</span>
+                    <span className="truncate max-w-[110px]">{m.homeTeam}</span>
                     {isFinished || isLive ? (
-                      <span className="font-mono text-red-600 dark:text-emerald-400 font-black">
-                        {m.homeScore} : {m.awayScore}
-                      </span>
+                      <div className="text-center px-1">
+                        <span className="font-mono text-red-600 dark:text-emerald-400 font-black">
+                          {m.homeScore} : {m.awayScore}
+                        </span>
+                        {((m.penaltyShootout && (m.homeScore === m.awayScore || m.isPenaltyShootout)) || m.period?.includes('승부차기')) && (
+                          <div className="text-[9px] font-black text-amber-600 dark:text-amber-400 font-mono leading-none mt-0.5">
+                            PK ({m.penaltyShootout?.homeScore ?? 0}:{m.penaltyShootout?.awayScore ?? 0})
+                          </div>
+                        )}
+                      </div>
                     ) : (
                       <span className="text-slate-400">vs</span>
                     )}
-                    <span>{m.awayTeam}</span>
+                    <span className="truncate max-w-[110px] text-right">{m.awayTeam}</span>
                   </div>
 
                   <div className="mt-2 text-[11px] text-slate-400 flex items-center gap-1 truncate">
