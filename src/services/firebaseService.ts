@@ -821,13 +821,8 @@ export async function updateMatch(matchId: string, partial: Partial<MatchItem>):
   try {
     ensureFirebaseAuth().catch(() => {});
     const docRef = doc(db, 'matches', matchId);
-    // Sanitize partial payload to avoid Firestore undefined errors
-    const sanitized: Record<string, any> = {};
-    for (const [k, v] of Object.entries(partial)) {
-      if (v !== undefined) {
-        sanitized[k] = v;
-      }
-    }
+    // Recursively sanitize partial payload to avoid Firestore undefined errors in any nested field
+    const sanitized = sanitizeFirestorePayload(partial) as Record<string, any>;
     await updateDoc(docRef, {
       ...sanitized,
       updatedAt: new Date().toISOString()

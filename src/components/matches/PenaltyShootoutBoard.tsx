@@ -74,7 +74,7 @@ export const PenaltyShootoutBoard: React.FC<PenaltyShootoutBoardProps> = ({
         awayScore: calculatedAwayScore,
         homeKicks: currentHomeKicks,
         awayKicks: currentAwayKicks,
-        winner: calculatedHomeScore > calculatedAwayScore ? 'home' : calculatedAwayScore > calculatedHomeScore ? 'away' : undefined
+        ...(shootout?.winner && calculatedHomeScore !== calculatedAwayScore ? { winner: shootout.winner } : {})
       };
 
       await updateMatch(match.id, {
@@ -115,7 +115,7 @@ export const PenaltyShootoutBoard: React.FC<PenaltyShootoutBoardProps> = ({
         awayScore: awayPkScore,
         homeKicks: newHomeKicks,
         awayKicks: newAwayKicks,
-        winner: homePkScore > awayPkScore ? 'home' : awayPkScore > homePkScore ? 'away' : undefined
+        ...(shootout?.winner && homePkScore !== awayPkScore ? { winner: shootout.winner } : {})
       };
 
       await updateMatch(match.id, {
