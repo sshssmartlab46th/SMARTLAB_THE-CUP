@@ -184,13 +184,16 @@ export const LiveMatchStatusView: React.FC<LiveMatchStatusViewProps> = ({
   const handleFinishCurrentMatch = async () => {
     if (!canEditScore || isUpdatingStatus) return;
 
-    // 축구 경기이고 무승부인 경우, 승부차기 승자가 없으면 승부차기로 자동 전환!
+    // 축구 경기이고 무승부인 경우
     if (match.sport === 'soccer' && (match.homeScore ?? 0) === (match.awayScore ?? 0)) {
+      const pkHome = Number(match.penaltyShootout?.homeScore) || 0;
+      const pkAway = Number(match.penaltyShootout?.awayScore) || 0;
       const hasWinner = match.penaltyShootout?.winner || (
-        match.penaltyShootout && match.penaltyShootout.homeScore !== match.penaltyShootout.awayScore
+        match.penaltyShootout && pkHome !== pkAway
       );
 
-      if (!hasWinner) {
+      // 승부차기가 아직 시작되지 않은 경우 -> 승부차기 모드로 전환
+      if (!match.penaltyShootout?.isActive && !hasWinner) {
         setIsUpdatingStatus(true);
         try {
           await updateMatch(match.id, {
@@ -225,6 +228,12 @@ export const LiveMatchStatusView: React.FC<LiveMatchStatusViewProps> = ({
         } finally {
           setIsUpdatingStatus(false);
         }
+        return;
+      }
+
+      // 이미 승부차기 진행중인데 동점인 경우
+      if (match.penaltyShootout?.isActive && !hasWinner) {
+        showToast('현재 승부차기 점수가 동점입니다. 키커별 결과를 입력하여 더 높은 점수의 반이 승리하게 하거나 하단 패널에서 승리 학급을 선택해주세요.', 'error');
         return;
       }
     }

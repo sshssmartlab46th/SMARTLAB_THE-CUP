@@ -935,13 +935,13 @@ export async function finishMatch(matchId: string): Promise<void> {
 
       // 축구 경기이고 무승부이며 아직 승부차기 승자가 결정되지 않았다면 -> 승부차기 모드로 자동 전환!
       if (match.sport === 'soccer' && home === away) {
+        const pkHome = Number(match.penaltyShootout?.homeScore) || 0;
+        const pkAway = Number(match.penaltyShootout?.awayScore) || 0;
         const pkWinner = match.penaltyShootout?.winner || (
-          match.penaltyShootout && match.penaltyShootout.homeScore !== match.penaltyShootout.awayScore
-            ? (match.penaltyShootout.homeScore > match.penaltyShootout.awayScore ? 'home' : 'away')
-            : null
+          pkHome !== pkAway ? (pkHome > pkAway ? 'home' : 'away') : null
         );
 
-        if (!pkWinner) {
+        if (!pkWinner && !match.penaltyShootout?.isActive) {
           await updateMatch(matchId, {
             status: 'LIVE',
             period: '승부차기',
@@ -967,6 +967,31 @@ export async function finishMatch(matchId: string): Promise<void> {
               ]
             }
           });
+          return;
+        }
+
+        if (pkWinner && match.penaltyShootout) {
+          await updateMatch(matchId, {
+            status: 'FINISHED',
+            period: '경기 종료 (승부차기)',
+            timerRunning: false,
+            penaltyShootout: {
+              ...match.penaltyShootout,
+              isActive: false,
+              winner: pkWinner,
+              completedAt: new Date().toISOString()
+            }
+          });
+          // Proceed to synchronize completed rounds
+          try {
+            const q = collection(db, 'matches');
+            const snap = await getDocs(q);
+            const all: MatchItem[] = [];
+            snap.forEach((d) => all.push({ id: d.id, ...d.data() } as MatchItem));
+            await syncCompletedTournamentRounds(all);
+          } catch (e2) {
+            console.error('[Firebase] syncCompletedTournamentRounds after PK finish error:', e2);
+          }
           return;
         }
       }

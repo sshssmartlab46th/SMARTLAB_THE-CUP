@@ -20,6 +20,7 @@ export const PenaltyShootoutBoard: React.FC<PenaltyShootoutBoardProps> = ({
 
   // Local state for optimistic update & spinner
   const [isUpdating, setIsUpdating] = useState(false);
+  const [showTieResolver, setShowTieResolver] = useState(false);
 
   // Initialize or fallback shootout data
   const defaultKicks = (count: number = 5): PenaltyShootoutKick[] => {
@@ -134,13 +135,30 @@ export const PenaltyShootoutBoard: React.FC<PenaltyShootoutBoardProps> = ({
     }
   };
 
-  // Conclude Shootout & finalize match
-  const handleFinalizeShootout = async (winnerTeam: 'home' | 'away') => {
+  // Conclude Shootout & finalize match: higher score wins automatically!
+  const handleFinalizeShootout = async (winnerTeamOverride?: 'home' | 'away') => {
     if (!canEdit || isUpdating) return;
-    const winnerName = winnerTeam === 'home' ? match.homeTeam : match.awayTeam;
-    if (!window.confirm(`[승부차기 공식 종료]\n승자: ${winnerName}\n점수: 정규 ${match.homeScore}:${match.awayScore} (승부차기 ${homePkScore}:${awayPkScore})\n\n경기를 공식 종료하시겠습니까?`)) {
+
+    // Automatically determine winner: higher score wins!
+    let determinedWinner = winnerTeamOverride;
+    if (!determinedWinner) {
+      if (homePkScore > awayPkScore) {
+        determinedWinner = 'home';
+      } else if (awayPkScore > homePkScore) {
+        determinedWinner = 'away';
+      }
+    }
+
+    // If completely tied (e.g. 0:0 or 3:3) and no override provided
+    if (!determinedWinner) {
+      setShowTieResolver(true);
+      if (onNotice) {
+        onNotice(`현재 승부차기 점수가 ${homePkScore} : ${awayPkScore} 동점입니다. 키커별 성공/실축을 입력하거나 승리 학급을 직접 선택해주세요.`);
+      }
       return;
     }
+
+    const winnerName = determinedWinner === 'home' ? match.homeTeam : match.awayTeam;
 
     setIsUpdating(true);
     try {
@@ -150,7 +168,7 @@ export const PenaltyShootoutBoard: React.FC<PenaltyShootoutBoardProps> = ({
         awayScore: awayPkScore,
         homeKicks,
         awayKicks,
-        winner: winnerTeam,
+        winner: determinedWinner,
         completedAt: new Date().toISOString()
       };
 
@@ -163,8 +181,9 @@ export const PenaltyShootoutBoard: React.FC<PenaltyShootoutBoardProps> = ({
       });
 
       if (onNotice) {
-        onNotice(`[승부차기 승리 확정] ${winnerName} 승리! (정규 ${match.homeScore}:${match.awayScore} / PK ${homePkScore}:${awayPkScore})`);
+        onNotice(`[승부차기 완료] 더 높은 점수의 ${winnerName} 승리 확정! (정규 ${match.homeScore}:${match.awayScore} / PK ${homePkScore}:${awayPkScore})`);
       }
+      setShowTieResolver(false);
     } catch (e) {
       console.error('[PenaltyShootout] Error finalizing match:', e);
     } finally {
@@ -511,39 +530,104 @@ export const PenaltyShootoutBoard: React.FC<PenaltyShootoutBoardProps> = ({
           </div>
 
           {/* Action Tools: Sudden Death & Match Finalization */}
-          <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-            <button
-              type="button"
-              onClick={handleAddSuddenDeathRound}
-              disabled={isUpdating}
-              className="px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>서든데스 키커 추가 (6번 이후)</span>
-            </button>
+          <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={handleAddSuddenDeathRound}
+                disabled={isUpdating}
+                className="px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>서든데스 키커 추가 (6번 이후)</span>
+              </button>
 
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => handleFinalizeShootout('home')}
-                disabled={isUpdating || homePkScore === awayPkScore}
-                className="px-3.5 py-2 rounded-xl bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-xs"
-                title={homePkScore === awayPkScore ? '승부차기 점수가 동점일 때는 종료할 수 없습니다.' : `${match.homeTeam} 승리 확정`}
-              >
-                <Trophy className="w-3.5 h-3.5" />
-                <span>{match.homeTeam} 승리로 경기 공식 종료</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleFinalizeShootout('away')}
-                disabled={isUpdating || homePkScore === awayPkScore}
-                className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-xs"
-                title={homePkScore === awayPkScore ? '승부차기 점수가 동점일 때는 종료할 수 없습니다.' : `${match.awayTeam} 승리 확정`}
-              >
-                <Trophy className="w-3.5 h-3.5" />
-                <span>{match.awayTeam} 승리로 경기 공식 종료</span>
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                {/* 1. Main Button: Higher score team automatically wins! (Never disabled) */}
+                <button
+                  type="button"
+                  onClick={() => handleFinalizeShootout()}
+                  disabled={isUpdating}
+                  className={`px-4 py-2 rounded-xl text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-98 ${
+                    homePkScore > awayPkScore
+                      ? 'bg-red-600 hover:bg-red-700 shadow-red-900/30'
+                      : awayPkScore > homePkScore
+                      ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-900/30'
+                      : 'bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700'
+                  }`}
+                  title="승부차기 점수가 더 높은 반이 자동으로 승리 처리되며 경기가 공식 종료됩니다."
+                >
+                  <Trophy className="w-4 h-4 text-amber-300" />
+                  <span>
+                    {homePkScore > awayPkScore
+                      ? `경기 공식 종료 (${match.homeTeam} 승리 · PK ${homePkScore}:${awayPkScore})`
+                      : awayPkScore > homePkScore
+                      ? `경기 공식 종료 (${match.awayTeam} 승리 · PK ${awayPkScore}:${homePkScore})`
+                      : '경기 공식 종료 (더 점수 높은 반 승리)'}
+                  </span>
+                </button>
+
+                {/* 2. Direct manual choice buttons (Always clickable!) */}
+                <button
+                  type="button"
+                  onClick={() => handleFinalizeShootout('home')}
+                  disabled={isUpdating}
+                  className="px-3 py-2 rounded-xl border border-red-300 dark:border-red-800 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-300 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                  title={`${match.homeTeam} 승리로 즉시 종료`}
+                >
+                  <span>{match.homeTeam} 승리</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleFinalizeShootout('away')}
+                  disabled={isUpdating}
+                  className="px-3 py-2 rounded-xl border border-blue-300 dark:border-blue-800 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                  title={`${match.awayTeam} 승리로 즉시 종료`}
+                >
+                  <span>{match.awayTeam} 승리</span>
+                </button>
+              </div>
             </div>
+
+            {/* Tie Helper / Resolver Banner when tied */}
+            {showTieResolver && (
+              <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-800 space-y-2">
+                <div className="flex items-center gap-2 text-xs font-bold text-amber-900 dark:text-amber-200">
+                  <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>현재 승부차기 점수가 {homePkScore} : {awayPkScore} 동점입니다.</span>
+                </div>
+                <p className="text-[11px] text-amber-800 dark:text-amber-300">
+                  키커별 성공/실축을 입력하여 점수가 더 높은 반이 나오게 하거나, 승리 학급을 직접 선택하여 즉시 종료할 수 있습니다:
+                </p>
+                <div className="flex items-center gap-2 pt-1 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => handleFinalizeShootout('home')}
+                    disabled={isUpdating}
+                    className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold text-xs flex items-center gap-1 cursor-pointer shadow-xs"
+                  >
+                    <Trophy className="w-3.5 h-3.5" />
+                    <span>{match.homeTeam} 승리로 즉시 종료</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleFinalizeShootout('away')}
+                    disabled={isUpdating}
+                    className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1 cursor-pointer shadow-xs"
+                  >
+                    <Trophy className="w-3.5 h-3.5" />
+                    <span>{match.awayTeam} 승리로 즉시 종료</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowTieResolver(false)}
+                    className="px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                  >
+                    닫기
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
