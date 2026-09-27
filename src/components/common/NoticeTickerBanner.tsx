@@ -24,7 +24,7 @@ export const NoticeTickerBanner: React.FC<NoticeTickerBannerProps> = ({
       className={`w-full border-b py-2.5 px-4 sm:px-6 cursor-pointer transition-colors ${
         notice.important 
           ? 'bg-red-50/90 dark:bg-red-950/40 border-red-200 dark:border-red-900/60 hover:bg-red-100/90 dark:hover:bg-red-950/60'
-          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/80'
+          : 'bg-white dark:bg-[#0e1422] border-slate-200 dark:border-slate-800/80 hover:bg-slate-50 dark:hover:bg-[#12192a]'
       }`}
       role="button"
       tabIndex={0}
@@ -35,12 +35,12 @@ export const NoticeTickerBanner: React.FC<NoticeTickerBannerProps> = ({
           <span className={`shrink-0 px-2.5 py-0.5 rounded-full font-bold text-[11px] tracking-tight ${
             notice.important
               ? 'bg-red-600 text-white animate-pulse'
-              : 'bg-amber-400 text-slate-950'
+              : 'bg-amber-400 dark:bg-emerald-500/20 text-slate-950 dark:text-emerald-300 dark:border dark:border-emerald-500/30'
           }`}>
             {notice.important ? '긴급공지' : '공지사항'}
           </span>
           <span className="text-xs shrink-0">📢</span>
-          <p className="truncate text-slate-900 dark:text-slate-100 font-medium text-xs sm:text-[13px]">
+          <p className="truncate text-slate-900 dark:text-emerald-400 font-medium text-xs sm:text-[13px]">
             {content}
           </p>
         </div>

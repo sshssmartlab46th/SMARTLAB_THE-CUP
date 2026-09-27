@@ -69,8 +69,8 @@ export const ClassLeaderboardCard: React.FC<ClassLeaderboardCardProps> = ({
               </span>
             </div>
 
-            {/* 1st Place (Elevated with red border) */}
-            <div className="rounded-xl border-2 border-red-500 dark:border-emerald-500 bg-white dark:bg-slate-800/80 p-3 text-center flex flex-col items-center -translate-y-1.5 shadow-xs">
+            {/* 1st Place (Elevated with red/emerald border) */}
+            <div className="rounded-xl border-2 border-red-500 dark:border-emerald-500 bg-white dark:bg-emerald-950/20 p-3 text-center flex flex-col items-center -translate-y-1.5 shadow-xs">
               <span className="text-xs font-bold text-red-600 dark:text-emerald-400 mb-1 truncate w-full">
                 {getLabel(first)}
               </span>
@@ -112,7 +112,7 @@ export const ClassLeaderboardCard: React.FC<ClassLeaderboardCardProps> = ({
                       {getLabel(item)}
                     </span>
                   </div>
-                  <span className="font-mono text-slate-600 dark:text-slate-300 font-bold">
+                  <span className="font-mono text-slate-600 dark:text-emerald-400 font-bold">
                     {getPointsText(item)}
                   </span>
                 </div>

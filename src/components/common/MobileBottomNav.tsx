@@ -44,11 +44,11 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             onClick={() => onTabChange(item.tab)}
             className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition cursor-pointer min-w-[56px] ${
               isActive
-                ? 'text-red-600 dark:text-red-400 font-bold'
+                ? 'text-red-600 dark:text-emerald-400 font-bold'
                 : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
             }`}
           >
-            <div className={`p-1 rounded-lg ${isActive ? 'bg-red-50 dark:bg-red-950/50' : ''}`}>
+            <div className={`p-1 rounded-lg ${isActive ? 'bg-red-50 dark:bg-emerald-950/50 text-red-600 dark:text-emerald-400' : ''}`}>
               <Icon className="w-4 h-4" />
             </div>
             <span className="text-[10px] mt-0.5 tracking-tight font-medium">{item.label}</span>
@@ -62,13 +62,13 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         onClick={onOpenMenu}
         className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition cursor-pointer min-w-[56px] relative ${
           isMenuOpen
-            ? 'text-red-600 dark:text-red-400 font-bold'
-            : 'text-slate-600 dark:text-slate-300 hover:text-red-600'
+            ? 'text-red-600 dark:text-emerald-400 font-bold'
+            : 'text-slate-600 dark:text-slate-300 hover:text-red-600 dark:hover:text-emerald-400'
         }`}
         title="전체 메뉴 및 어드민·알람·의견란·설정"
       >
         <div className={`p-1 rounded-lg flex items-center justify-center ${
-          isMenuOpen ? 'bg-red-50 dark:bg-red-950/50' : ''
+          isMenuOpen ? 'bg-red-50 dark:bg-emerald-950/50 text-red-600 dark:text-emerald-400' : ''
         }`}>
           <span className="font-mono text-base font-black leading-none tracking-tighter">≡</span>
         </div>

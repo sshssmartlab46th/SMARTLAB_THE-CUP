@@ -136,13 +136,13 @@ export const TournamentSummaryCard: React.FC<TournamentSummaryCardProps> = ({
             onClick={() => handleSportChange(s.type)}
             className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition cursor-pointer flex items-center gap-1.5 ${
               activeSport === s.type
-                ? 'bg-red-600 text-white shadow-xs'
+                ? 'bg-red-600 dark:bg-emerald-500 text-white dark:text-slate-950 shadow-xs'
                 : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
             }`}
           >
             <span>{s.label}</span>
             <span className={`text-[10px] px-1 py-0.2 rounded font-normal ${
-              activeSport === s.type ? 'bg-red-700 text-red-100' : 'bg-white/60 dark:bg-slate-700 text-slate-500'
+              activeSport === s.type ? 'bg-red-700 dark:bg-emerald-600 text-red-100 dark:text-slate-950' : 'bg-white/60 dark:bg-slate-700 text-slate-500'
             }`}>
               {s.genderNote}
             </span>

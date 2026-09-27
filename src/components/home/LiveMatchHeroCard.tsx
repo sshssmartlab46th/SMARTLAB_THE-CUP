@@ -153,7 +153,7 @@ export const LiveMatchHeroCard: React.FC<LiveMatchHeroCardProps> = ({
   };
 
   return (
-    <div className="rounded-2xl border-2 border-red-500/80 dark:border-emerald-500 bg-white dark:bg-slate-900 p-5 sm:p-6 shadow-md relative overflow-hidden transition-all">
+    <div className="rounded-2xl border-2 border-red-500/80 dark:border-emerald-500/60 bg-white dark:bg-[#121826] p-5 sm:p-6 shadow-md relative overflow-hidden transition-all">
       {/* Floating Particles Overlay */}
       <div className="pointer-events-none fixed inset-0 z-50 overflow-hidden">
         {particles.map((p) => (
@@ -359,14 +359,14 @@ export const LiveMatchHeroCard: React.FC<LiveMatchHeroCardProps> = ({
         <button
           type="button"
           onClick={onOpenLiveScore}
-          className="sm:col-span-6 py-3 px-4 rounded-xl bg-linear-to-r from-slate-900 via-red-950 to-slate-900 hover:from-red-900 hover:to-slate-900 dark:from-red-600 dark:to-rose-700 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-red-900/20 hover:shadow-xl transition-all active:scale-98 cursor-pointer border border-red-500/30 group"
+          className="sm:col-span-6 py-3 px-4 rounded-xl bg-linear-to-r from-slate-900 via-red-950 to-slate-900 hover:from-red-900 hover:to-slate-900 dark:from-emerald-500 dark:to-emerald-600 dark:hover:from-emerald-400 dark:hover:to-emerald-500 text-white dark:text-slate-950 font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-red-900/20 dark:shadow-emerald-950/40 hover:shadow-xl transition-all active:scale-98 cursor-pointer border border-red-500/30 dark:border-emerald-400/40 group"
         >
-          <Sparkles className="w-4 h-4 text-amber-400 animate-spin transition-transform duration-1000 group-hover:scale-125" />
+          <Sparkles className="w-4 h-4 text-amber-400 dark:text-slate-950 animate-spin transition-transform duration-1000 group-hover:scale-125" />
           <span className="tracking-wide">경기 상세히 보기</span>
-          <span className="text-[10px] font-normal px-2 py-0.5 rounded-full bg-white/20 text-white/90 hidden sm:inline-block">
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/20 dark:bg-slate-950/20 text-white/90 dark:text-slate-950 hidden sm:inline-block">
             실시간 스코어·라인업
           </span>
-          <ChevronRight className="w-4 h-4 text-amber-300 transition-transform group-hover:translate-x-1" />
+          <ChevronRight className="w-4 h-4 text-amber-300 dark:text-slate-950 transition-transform group-hover:translate-x-1" />
         </button>
 
         {/* Right Team Cheer Button */}

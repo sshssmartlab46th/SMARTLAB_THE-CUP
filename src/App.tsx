@@ -614,7 +614,7 @@ export default function App() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col transition-colors">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#0b0f19] text-slate-900 dark:text-slate-100 flex flex-col transition-colors">
       {/* Site-Wide Atmospheric Weather Overlay (Active only on Weather Tab) */}
       <WeatherAtmosphereOverlay
         weather={weather}

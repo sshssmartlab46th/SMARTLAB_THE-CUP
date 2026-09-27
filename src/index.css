@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* Prevent horizontal page sliding & wobble on mobile devices */
 html, body, #root {
   overflow-x: hidden;

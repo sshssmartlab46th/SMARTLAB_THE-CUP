@@ -192,9 +192,9 @@ export const TodayScheduleCard: React.FC<TodayScheduleCardProps> = ({
               <div 
                 className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-all ${
                   isAllReminded
-                    ? 'bg-red-600 text-white shadow-xs'
+                    ? 'bg-red-600 dark:bg-emerald-500 text-white dark:text-slate-950 shadow-xs'
                     : hasSomeReminded
-                    ? 'bg-red-100 dark:bg-red-950/80 text-red-600 dark:text-red-400'
+                    ? 'bg-red-100 dark:bg-emerald-950/80 text-red-600 dark:text-emerald-400'
                     : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
                 }`}
               >
@@ -215,7 +215,7 @@ export const TodayScheduleCard: React.FC<TodayScheduleCardProps> = ({
                   {eligibleMatches.length > 0 && (
                     <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${
                       isAllReminded
-                        ? 'bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300'
+                        ? 'bg-red-100 dark:bg-emerald-950 text-red-700 dark:text-emerald-300'
                         : hasSomeReminded
                         ? 'bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300'
                         : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400'
@@ -256,7 +256,7 @@ export const TodayScheduleCard: React.FC<TodayScheduleCardProps> = ({
               }
               className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden disabled:opacity-40 disabled:cursor-not-allowed ${
                 isAllReminded 
-                  ? 'bg-red-600' 
+                  ? 'bg-red-600 dark:bg-emerald-500' 
                   : 'bg-slate-300 dark:bg-slate-700 hover:bg-slate-400 dark:hover:bg-slate-600'
               }`}
             >
@@ -310,13 +310,13 @@ export const TodayScheduleCard: React.FC<TodayScheduleCardProps> = ({
                   <div className="text-xs font-bold font-mono text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
                     <span>{formatTime(item.startTime)}</span>
                     {hasReminder && (
-                      <span className="inline-flex items-center text-[10px] text-red-600 dark:text-red-400 font-sans font-medium">
+                      <span className="inline-flex items-center text-[10px] text-red-600 dark:text-emerald-400 font-sans font-medium">
                         <Bell className="w-3 h-3 inline mr-0.5" />
                         알림 ON
                       </span>
                     )}
                   </div>
-                  <div className="text-xs font-bold text-slate-900 dark:text-slate-100 group-hover:text-red-600 dark:group-hover:text-red-400 transition truncate">
+                  <div className="text-xs font-bold text-slate-900 dark:text-slate-100 group-hover:text-red-600 dark:group-hover:text-emerald-400 transition truncate">
                     {item.title} {item.round ? `(${item.round})` : ''}
                   </div>
                   <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
@@ -331,7 +331,7 @@ export const TodayScheduleCard: React.FC<TodayScheduleCardProps> = ({
                       종료
                     </span>
                   ) : isLive ? (
-                    <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-red-600 text-white animate-pulse">
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-red-600 dark:bg-emerald-500 text-white dark:text-slate-950 animate-pulse">
                       진행중
                     </span>
                   ) : (
@@ -341,13 +341,13 @@ export const TodayScheduleCard: React.FC<TodayScheduleCardProps> = ({
                       title={hasReminder ? '알림 해제' : '경기 시작 10분 전 알림 받기'}
                       className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border transition flex items-center gap-1 cursor-pointer ${
                         hasReminder
-                          ? 'border-red-500 bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 shadow-2xs'
-                          : 'border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-red-400 hover:text-red-600 dark:hover:text-red-400'
+                          ? 'border-red-500 dark:border-emerald-500 bg-red-50 dark:bg-emerald-950/40 text-red-600 dark:text-emerald-400 shadow-2xs'
+                          : 'border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-red-400 hover:text-red-600 dark:hover:border-emerald-400 dark:hover:text-emerald-400'
                       }`}
                     >
                       {hasReminder ? (
                         <>
-                          <BellRing className="w-3 h-3 text-red-600 dark:text-red-400" />
+                          <BellRing className="w-3 h-3 text-red-600 dark:text-emerald-400" />
                           <span>알림됨</span>
                         </>
                       ) : (

@@ -143,7 +143,7 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
 
         {/* Team 1 (Top) */}
         <div className={`flex items-center justify-between py-1 px-1.5 rounded-lg text-xs transition ${
-          isTopWinner ? 'bg-red-50 dark:bg-red-950/40 font-bold text-red-600 dark:text-red-400' : 'text-slate-800 dark:text-slate-200'
+          isTopWinner ? 'bg-red-50 dark:bg-emerald-950/40 font-bold text-red-600 dark:text-emerald-400' : 'text-slate-800 dark:text-slate-200'
         }`}>
           <div className="flex items-center gap-1.5 truncate">
             {isTopWinner && <Crown className="w-3 h-3 text-amber-500 shrink-0" />}
@@ -156,7 +156,7 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
 
         {/* Team 2 (Bottom) */}
         <div className={`flex items-center justify-between py-1 px-1.5 rounded-lg text-xs transition mt-0.5 ${
-          isBottomWinner ? 'bg-red-50 dark:bg-red-950/40 font-bold text-red-600 dark:text-red-400' : 'text-slate-800 dark:text-slate-200'
+          isBottomWinner ? 'bg-red-50 dark:bg-emerald-950/40 font-bold text-red-600 dark:text-emerald-400' : 'text-slate-800 dark:text-slate-200'
         }`}>
           <div className="flex items-center gap-1.5 truncate">
             {isBottomWinner && <Crown className="w-3 h-3 text-amber-500 shrink-0" />}
@@ -260,13 +260,13 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
               onClick={() => onSelectSport(s.key)}
               className={`px-3.5 py-2 rounded-xl font-bold whitespace-nowrap transition cursor-pointer flex items-center gap-1.5 ${
                 sport === s.key
-                  ? 'bg-red-600 text-white shadow-xs'
+                  ? 'bg-red-600 dark:bg-emerald-500 text-white dark:text-slate-950 shadow-xs'
                   : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
               }`}
             >
               <span>{s.label}</span>
               <span className={`text-[10px] px-1.5 py-0.2 rounded font-normal ${
-                sport === s.key ? 'bg-red-700 text-red-100' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                sport === s.key ? 'bg-red-700 dark:bg-emerald-600 text-red-100 dark:text-slate-950' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
               }`}>
                 {s.genderNote}
               </span>

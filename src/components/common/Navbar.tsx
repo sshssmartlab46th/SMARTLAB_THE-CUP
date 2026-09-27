@@ -179,9 +179,20 @@ export const Navbar: React.FC<NavbarProps> = ({
             type="button"
             onClick={onToggleDarkMode}
             title={isDarkMode ? '라이트 모드로 전환' : '다크 모드로 전환'}
-            className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+            aria-label={isDarkMode ? '라이트 모드로 전환' : '다크 모드로 전환'}
+            className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 bg-slate-100/80 hover:bg-slate-200 dark:bg-slate-800/80 dark:hover:bg-slate-700/80 transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
           >
-            {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
+            {isDarkMode ? (
+              <>
+                <Sun className="w-4 h-4 text-amber-400 shrink-0" />
+                <span className="hidden lg:inline text-[11px] font-bold text-amber-400">라이트</span>
+              </>
+            ) : (
+              <>
+                <Moon className="w-4 h-4 text-slate-700 shrink-0" />
+                <span className="hidden lg:inline text-[11px] font-bold text-slate-600">다크</span>
+              </>
+            )}
           </button>
 
           {/* Desktop-only Secondary Buttons */}
