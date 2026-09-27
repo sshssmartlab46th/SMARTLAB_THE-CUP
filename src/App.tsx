@@ -70,6 +70,8 @@ import {
   listenUserReminders,
   setMatchReminder,
   removeMatchReminder,
+  setBulkMatchReminders,
+  removeBulkMatchReminders,
   sendCheerMessage,
   sendLiveReaction,
   updateFestivalConfig,
@@ -371,6 +373,28 @@ export default function App() {
       }
     } catch (e) {
       console.error('Reminder error:', e);
+    }
+  };
+
+  // Bulk Toggle all today's match reminders for authenticated user
+  const handleToggleAllTodayReminders = async (matchesToToggle: MatchItem[], enable: boolean) => {
+    if (!currentUser) {
+      navigateTo('login');
+      return;
+    }
+    const matchIds = matchesToToggle.map((m) => m.id);
+    if (matchIds.length === 0) return;
+
+    try {
+      if (enable) {
+        setUserReminders((prev) => Array.from(new Set([...prev, ...matchIds])));
+        await setBulkMatchReminders(currentUser.studentId, matchIds, 10);
+      } else {
+        setUserReminders((prev) => prev.filter((id) => !matchIds.includes(id)));
+        await removeBulkMatchReminders(currentUser.studentId, matchIds);
+      }
+    } catch (e) {
+      console.error('Bulk reminders error:', e);
     }
   };
 
@@ -926,7 +950,10 @@ export default function App() {
                 <TodayScheduleCard
                   matches={matches}
                   userReminders={userReminders}
+                  currentUser={currentUser}
                   onToggleReminder={handleToggleReminder}
+                  onToggleAllReminders={handleToggleAllTodayReminders}
+                  onRequireLogin={() => navigateTo('login')}
                   onViewAll={() => navigateTo('schedule')}
                   onSelectMatch={(m) => {
                     setActiveMatchForLive(m);

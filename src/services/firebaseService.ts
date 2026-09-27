@@ -15,7 +15,8 @@ import {
   serverTimestamp,
   getDocFromServer,
   increment,
-  arrayUnion 
+  arrayUnion,
+  writeBatch
 } from 'firebase/firestore';
 import { signInAnonymously, onAuthStateChanged, User } from 'firebase/auth';
 import { auth, db } from '../lib/firebase';
@@ -2202,6 +2203,43 @@ export async function removeMatchReminder(studentId: string, matchId: string): P
     await deleteDoc(docRef);
   } catch (e) {
     console.error('[Firebase] removeMatchReminder error:', e);
+  }
+}
+
+export async function setBulkMatchReminders(studentId: string, matchIds: string[], leadMinutes = 10): Promise<void> {
+  const cleanId = (studentId || '').trim();
+  if (!cleanId || !matchIds || matchIds.length === 0) return;
+  try {
+    await ensureFirebaseAuth();
+    const batch = writeBatch(db);
+    matchIds.forEach((mId) => {
+      const docRef = doc(db, 'reminders', `${cleanId}_${mId}`);
+      batch.set(docRef, sanitizeFirestorePayload({
+        id: `${cleanId}_${mId}`,
+        matchId: mId,
+        studentId: cleanId,
+        leadMinutes
+      }));
+    });
+    await batch.commit();
+  } catch (e) {
+    console.error('[Firebase] setBulkMatchReminders error:', e);
+  }
+}
+
+export async function removeBulkMatchReminders(studentId: string, matchIds: string[]): Promise<void> {
+  const cleanId = (studentId || '').trim();
+  if (!cleanId || !matchIds || matchIds.length === 0) return;
+  try {
+    await ensureFirebaseAuth();
+    const batch = writeBatch(db);
+    matchIds.forEach((mId) => {
+      const docRef = doc(db, 'reminders', `${cleanId}_${mId}`);
+      batch.delete(docRef);
+    });
+    await batch.commit();
+  } catch (e) {
+    console.error('[Firebase] removeBulkMatchReminders error:', e);
   }
 }
 
