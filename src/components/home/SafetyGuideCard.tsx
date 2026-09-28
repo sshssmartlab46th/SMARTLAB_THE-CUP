@@ -39,7 +39,7 @@ export const SafetyGuideCard: React.FC<SafetyGuideCardProps> = ({
   const displayItems = items.length > 0 ? items : OFFICIAL_SAFETY_PRINCIPLES;
 
   return (
-    <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3.5 shadow-2xs transition-all">
+    <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#121826] p-3.5 shadow-2xs transition-all">
       <div className="flex items-center justify-between gap-2 mb-2.5">
         <div className="flex items-center gap-1.5">
           <span className="text-xs">🔥</span>
@@ -51,7 +51,7 @@ export const SafetyGuideCard: React.FC<SafetyGuideCardProps> = ({
           <button
             type="button"
             onClick={onOpenInjuryEncyclopedia}
-            className="text-[10px] text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition cursor-pointer flex items-center gap-0.5"
+            className="text-[10px] text-slate-500 hover:text-red-600 dark:text-slate-300 dark:hover:text-emerald-400 transition cursor-pointer flex items-center gap-0.5 font-medium"
           >
             <ShieldCheck className="w-3 h-3" />
             백과
@@ -66,14 +66,14 @@ export const SafetyGuideCard: React.FC<SafetyGuideCardProps> = ({
             onClick={() => onItemClick?.(item)}
             className="group flex items-start gap-1.5 py-1 px-1.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/60 transition cursor-pointer"
           >
-            <span className="shrink-0 w-4 h-4 rounded-full bg-red-50 dark:bg-red-950/60 text-red-600 dark:text-red-400 text-[10px] font-bold flex items-center justify-center mt-0.5">
+            <span className="shrink-0 w-4 h-4 rounded-full bg-red-50 dark:bg-emerald-950/80 text-red-600 dark:text-emerald-400 border dark:border-emerald-500/40 text-[10px] font-bold flex items-center justify-center mt-0.5">
               {item.order || idx + 1}
             </span>
             <div className="min-w-0 flex-1">
-              <div className="text-[11px] font-bold text-slate-800 dark:text-slate-200 group-hover:text-red-600 dark:group-hover:text-red-400 transition truncate">
+              <div className="text-[11px] font-bold text-slate-800 dark:text-white group-hover:text-red-600 dark:group-hover:text-emerald-400 transition truncate">
                 {item.title}
               </div>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate leading-tight">
+              <p className="text-[10px] text-slate-500 dark:text-slate-300 truncate leading-tight">
                 {item.content}
               </p>
             </div>

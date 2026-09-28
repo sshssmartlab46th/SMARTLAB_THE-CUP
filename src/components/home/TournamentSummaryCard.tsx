@@ -216,26 +216,26 @@ export const TournamentSummaryCard: React.FC<TournamentSummaryCardProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-center">
               {/* Semifinals */}
               <div className="space-y-2.5">
-                <div className="text-[11px] font-bold text-slate-400 flex items-center gap-1">
+                <div className="text-[11px] font-bold text-slate-500 dark:text-slate-300 flex items-center gap-1">
                   <span>준결승 (4강)</span>
                 </div>
 
                 {/* SF1 */}
                 <div
                   onClick={onOpenFullBracket}
-                  className="rounded-xl border border-slate-200 dark:border-slate-800 p-3 bg-white dark:bg-slate-800/40 text-xs space-y-1.5 cursor-pointer hover:border-red-400 transition"
+                  className="rounded-xl border border-slate-200 dark:border-slate-800 p-3 bg-white dark:bg-slate-800/70 text-xs space-y-1.5 cursor-pointer hover:border-red-400 dark:hover:border-emerald-500 transition"
                 >
-                  <div className="flex items-center justify-between text-[10px] text-slate-400">
+                  <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-300">
                     <span>{sf1?.round || sf1?.title || '4강 1경기'}</span>
                     <span className="font-mono">{sf1?.court || ''}</span>
                   </div>
-                  <div className="flex items-center justify-between text-slate-900 dark:text-slate-100 font-bold">
+                  <div className="flex items-center justify-between text-slate-900 dark:text-white font-bold">
                     <span className="truncate">{sf1?.homeTeam || '8강 승자'}</span>
                     <span className="font-mono text-red-600 dark:text-emerald-400 font-bold ml-2">
                       {sf1 ? (sf1.status === 'FINISHED' || sf1.status === 'LIVE' ? sf1.homeScore : '-') : '-'}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between text-slate-700 dark:text-slate-300 font-medium">
+                  <div className="flex items-center justify-between text-slate-700 dark:text-slate-200 font-medium">
                     <span className="truncate">{sf1?.awayTeam || '8강 승자'}</span>
                     <span className="font-mono font-bold ml-2">
                       {sf1 ? (sf1.status === 'FINISHED' || sf1.status === 'LIVE' ? sf1.awayScore : '-') : '-'}
@@ -246,19 +246,19 @@ export const TournamentSummaryCard: React.FC<TournamentSummaryCardProps> = ({
                 {/* SF2 */}
                 <div
                   onClick={onOpenFullBracket}
-                  className="rounded-xl border border-slate-200 dark:border-slate-800 p-3 bg-white dark:bg-slate-800/40 text-xs space-y-1.5 cursor-pointer hover:border-red-400 transition"
+                  className="rounded-xl border border-slate-200 dark:border-slate-800 p-3 bg-white dark:bg-slate-800/70 text-xs space-y-1.5 cursor-pointer hover:border-red-400 dark:hover:border-emerald-500 transition"
                 >
-                  <div className="flex items-center justify-between text-[10px] text-slate-400">
+                  <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-300">
                     <span>{sf2?.round || sf2?.title || '4강 2경기'}</span>
                     <span className="font-mono">{sf2?.court || ''}</span>
                   </div>
-                  <div className="flex items-center justify-between text-slate-900 dark:text-slate-100 font-bold">
+                  <div className="flex items-center justify-between text-slate-900 dark:text-white font-bold">
                     <span className="truncate">{sf2?.homeTeam || '8강 승자'}</span>
                     <span className="font-mono text-red-600 dark:text-emerald-400 font-bold ml-2">
                       {sf2 ? (sf2.status === 'FINISHED' || sf2.status === 'LIVE' ? sf2.homeScore : '-') : '-'}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between text-slate-700 dark:text-slate-300 font-medium">
+                  <div className="flex items-center justify-between text-slate-700 dark:text-slate-200 font-medium">
                     <span className="truncate">{sf2?.awayTeam || '8강 승자'}</span>
                     <span className="font-mono font-bold ml-2">
                       {sf2 ? (sf2.status === 'FINISHED' || sf2.status === 'LIVE' ? sf2.awayScore : '-') : '-'}
@@ -269,18 +269,18 @@ export const TournamentSummaryCard: React.FC<TournamentSummaryCardProps> = ({
 
               {/* Finals Card */}
               <div>
-                <div className="text-[11px] font-bold text-red-600 dark:text-red-400 flex items-center gap-1 mb-2">
+                <div className="text-[11px] font-bold text-red-600 dark:text-emerald-400 flex items-center gap-1 mb-2">
                   <Crown className="w-3.5 h-3.5 text-amber-500" />
                   <span>결승전 (우승 결정전)</span>
                 </div>
 
                 <div
                   onClick={onOpenFullBracket}
-                  className="rounded-xl border-2 border-red-500 dark:border-emerald-500 p-4 bg-slate-50/60 dark:bg-slate-800/60 text-xs shadow-xs space-y-2.5 cursor-pointer hover:shadow-md transition"
+                  className="rounded-xl border-2 border-red-500 dark:border-emerald-500/80 p-4 bg-slate-50/60 dark:bg-slate-800/80 text-xs shadow-xs space-y-2.5 cursor-pointer hover:shadow-md transition"
                 >
                   <div className="flex items-center justify-between text-[11px] font-bold text-red-600 dark:text-emerald-400">
                     <span>{finalMatch?.title || '결승전'}</span>
-                    <span className="flex items-center gap-1 text-[10px] text-slate-400 font-normal">
+                    <span className="flex items-center gap-1 text-[10px] text-slate-500 dark:text-slate-300 font-normal">
                       <MapPin className="w-3 h-3" />
                       {finalMatch?.court || '대운동장'}
                     </span>
@@ -296,18 +296,18 @@ export const TournamentSummaryCard: React.FC<TournamentSummaryCardProps> = ({
                     <div className="h-px bg-slate-200 dark:bg-slate-700" />
                     <div className="flex items-center justify-between text-xs sm:text-sm font-black text-slate-900 dark:text-white">
                       <span className="truncate">{finalMatch?.awayTeam || '4강 2G 승자'}</span>
-                      <span className="font-mono text-slate-900 dark:text-slate-100 font-black text-base ml-2">
+                      <span className="font-mono text-slate-900 dark:text-white font-black text-base ml-2">
                         {finalMatch ? (finalMatch.status === 'FINISHED' || finalMatch.status === 'LIVE' ? finalMatch.awayScore : '-') : '-'}
                       </span>
                     </div>
                   </div>
 
-                  <div className="pt-1 flex items-center justify-between text-[10px] text-slate-400">
+                  <div className="pt-1 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-300">
                     <span className="flex items-center gap-1">
                       <Clock className="w-3 h-3" />
                       {finalMatch?.startTime ? formatKSTTime(finalMatch.startTime) : '16:30 예정'}
                     </span>
-                    <span className="text-red-600 dark:text-red-400 font-bold">
+                    <span className="text-red-600 dark:text-emerald-400 font-bold">
                       상세보기 →
                     </span>
                   </div>

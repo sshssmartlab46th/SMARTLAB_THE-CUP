@@ -32,7 +32,7 @@ export const ClassLeaderboardCard: React.FC<ClassLeaderboardCardProps> = ({
   };
 
   return (
-    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-xs transition-all">
+    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#121826] p-5 shadow-xs transition-all">
       <div className="flex items-center justify-between mb-4">
         <h2 className="font-bold text-sm sm:text-base text-slate-900 dark:text-white tracking-tight">
           종합 학급 순위
@@ -41,7 +41,7 @@ export const ClassLeaderboardCard: React.FC<ClassLeaderboardCardProps> = ({
           <button
             type="button"
             onClick={handleViewAll}
-            className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition cursor-pointer"
+            className="text-xs text-slate-500 hover:text-red-600 dark:text-slate-300 dark:hover:text-emerald-400 transition cursor-pointer font-medium"
           >
             전체보기
           </button>
@@ -49,7 +49,7 @@ export const ClassLeaderboardCard: React.FC<ClassLeaderboardCardProps> = ({
       </div>
 
       {standings.length === 0 ? (
-        <div className="py-8 text-center text-xs text-slate-400">
+        <div className="py-8 text-center text-xs text-slate-500 dark:text-slate-300">
           집계된 학급 종합 순위 데이터가 없습니다.
         </div>
       ) : (
@@ -57,40 +57,40 @@ export const ClassLeaderboardCard: React.FC<ClassLeaderboardCardProps> = ({
           {/* Top 3 Podium Layout */}
           <div className="grid grid-cols-3 gap-2 items-end mb-4 pt-1">
             {/* 2nd Place */}
-            <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/40 p-2.5 text-center flex flex-col items-center">
-              <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mb-1 truncate w-full">
+            <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/70 p-2.5 text-center flex flex-col items-center">
+              <span className="text-[11px] font-bold text-slate-600 dark:text-slate-200 mb-1 truncate w-full">
                 {getLabel(second)}
               </span>
               <span className="text-2xl mb-0.5 filter drop-shadow-xs" role="img" aria-label="2위 은메달">
                 🥈
               </span>
-              <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+              <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">
                 {second ? getPointsText(second) : '-'}
               </span>
             </div>
 
             {/* 1st Place (Elevated with red/emerald border) */}
-            <div className="rounded-xl border-2 border-red-500 dark:border-emerald-500 bg-white dark:bg-emerald-950/20 p-3 text-center flex flex-col items-center -translate-y-1.5 shadow-xs">
+            <div className="rounded-xl border-2 border-red-500 dark:border-emerald-500 bg-white dark:bg-emerald-950/30 p-3 text-center flex flex-col items-center -translate-y-1.5 shadow-xs">
               <span className="text-xs font-bold text-red-600 dark:text-emerald-400 mb-1 truncate w-full">
                 {getLabel(first)}
               </span>
               <span className="text-3xl mb-0.5 filter drop-shadow-xs" role="img" aria-label="1위 트로피">
                 🏆
               </span>
-              <span className="text-xs font-bold text-red-600 dark:text-emerald-400">
+              <span className="text-xs font-black text-red-600 dark:text-emerald-400">
                 {first ? getPointsText(first) : '-'}
               </span>
             </div>
 
             {/* 3rd Place */}
-            <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/40 p-2.5 text-center flex flex-col items-center">
-              <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mb-1 truncate w-full">
+            <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/70 p-2.5 text-center flex flex-col items-center">
+              <span className="text-[11px] font-bold text-slate-600 dark:text-slate-200 mb-1 truncate w-full">
                 {getLabel(third)}
               </span>
               <span className="text-2xl mb-0.5 filter drop-shadow-xs" role="img" aria-label="3위 동메달">
                 🥉
               </span>
-              <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+              <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">
                 {third ? getPointsText(third) : '-'}
               </span>
             </div>
@@ -108,7 +108,7 @@ export const ClassLeaderboardCard: React.FC<ClassLeaderboardCardProps> = ({
                     <span className="font-bold text-slate-800 dark:text-slate-200 w-3">
                       {item.rank}
                     </span>
-                    <span className="font-bold text-slate-900 dark:text-slate-100">
+                    <span className="font-bold text-slate-900 dark:text-white">
                       {getLabel(item)}
                     </span>
                   </div>

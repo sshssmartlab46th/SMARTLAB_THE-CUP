@@ -158,16 +158,16 @@ export const TodayScheduleCard: React.FC<TodayScheduleCardProps> = ({
   };
 
   return (
-    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-xs transition-all">
+    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#121826] p-5 shadow-xs transition-all">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-2 mb-3.5">
         <div className="flex items-center gap-2">
           <h2 className="font-bold text-sm sm:text-base text-slate-900 dark:text-white tracking-tight flex items-center gap-1.5">
-            <Calendar className="w-4 h-4 text-red-600 dark:text-red-400" />
+            <Calendar className="w-4 h-4 text-red-600 dark:text-emerald-400" />
             오늘 예정된 경기
           </h2>
           {sortedSchedules.length > 0 && (
-            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-200">
               {sortedSchedules.length}
             </span>
           )}
@@ -176,7 +176,7 @@ export const TodayScheduleCard: React.FC<TodayScheduleCardProps> = ({
           <button
             type="button"
             onClick={onViewAll}
-            className="text-xs text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition font-medium flex items-center gap-0.5"
+            className="text-xs text-slate-500 hover:text-red-600 dark:text-slate-300 dark:hover:text-emerald-400 transition font-medium flex items-center gap-0.5 cursor-pointer"
           >
             <span>전체보기</span>
             <ChevronRight className="w-3 h-3" />
@@ -186,7 +186,7 @@ export const TodayScheduleCard: React.FC<TodayScheduleCardProps> = ({
 
       {/* Bulk Toggle Card: Remind me of all today's matches */}
       {sortedSchedules.length > 0 && (
-        <div className="mb-4 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/90 dark:border-slate-800 transition-all hover:border-slate-300 dark:hover:border-slate-700">
+        <div className="mb-4 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/90 dark:border-slate-700/80 transition-all hover:border-slate-300 dark:hover:border-slate-600">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5 min-w-0">
               <div 
@@ -195,7 +195,7 @@ export const TodayScheduleCard: React.FC<TodayScheduleCardProps> = ({
                     ? 'bg-red-600 dark:bg-emerald-500 text-white dark:text-slate-950 shadow-xs'
                     : hasSomeReminded
                     ? 'bg-red-100 dark:bg-emerald-950/80 text-red-600 dark:text-emerald-400'
-                    : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
+                    : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
                 }`}
               >
                 {isTogglingBulk ? (
@@ -209,7 +209,7 @@ export const TodayScheduleCard: React.FC<TodayScheduleCardProps> = ({
 
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                  <span className="text-xs font-bold text-slate-900 dark:text-white">
                     오늘 전 경기 알림
                   </span>
                   {eligibleMatches.length > 0 && (
@@ -218,13 +218,13 @@ export const TodayScheduleCard: React.FC<TodayScheduleCardProps> = ({
                         ? 'bg-red-100 dark:bg-emerald-950 text-red-700 dark:text-emerald-300'
                         : hasSomeReminded
                         ? 'bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300'
-                        : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400'
+                        : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
                     }`}>
                       {remindedCount}/{eligibleMatches.length}
                     </span>
                   )}
                 </div>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                <p className="text-[11px] text-slate-500 dark:text-slate-300 truncate">
                   {!currentUser 
                     ? '로그인 후 오늘 경기 일괄 알림 받기'
                     : eligibleMatches.length === 0
@@ -272,10 +272,10 @@ export const TodayScheduleCard: React.FC<TodayScheduleCardProps> = ({
           {statusFeedback && (
             <div className={`mt-2.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium flex items-center gap-1.5 transition-all ${
               statusFeedback.type === 'success'
-                ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-600'
                 : statusFeedback.type === 'error'
-                ? 'bg-red-50 dark:bg-red-950/50 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800'
-                : 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
+                ? 'bg-red-50 dark:bg-red-950/60 text-red-700 dark:text-red-200 border border-red-200 dark:border-red-700'
+                : 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-200 border border-blue-200 dark:border-blue-700'
             }`}>
               {statusFeedback.type === 'success' && <Check className="w-3.5 h-3.5 shrink-0" />}
               {statusFeedback.type === 'info' && <Info className="w-3.5 h-3.5 shrink-0" />}
@@ -288,7 +288,7 @@ export const TodayScheduleCard: React.FC<TodayScheduleCardProps> = ({
 
       {/* Schedule Items List */}
       {sortedSchedules.length === 0 ? (
-        <div className="py-8 text-center text-slate-400 dark:text-slate-500 text-xs">
+        <div className="py-8 text-center text-slate-500 dark:text-slate-300 text-xs">
           오늘 예정된 경기 일정이 없습니다.
         </div>
       ) : (
@@ -307,7 +307,7 @@ export const TodayScheduleCard: React.FC<TodayScheduleCardProps> = ({
                   onClick={() => onSelectMatch?.(item)}
                   className="space-y-0.5 cursor-pointer flex-1 min-w-0"
                 >
-                  <div className="text-xs font-bold font-mono text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                  <div className="text-xs font-bold font-mono text-slate-900 dark:text-white flex items-center gap-1.5">
                     <span>{formatTime(item.startTime)}</span>
                     {hasReminder && (
                       <span className="inline-flex items-center text-[10px] text-red-600 dark:text-emerald-400 font-sans font-medium">
@@ -316,10 +316,10 @@ export const TodayScheduleCard: React.FC<TodayScheduleCardProps> = ({
                       </span>
                     )}
                   </div>
-                  <div className="text-xs font-bold text-slate-900 dark:text-slate-100 group-hover:text-red-600 dark:group-hover:text-emerald-400 transition truncate">
+                  <div className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-red-600 dark:group-hover:text-emerald-400 transition truncate">
                     {item.title} {item.round ? `(${item.round})` : ''}
                   </div>
-                  <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                  <div className="text-[11px] text-slate-500 dark:text-slate-300 truncate">
                     {item.homeTeam || item.homeClass || '홈팀'} vs {item.awayTeam || item.awayClass || '원정팀'}
                     {(item.court || item.location) ? ` · ${item.court || item.location}` : ''}
                   </div>
@@ -327,7 +327,7 @@ export const TodayScheduleCard: React.FC<TodayScheduleCardProps> = ({
 
                 <div className="shrink-0 pt-0.5">
                   {isFinished ? (
-                    <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                       종료
                     </span>
                   ) : isLive ? (
@@ -342,7 +342,7 @@ export const TodayScheduleCard: React.FC<TodayScheduleCardProps> = ({
                       className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border transition flex items-center gap-1 cursor-pointer ${
                         hasReminder
                           ? 'border-red-500 dark:border-emerald-500 bg-red-50 dark:bg-emerald-950/40 text-red-600 dark:text-emerald-400 shadow-2xs'
-                          : 'border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-red-400 hover:text-red-600 dark:hover:border-emerald-400 dark:hover:text-emerald-400'
+                          : 'border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-300 hover:border-red-400 hover:text-red-600 dark:hover:border-emerald-400 dark:hover:text-emerald-400'
                       }`}
                     >
                       {hasReminder ? (
@@ -368,7 +368,7 @@ export const TodayScheduleCard: React.FC<TodayScheduleCardProps> = ({
               <button
                 type="button"
                 onClick={onViewAll}
-                className="text-[11px] font-medium text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition cursor-pointer"
+                className="text-[11px] font-medium text-slate-500 dark:text-slate-300 hover:text-red-600 dark:hover:text-emerald-400 transition cursor-pointer"
               >
                 외 {sortedSchedules.length - 5}개 경기 더 보기 &rarr;
               </button>

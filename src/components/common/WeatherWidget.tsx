@@ -144,7 +144,7 @@ export const WeatherWidget: React.FC<WeatherWidgetProps> = ({
 
   // Default 'card' variant
   return (
-    <div className={`p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs space-y-3 ${className}`}>
+    <div className={`p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#121826] shadow-xs space-y-3 ${className}`}>
       <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5">
         <div className="flex items-center gap-1.5">
           <MapPin className="w-3.5 h-3.5 text-red-600 dark:text-emerald-400" />
@@ -157,7 +157,7 @@ export const WeatherWidget: React.FC<WeatherWidgetProps> = ({
             <button
               type="button"
               onClick={onOpenDetails}
-              className="text-[11px] font-bold text-red-600 dark:text-red-400 hover:underline flex items-center gap-0.5 cursor-pointer"
+              className="text-[11px] font-bold text-red-600 dark:text-emerald-400 hover:underline flex items-center gap-0.5 cursor-pointer"
             >
               <span>자세히</span>
               <ChevronRight className="w-3 h-3" />
@@ -167,10 +167,10 @@ export const WeatherWidget: React.FC<WeatherWidgetProps> = ({
             type="button"
             onClick={() => refetch()}
             disabled={refreshing}
-            className="flex items-center gap-1 text-[11px] text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition cursor-pointer"
+            className="flex items-center gap-1 text-[11px] text-slate-500 hover:text-slate-800 dark:text-slate-300 dark:hover:text-white transition cursor-pointer"
             title="날씨 실시간 새로고침"
           >
-            <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin text-red-600' : ''}`} />
+            <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin text-red-600 dark:text-emerald-400' : ''}`} />
             <span>{weather?.lastUpdated || '방금'}</span>
           </button>
         </div>
@@ -185,25 +185,25 @@ export const WeatherWidget: React.FC<WeatherWidgetProps> = ({
             <div className="text-2xl font-black font-mono text-slate-900 dark:text-white">
               {weather?.temp ?? 22}°C
             </div>
-            <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
+            <div className="text-xs font-medium text-slate-600 dark:text-slate-300">
               {weather?.condition ?? '맑음'} · 체감 {weather?.apparentTemp ?? 22}°C
             </div>
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-2 text-right text-[11px] font-mono">
-          <div className="p-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/60">
-            <span className="text-slate-400 text-[10px] block">강수확률</span>
-            <span className="font-bold text-blue-600 dark:text-blue-400">{weather?.rainProb ?? 10}%</span>
+          <div className="p-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-transparent dark:border-slate-700/60">
+            <span className="text-slate-500 dark:text-slate-300 text-[10px] block">강수확률</span>
+            <span className="font-bold text-blue-600 dark:text-sky-400">{weather?.rainProb ?? 10}%</span>
           </div>
-          <div className="p-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/60">
-            <span className="text-slate-400 text-[10px] block">습도</span>
-            <span className="font-bold text-slate-700 dark:text-slate-300">{weather?.humidity ?? 55}%</span>
+          <div className="p-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-transparent dark:border-slate-700/60">
+            <span className="text-slate-500 dark:text-slate-300 text-[10px] block">습도</span>
+            <span className="font-bold text-slate-700 dark:text-slate-200">{weather?.humidity ?? 55}%</span>
           </div>
         </div>
       </div>
 
-      <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 text-[11px] text-slate-600 dark:text-slate-400 flex items-start justify-between gap-2">
+      <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-transparent dark:border-slate-700/50 text-[11px] text-slate-700 dark:text-slate-200 flex items-start justify-between gap-2">
         <div className="flex items-start gap-2">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
           <span>{weather?.statusText || '야외 경기 진행 최적 상태입니다.'}</span>
@@ -214,7 +214,7 @@ export const WeatherWidget: React.FC<WeatherWidgetProps> = ({
         <button
           type="button"
           onClick={onOpenDetails}
-          className="w-full py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+          className="w-full py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-white text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs border border-transparent dark:border-slate-700/60"
         >
           <span>시간대별 예보 및 기상 센터 열기</span>
           <ChevronRight className="w-3.5 h-3.5" />
