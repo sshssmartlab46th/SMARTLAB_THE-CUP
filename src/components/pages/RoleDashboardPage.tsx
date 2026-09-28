@@ -41,6 +41,7 @@ import {
 import { collection, doc, setDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { GoalScorerModal } from '../matches/GoalScorerModal';
+import { getSportScoreMeta } from '../../utils/sportScoreUtils';
 
 interface RoleDashboardPageProps {
   currentUser: UserProfile | null;
@@ -768,16 +769,22 @@ export const RoleDashboardPage: React.FC<RoleDashboardPageProps> = ({
                     {/* Goal Scorer & Timer Controls */}
                     <div className="pt-3 border-t border-slate-200 dark:border-slate-700 flex flex-wrap gap-2 justify-between">
                       <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setGoalTeam('home');
-                            setShowGoalModal(true);
-                          }}
-                          className="px-3 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 text-slate-800 dark:text-slate-200 font-bold text-xs transition cursor-pointer"
-                        >
-                          ⚽ 골 득점자 기록
-                        </button>
+                        {(() => {
+                          const meta = getSportScoreMeta(activeControlMatch.sport);
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setGoalTeam('home');
+                                setShowGoalModal(true);
+                              }}
+                              className="px-3 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 text-slate-800 dark:text-slate-200 font-bold text-xs transition cursor-pointer flex items-center gap-1.5"
+                            >
+                              <span>{meta.sportIcon}</span>
+                              <span>{meta.actionButtonLabel}</span>
+                            </button>
+                          );
+                        })()}
                       </div>
 
                       <div className="flex items-center gap-2">
@@ -1192,7 +1199,8 @@ export const RoleDashboardPage: React.FC<RoleDashboardPageProps> = ({
           initialTeam={goalTeam}
           onSuccess={(scorer, team) => {
             const teamName = team === 'home' ? activeControlMatch.homeTeam : activeControlMatch.awayTeam;
-            showToast(`[${teamName}] ${scorer} 선수의 골이 공식 기록되었습니다.`);
+            const meta = getSportScoreMeta(activeControlMatch.sport);
+            showToast(`[${teamName}] ${scorer} 선수의 ${meta.scoreNoun} 기록이 공식 저장되었습니다.`);
           }}
         />
       )}
@@ -1211,13 +1219,12 @@ export const RoleDashboardPage: React.FC<RoleDashboardPageProps> = ({
             </div>
 
             <div className="space-y-2">
-              {[
+              {(activeControlMatch ? getSportScoreMeta(activeControlMatch.sport).undoReasons : [
                 '입력 실수 (단순 오타)',
-                '오프사이드 (골 무효)',
-                '파울로 인한 판정 번복',
-                'VAR 및 부심 합의 판정',
+                '심판 판정 번복',
+                '규칙 위반/파울 무효',
                 '기타 직접 입력'
-              ].map((reason) => (
+              ]).map((reason) => (
                 <label
                   key={reason}
                   className="flex items-center gap-2.5 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-medium cursor-pointer"

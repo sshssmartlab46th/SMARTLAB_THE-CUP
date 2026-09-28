@@ -119,6 +119,7 @@ export interface TimelineEvent {
   player?: string;
   description: string;
   detail?: string;
+  points?: number;
   timestamp: string;
 }
 

@@ -38,7 +38,8 @@ import {
   CheerMessageItem,
   LoginInquiry,
   AppDocument,
-  SportType
+  SportType,
+  TimelineEvent
 } from '../types';
 import { DEFAULT_APP_DOCUMENTS } from '../data/defaultDocuments';
 
@@ -844,6 +845,7 @@ import {
   parseKSTDateAndTime,
   getKSTNowParts
 } from '../utils/kstTime';
+import { getSportScoreMeta, formatScoreActionText } from '../utils/sportScoreUtils';
 
 export {
   KST_TIMEZONE,
@@ -1478,11 +1480,12 @@ export async function quickAdjustScore(
   const newHome = team === 'home' ? Math.max(0, currentHome + delta) : currentHome;
   const newAway = team === 'away' ? Math.max(0, currentAway + delta) : currentAway;
 
+  const meta = getSportScoreMeta(match.sport);
   const teamName = team === 'home' ? (match.homeTeam || '홈팀') : (match.awayTeam || '원정팀');
-  const deltaStr = delta > 0 ? `+${delta}` : `${delta}`;
+  const deltaStr = delta > 0 ? `+${delta}${meta.scoreUnit}` : `${delta}${meta.scoreUnit}`;
   const defaultReason = delta > 0 
-    ? `[실시간 득점] ${teamName} ${deltaStr}점 기록` 
-    : `[점수 정정] ${teamName} ${deltaStr}점 차감/정정`;
+    ? `[실시간 ${meta.scoreNoun}] ${teamName} ${deltaStr} 기록` 
+    : `[점수 정정] ${teamName} ${deltaStr} 차감/정정`;
 
   await updateScoreWithAudit(
     match,
@@ -1490,7 +1493,7 @@ export async function quickAdjustScore(
     newAway,
     customReason?.trim() || defaultReason,
     operator,
-    `${teamName} ${deltaStr}점 (${delta > 0 ? '득점' : '정정'})`
+    `${teamName} ${deltaStr} (${delta > 0 ? meta.scoreNoun : '정정'})`
   );
 }
 
@@ -1500,22 +1503,26 @@ export async function recordMatchGoalWithScorer(
   scorerName: string,
   minute: number,
   scoreType: string = '필드골',
-  operator: { id: string; name: string; role: string }
+  operator: { id: string; name: string; role: string },
+  points: number = 1,
+  eventType: TimelineEvent['type'] = 'GOAL'
 ): Promise<void> {
+  const meta = getSportScoreMeta(match.sport);
   const currentHome = match.homeScore ?? 0;
   const currentAway = match.awayScore ?? 0;
-  const newHome = team === 'home' ? currentHome + 1 : currentHome;
-  const newAway = team === 'away' ? currentAway + 1 : currentAway;
+  const newHome = team === 'home' ? currentHome + points : currentHome;
+  const newAway = team === 'away' ? currentAway + points : currentAway;
 
   const teamName = team === 'home' ? (match.homeTeam || '홈팀') : (match.awayTeam || '원정팀');
-  const actionText = `${teamName} ${scorerName} 선수 ${minute}분 골 (${scoreType})`;
+  const actionText = formatScoreActionText(match.sport, teamName, scorerName, minute, scoreType, points);
 
-  const newEvent = {
+  const newEvent: TimelineEvent = {
     id: `evt-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
     minute: minute,
-    type: 'GOAL' as const,
+    type: eventType,
     team: team,
     player: scorerName,
+    points: points,
     description: `${teamName} ${scorerName} 선수 ${scoreType}`,
     timestamp: new Date().toISOString()
   };
@@ -1526,7 +1533,7 @@ export async function recordMatchGoalWithScorer(
     { ...match, events: updatedEvents },
     newHome,
     newAway,
-    `[득점 기록] ${actionText}`,
+    `[${meta.scoreNoun} 기록] ${actionText}`,
     operator,
     actionText
   );
@@ -1544,16 +1551,29 @@ export async function removeMatchEventWithAudit(
   let newHome = match.homeScore ?? 0;
   let newAway = match.awayScore ?? 0;
 
-  if (revertScore && targetEvent && targetEvent.type === 'GOAL') {
-    if (targetEvent.team === 'home') {
-      newHome = Math.max(0, newHome - 1);
-    } else if (targetEvent.team === 'away') {
-      newAway = Math.max(0, newAway - 1);
+  let pointsToRevert = 0;
+  if (revertScore && targetEvent) {
+    if (typeof targetEvent.points === 'number') {
+      pointsToRevert = targetEvent.points;
+    } else if (targetEvent.type === 'POINT_3') {
+      pointsToRevert = 3;
+    } else if (targetEvent.type === 'POINT_2') {
+      pointsToRevert = 2;
+    } else if (targetEvent.type === 'GOAL' || targetEvent.type === 'FREE_THROW' || targetEvent.type === 'OUT') {
+      pointsToRevert = 1;
+    }
+
+    if (pointsToRevert > 0) {
+      if (targetEvent.team === 'home') {
+        newHome = Math.max(0, newHome - pointsToRevert);
+      } else if (targetEvent.team === 'away') {
+        newAway = Math.max(0, newAway - pointsToRevert);
+      }
     }
   }
 
   const desc = targetEvent 
-    ? `[이벤트 삭제] ${targetEvent.minute}분 ${targetEvent.player || ''} ${targetEvent.description}${revertScore ? ' (스코어 1점 차감 환원)' : ''}`
+    ? `[이벤트 삭제] ${targetEvent.minute}분 ${targetEvent.player || ''} ${targetEvent.description}${revertScore && pointsToRevert > 0 ? ` (스코어 ${pointsToRevert}점 차감 환원)` : ''}`
     : `[이벤트 삭제] ID ${eventId}`;
 
   await updateScoreWithAudit(

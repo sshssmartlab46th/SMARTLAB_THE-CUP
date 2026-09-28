@@ -17,6 +17,7 @@ import {
 import { MVPVotingModal } from './MVPVotingModal';
 import { GoalScorerModal } from './GoalScorerModal';
 import { PenaltyShootoutBoard } from './PenaltyShootoutBoard';
+import { getSportScoreMeta, getTimelineEventDisplay } from '../../utils/sportScoreUtils';
 import { 
   Flame, 
   Heart, 
@@ -49,6 +50,7 @@ export const LiveMatchStatusView: React.FC<LiveMatchStatusViewProps> = ({
   match,
   onBack
 }) => {
+  const scoreMeta = getSportScoreMeta(match.sport);
   const [cheerCounts, setCheerCounts] = useState<{ home: number; away: number }>({ home: 0, away: 0 });
   const [lineups, setLineups] = useState<ClassLineup[]>([]);
   const [showMvpModal, setShowMvpModal] = useState(false);
@@ -107,7 +109,7 @@ export const LiveMatchStatusView: React.FC<LiveMatchStatusViewProps> = ({
     }
   };
 
-  // Instant one-click +1 / -1 adjustment directly from scoreboard
+  // Instant one-click +1 / -1 / +2 / +3 adjustment directly from scoreboard
   const handleQuickDelta = async (team: 'home' | 'away', delta: number) => {
     if (!canEditScore || isSubmittingScore) return;
     setIsSubmittingScore(true);
@@ -130,7 +132,7 @@ export const LiveMatchStatusView: React.FC<LiveMatchStatusViewProps> = ({
           role: currentUser.role
         }
       );
-      showToast(`${teamName} ${deltaLabel}점 변경 완료! (감사 로그 자동 기록)`);
+      showToast(`${teamName} ${deltaLabel}${scoreMeta.scoreUnit} 변경 완료! (감사 로그 자동 기록)`);
     } catch (err) {
       console.error('Failed to quick adjust score:', err);
       showToast('스코어 업데이트에 실패했습니다. 다시 시도해주세요.', 'error');
@@ -281,13 +283,7 @@ export const LiveMatchStatusView: React.FC<LiveMatchStatusViewProps> = ({
     }
   };
 
-  const presetReasons = [
-    '실시간 정규 득점 (+1)',
-    '심판 오심 정정',
-    '기록원 오기 수정',
-    '경기 규칙 위반/페널티 감점',
-    '비디오 판독(VAR) 결과 반영'
-  ];
+  const presetReasons = scoreMeta.undoReasons;
 
   // 5-minute lineup reveal policy check
   const isLineupRevealed = match.status === 'LIVE' || match.status === 'FINISHED' || currentUser.role === 'admin';
@@ -435,26 +431,30 @@ export const LiveMatchStatusView: React.FC<LiveMatchStatusViewProps> = ({
             {/* Quick Score Adjustment Buttons for Authorized Users */}
             {canEditScore ? (
               <div className="flex flex-col items-center gap-1.5">
-                <div className="flex items-center justify-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => handleQuickDelta('home', -1)}
-                    disabled={isSubmittingScore || (match.homeScore ?? 0) <= 0}
-                    className="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-red-100 dark:hover:bg-red-950 text-slate-700 dark:text-slate-200 hover:text-red-600 font-black text-sm flex items-center justify-center transition active:scale-95 disabled:opacity-30 cursor-pointer shadow-2xs"
-                    title="홈팀 -1점"
-                  >
-                    <Minus className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickDelta('home', 1)}
-                    disabled={isSubmittingScore}
-                    className="px-3 h-8 rounded-lg bg-red-600 hover:bg-red-700 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-1 transition active:scale-95 disabled:opacity-50 cursor-pointer shadow-xs"
-                    title="홈팀 +1점 득점"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>1</span>
-                  </button>
+                <div className="flex items-center justify-center flex-wrap gap-1 max-w-[200px]">
+                  {scoreMeta.quickDeltas.map((qd) => {
+                    const isPositive = qd.delta > 0;
+                    const isDisabled = isSubmittingScore || (!isPositive && (match.homeScore ?? 0) <= 0);
+                    return (
+                      <button
+                        key={`home-${qd.label}`}
+                        type="button"
+                        onClick={() => handleQuickDelta('home', qd.delta)}
+                        disabled={isDisabled}
+                        className={`h-8 px-2.5 rounded-lg font-black text-xs transition active:scale-95 disabled:opacity-30 cursor-pointer shadow-2xs flex items-center justify-center gap-0.5 ${
+                          isPositive
+                            ? (qd.delta >= 2
+                                ? 'bg-amber-600 hover:bg-amber-700 text-white'
+                                : 'bg-red-600 hover:bg-red-700 text-white')
+                            : 'bg-slate-200 dark:bg-slate-700 hover:bg-red-100 dark:hover:bg-red-950 text-slate-700 dark:text-slate-200 hover:text-red-600'
+                        }`}
+                        title={`${match.homeTeam} ${qd.desc}`}
+                      >
+                        {isPositive && <Plus className="w-3 h-3" />}
+                        {isPositive ? Math.abs(qd.delta) : qd.label}
+                      </button>
+                    );
+                  })}
                 </div>
                 <button
                   type="button"
@@ -463,10 +463,10 @@ export const LiveMatchStatusView: React.FC<LiveMatchStatusViewProps> = ({
                     setShowGoalModal(true);
                   }}
                   className="px-2.5 py-1 rounded-lg bg-red-100 dark:bg-red-950/60 hover:bg-red-200 text-red-700 dark:text-red-300 font-bold text-[11px] flex items-center justify-center gap-1 transition cursor-pointer"
-                  title="홈팀 골 넣은 선수 지정 및 타임라인 기록"
+                  title={`홈팀 ${scoreMeta.scoreNoun} 선수 지정 및 타임라인 기록`}
                 >
-                  <span>⚽</span>
-                  <span>골 선수 기록</span>
+                  <span>{scoreMeta.sportIcon}</span>
+                  <span>{scoreMeta.actionButtonLabel}</span>
                 </button>
               </div>
             ) : null}
@@ -500,26 +500,30 @@ export const LiveMatchStatusView: React.FC<LiveMatchStatusViewProps> = ({
             {/* Quick Score Adjustment Buttons for Authorized Users */}
             {canEditScore ? (
               <div className="flex flex-col items-center gap-1.5">
-                <div className="flex items-center justify-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => handleQuickDelta('away', -1)}
-                    disabled={isSubmittingScore || (match.awayScore ?? 0) <= 0}
-                    className="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-950 text-slate-700 dark:text-slate-200 hover:text-blue-600 font-black text-sm flex items-center justify-center transition active:scale-95 disabled:opacity-30 cursor-pointer shadow-2xs"
-                    title="원정팀 -1점"
-                  >
-                    <Minus className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickDelta('away', 1)}
-                    disabled={isSubmittingScore}
-                    className="px-3 h-8 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-1 transition active:scale-95 disabled:opacity-50 cursor-pointer shadow-xs"
-                    title="원정팀 +1점 득점"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>1</span>
-                  </button>
+                <div className="flex items-center justify-center flex-wrap gap-1 max-w-[200px]">
+                  {scoreMeta.quickDeltas.map((qd) => {
+                    const isPositive = qd.delta > 0;
+                    const isDisabled = isSubmittingScore || (!isPositive && (match.awayScore ?? 0) <= 0);
+                    return (
+                      <button
+                        key={`away-${qd.label}`}
+                        type="button"
+                        onClick={() => handleQuickDelta('away', qd.delta)}
+                        disabled={isDisabled}
+                        className={`h-8 px-2.5 rounded-lg font-black text-xs transition active:scale-95 disabled:opacity-30 cursor-pointer shadow-2xs flex items-center justify-center gap-0.5 ${
+                          isPositive
+                            ? (qd.delta >= 2
+                                ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                                : 'bg-blue-600 hover:bg-blue-700 text-white')
+                            : 'bg-slate-200 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-950 text-slate-700 dark:text-slate-200 hover:text-blue-600'
+                        }`}
+                        title={`${match.awayTeam} ${qd.desc}`}
+                      >
+                        {isPositive && <Plus className="w-3 h-3" />}
+                        {isPositive ? Math.abs(qd.delta) : qd.label}
+                      </button>
+                    );
+                  })}
                 </div>
                 <button
                   type="button"
@@ -528,10 +532,10 @@ export const LiveMatchStatusView: React.FC<LiveMatchStatusViewProps> = ({
                     setShowGoalModal(true);
                   }}
                   className="px-2.5 py-1 rounded-lg bg-blue-100 dark:bg-blue-950/60 hover:bg-blue-200 text-blue-700 dark:text-blue-300 font-bold text-[11px] flex items-center justify-center gap-1 transition cursor-pointer"
-                  title="원정팀 골 넣은 선수 지정 및 타임라인 기록"
+                  title={`원정팀 ${scoreMeta.scoreNoun} 선수 지정 및 타임라인 기록`}
                 >
-                  <span>⚽</span>
-                  <span>골 선수 기록</span>
+                  <span>{scoreMeta.sportIcon}</span>
+                  <span>{scoreMeta.actionButtonLabel}</span>
                 </button>
               </div>
             ) : null}
@@ -607,35 +611,31 @@ export const LiveMatchStatusView: React.FC<LiveMatchStatusViewProps> = ({
                     {match.homeTeam} (홈)
                   </span>
                   <span className="text-2xl font-black font-mono text-red-600 dark:text-red-400">
-                    {newHomeScore}점
+                    {newHomeScore}{scoreMeta.scoreUnit}
                   </span>
                 </div>
-                <div className="flex items-center gap-1.5 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => setNewHomeScore((s) => Math.max(0, s - 1))}
-                    disabled={newHomeScore <= 0}
-                    className="flex-1 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-800 dark:text-slate-200 font-bold flex items-center justify-center gap-1 disabled:opacity-40 cursor-pointer"
-                  >
-                    <Minus className="w-3.5 h-3.5" />
-                    <span>-1</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setNewHomeScore((s) => s + 1)}
-                    className="flex-1 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold flex items-center justify-center gap-1 cursor-pointer shadow-xs"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>+1</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setNewHomeScore((s) => s + 2)}
-                    className="py-2 px-2.5 rounded-lg bg-red-100 dark:bg-red-950/60 hover:bg-red-200 text-red-700 dark:text-red-300 font-bold cursor-pointer"
-                    title="+2점"
-                  >
-                    +2
-                  </button>
+                <div className="flex items-center flex-wrap gap-1 pt-1">
+                  {scoreMeta.quickDeltas.map((qd) => {
+                    const isPositive = qd.delta > 0;
+                    return (
+                      <button
+                        key={`stepper-home-${qd.label}`}
+                        type="button"
+                        onClick={() => setNewHomeScore((s) => Math.max(0, s + qd.delta))}
+                        disabled={!isPositive && newHomeScore <= 0}
+                        className={`flex-1 min-w-[42px] py-1.5 px-2 rounded-lg font-bold text-xs flex items-center justify-center gap-0.5 cursor-pointer transition ${
+                          isPositive
+                            ? (qd.delta >= 2
+                                ? 'bg-amber-600 hover:bg-amber-700 text-white'
+                                : 'bg-red-600 hover:bg-red-700 text-white shadow-xs')
+                            : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-800 dark:text-slate-200 disabled:opacity-40'
+                        }`}
+                        title={qd.desc}
+                      >
+                        {qd.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -646,35 +646,31 @@ export const LiveMatchStatusView: React.FC<LiveMatchStatusViewProps> = ({
                     {match.awayTeam} (원정)
                   </span>
                   <span className="text-2xl font-black font-mono text-blue-600 dark:text-blue-400">
-                    {newAwayScore}점
+                    {newAwayScore}{scoreMeta.scoreUnit}
                   </span>
                 </div>
-                <div className="flex items-center gap-1.5 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => setNewAwayScore((s) => Math.max(0, s - 1))}
-                    disabled={newAwayScore <= 0}
-                    className="flex-1 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-800 dark:text-slate-200 font-bold flex items-center justify-center gap-1 disabled:opacity-40 cursor-pointer"
-                  >
-                    <Minus className="w-3.5 h-3.5" />
-                    <span>-1</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setNewAwayScore((s) => s + 1)}
-                    className="flex-1 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold flex items-center justify-center gap-1 cursor-pointer shadow-xs"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>+1</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setNewAwayScore((s) => s + 2)}
-                    className="py-2 px-2.5 rounded-lg bg-blue-100 dark:bg-blue-950/60 hover:bg-blue-200 text-blue-700 dark:text-blue-300 font-bold cursor-pointer"
-                    title="+2점"
-                  >
-                    +2
-                  </button>
+                <div className="flex items-center flex-wrap gap-1 pt-1">
+                  {scoreMeta.quickDeltas.map((qd) => {
+                    const isPositive = qd.delta > 0;
+                    return (
+                      <button
+                        key={`stepper-away-${qd.label}`}
+                        type="button"
+                        onClick={() => setNewAwayScore((s) => Math.max(0, s + qd.delta))}
+                        disabled={!isPositive && newAwayScore <= 0}
+                        className={`flex-1 min-w-[42px] py-1.5 px-2 rounded-lg font-bold text-xs flex items-center justify-center gap-0.5 cursor-pointer transition ${
+                          isPositive
+                            ? (qd.delta >= 2
+                                ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                                : 'bg-blue-600 hover:bg-blue-700 text-white shadow-xs')
+                            : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-800 dark:text-slate-200 disabled:opacity-40'
+                        }`}
+                        title={qd.desc}
+                      >
+                        {qd.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -749,8 +745,8 @@ export const LiveMatchStatusView: React.FC<LiveMatchStatusViewProps> = ({
                 }}
                 className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 transition shadow-xs cursor-pointer"
               >
-                <span>⚽</span>
-                <span>골(득점) 선수 기록</span>
+                <span>{scoreMeta.sportIcon}</span>
+                <span>{scoreMeta.actionButtonLabel}</span>
               </button>
             </div>
           )}
@@ -761,15 +757,17 @@ export const LiveMatchStatusView: React.FC<LiveMatchStatusViewProps> = ({
             기록된 경기 이벤트가 없습니다.
             {canEditScore && (
               <p className="mt-1 text-[11px] text-emerald-600 dark:text-emerald-400">
-                상단의 [골(득점) 선수 기록] 버튼을 눌러 라인업에서 선수를 선택해 기록할 수 있습니다.
+                상단의 [{scoreMeta.actionButtonLabel}] 버튼을 눌러 라인업에서 선수를 선택해 기록할 수 있습니다.
               </p>
             )}
           </div>
         ) : (
           <div className="space-y-2">
             {match.events.map((evt) => {
-              const isGoal = evt.type === 'GOAL';
+              const eventDisplay = getTimelineEventDisplay(evt, match.sport);
               const teamLabel = evt.team === 'home' ? match.homeTeam : evt.team === 'away' ? match.awayTeam : '공통';
+              const pointsToRevert = evt.points || (evt.type === 'POINT_3' ? 3 : evt.type === 'POINT_2' ? 2 : 1);
+              const isScoringEvent = ['GOAL', 'POINT_3', 'POINT_2', 'FREE_THROW', 'OUT'].includes(evt.type) || Boolean(evt.points && evt.points > 0);
 
               const handleDeleteEvent = async () => {
                 const isConfirmed = window.confirm(
@@ -778,9 +776,9 @@ export const LiveMatchStatusView: React.FC<LiveMatchStatusViewProps> = ({
                 if (!isConfirmed) return;
 
                 let revertScore = false;
-                if (isGoal) {
+                if (isScoringEvent) {
                   revertScore = window.confirm(
-                    `해당 득점 삭제 시 스코어도 1점 차감 환원하시겠습니까?\n[확인] = 스코어 1점 차감 환원\n[취소] = 스코어 유지, 타임라인 기록만 삭제`
+                    `해당 득점/아웃 삭제 시 스코어도 ${pointsToRevert}${scoreMeta.scoreUnit} 차감 환원하시겠습니까?\n[확인] = 스코어 ${pointsToRevert}${scoreMeta.scoreUnit} 차감 환원\n[취소] = 스코어 유지, 타임라인 기록만 삭제`
                   );
                 }
 
@@ -808,11 +806,7 @@ export const LiveMatchStatusView: React.FC<LiveMatchStatusViewProps> = ({
               return (
                 <div
                   key={evt.id}
-                  className={`p-3 rounded-xl border text-xs flex items-center justify-between transition ${
-                    isGoal
-                      ? 'bg-emerald-50/70 dark:bg-emerald-950/25 border-emerald-200 dark:border-emerald-800/50'
-                      : 'bg-slate-50 dark:bg-slate-800/40 border-slate-100 dark:border-slate-800'
-                  }`}
+                  className="p-3 rounded-xl border text-xs flex items-center justify-between transition bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800"
                 >
                   <div className="flex items-center gap-2.5">
                     <span className="font-mono font-black text-sm text-red-600 dark:text-red-400 min-w-[32px]">
@@ -820,7 +814,7 @@ export const LiveMatchStatusView: React.FC<LiveMatchStatusViewProps> = ({
                     </span>
                     <div className="space-y-0.5">
                       <div className="flex items-center gap-1.5">
-                        {isGoal && <span className="text-sm">⚽</span>}
+                        <span className="text-sm">{eventDisplay.icon}</span>
                         <span className="font-bold text-slate-900 dark:text-white">
                           {evt.player || '선수 미지정'}
                         </span>
@@ -839,12 +833,8 @@ export const LiveMatchStatusView: React.FC<LiveMatchStatusViewProps> = ({
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                      isGoal
-                        ? 'bg-emerald-600 text-white shadow-2xs'
-                        : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
-                    }`}>
-                      {evt.type}
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${eventDisplay.badgeClass}`}>
+                      {eventDisplay.badgeLabel}
                     </span>
 
                     {canEditScore && (
@@ -958,7 +948,7 @@ export const LiveMatchStatusView: React.FC<LiveMatchStatusViewProps> = ({
           initialTeam={goalModalTeam}
           onSuccess={(scorer, team) => {
             const tName = team === 'home' ? match.homeTeam : match.awayTeam;
-            showToast(`[${tName}] ${scorer} 선수의 득점이 실시간 타임라인에 기록되었습니다!`);
+            showToast(`[${tName}] ${scorer} 선수의 ${scoreMeta.scoreNoun} 기록이 실시간 타임라인에 반영되었습니다!`);
           }}
         />
       )}

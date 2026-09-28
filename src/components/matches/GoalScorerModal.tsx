@@ -1,15 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { MatchItem, UserProfile, ClassLineup } from '../../types';
 import { recordMatchGoalWithScorer } from '../../services/firebaseService';
+import { getSportScoreMeta } from '../../utils/sportScoreUtils';
 import { 
   X, 
   Check, 
   Users, 
   Clock, 
   AlertCircle, 
-  ShieldCheck, 
-  Sparkles,
-  UserCheck
+  ShieldCheck
 } from 'lucide-react';
 
 interface GoalScorerModalProps {
@@ -22,14 +21,6 @@ interface GoalScorerModalProps {
   onSuccess?: (scorerName: string, team: 'home' | 'away') => void;
 }
 
-const GOAL_TYPES = [
-  { id: '필드골', label: '필드골 (일반)', desc: '오픈 플레이 필드 득점' },
-  { id: '페널티킥', label: '페널티킥 (PK)', desc: '11m 페널티킥' },
-  { id: '프리킥', label: '직접 프리킥', desc: '세트피스 직접 슈팅' },
-  { id: '헤더골', label: '헤더 (머리)', desc: '크로스 및 세트피스 헤딩' },
-  { id: '자책골', label: '자책골 (OG)', desc: '수비수 자책 득점' }
-];
-
 export const GoalScorerModal: React.FC<GoalScorerModalProps> = ({
   isOpen,
   onClose,
@@ -39,6 +30,9 @@ export const GoalScorerModal: React.FC<GoalScorerModalProps> = ({
   initialTeam = 'home',
   onSuccess
 }) => {
+  const scoreMeta = useMemo(() => getSportScoreMeta(match.sport), [match.sport]);
+  const scoringOptions = useMemo(() => scoreMeta.scoringOptions || [], [scoreMeta]);
+
   const [selectedTeam, setSelectedTeam] = useState<'home' | 'away'>(initialTeam);
   const [selectedPlayer, setSelectedPlayer] = useState<string>('');
   const [customPlayerName, setCustomPlayerName] = useState<string>('');
@@ -47,20 +41,37 @@ export const GoalScorerModal: React.FC<GoalScorerModalProps> = ({
     const elapsed = Math.floor((match.elapsedSeconds || 0) / 60);
     return Math.max(1, elapsed + 1);
   });
-  const [goalType, setGoalType] = useState<string>('필드골');
+  const [selectedOptionId, setSelectedOptionId] = useState<string>(() => scoringOptions[0]?.id || '기본');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Sync initial team when opened
+  // Sync initial team & default option when opened
   useEffect(() => {
     setSelectedTeam(initialTeam);
     setSelectedPlayer('');
     setCustomPlayerName('');
     setIsManualMode(false);
     setErrorMsg(null);
+    if (scoringOptions.length > 0) {
+      setSelectedOptionId(scoringOptions[0].id);
+    }
     const elapsed = Math.floor((match.elapsedSeconds || 0) / 60);
     setMinute(Math.max(1, elapsed + 1));
-  }, [initialTeam, isOpen, match.elapsedSeconds]);
+  }, [initialTeam, isOpen, match.elapsedSeconds, scoringOptions]);
+
+  const currentOption = useMemo(() => {
+    return scoringOptions.find((o) => o.id === selectedOptionId) || scoringOptions[0] || {
+      id: '기본',
+      label: scoreMeta.scoreNoun,
+      desc: '기본 득점',
+      points: 1,
+      type: 'GOAL' as const,
+      badge: scoreMeta.scoreNoun
+    };
+  }, [scoringOptions, selectedOptionId, scoreMeta]);
+
+  const currentPoints = currentOption.points || 1;
+  const currentEventType = currentOption.type || 'GOAL';
 
   // Find lineup for selected team
   const activeLineup = useMemo(() => {
@@ -110,7 +121,7 @@ export const GoalScorerModal: React.FC<GoalScorerModalProps> = ({
     const finalPlayerName = isManualMode ? customPlayerName.trim() : (selectedPlayer || customPlayerName).trim();
 
     if (!finalPlayerName) {
-      setErrorMsg('골을 넣은 선수를 라인업에서 선택하거나 직접 입력해주세요.');
+      setErrorMsg(`${scoreMeta.scoreNoun}을(를) 기록할 선수를 라인업에서 선택하거나 직접 입력해주세요.`);
       return;
     }
 
@@ -126,19 +137,21 @@ export const GoalScorerModal: React.FC<GoalScorerModalProps> = ({
         selectedTeam,
         finalPlayerName,
         minute,
-        goalType,
+        currentOption.id,
         {
           id: currentUser.studentId,
           name: currentUser.name,
           role: currentUser.role
-        }
+        },
+        currentPoints,
+        currentEventType
       );
 
       onSuccess?.(finalPlayerName, selectedTeam);
       onClose();
     } catch (err) {
       console.error('Failed to record match goal with scorer:', err);
-      setErrorMsg('골 기록 저장 중 오류가 발생했습니다. 다시 시도해주세요.');
+      setErrorMsg(`${scoreMeta.scoreNoun} 기록 저장 중 오류가 발생했습니다. 다시 시도해주세요.`);
     } finally {
       setIsSubmitting(false);
     }
@@ -151,11 +164,11 @@ export const GoalScorerModal: React.FC<GoalScorerModalProps> = ({
         <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/50 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 flex items-center justify-center text-lg font-black shadow-2xs">
-              ⚽
+              {scoreMeta.sportIcon}
             </div>
             <div>
               <h3 className="font-bold text-sm sm:text-base text-slate-900 dark:text-white">
-                골(득점) 및 타임라인 기록
+                {scoreMeta.sportName} {scoreMeta.scoreNoun} 및 타임라인 기록
               </h3>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
                 반장이 사전에 제출한 라인업 명단과 실시간 연동됩니다
@@ -183,7 +196,7 @@ export const GoalScorerModal: React.FC<GoalScorerModalProps> = ({
           {/* 1. Team Selector */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-              1. 득점 팀 선택
+              1. {scoreMeta.scoreNoun} 팀 선택
             </label>
             <div className="grid grid-cols-2 gap-2.5">
               <button
@@ -204,7 +217,7 @@ export const GoalScorerModal: React.FC<GoalScorerModalProps> = ({
                 </div>
                 <div className="font-bold text-sm truncate">{match.homeTeam}</div>
                 <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-                  현재 {match.homeScore ?? 0}점 → 득점 시 {(match.homeScore ?? 0) + 1}점
+                  현재 {match.homeScore ?? 0}{scoreMeta.scoreUnit} → 반영 시 {(match.homeScore ?? 0) + currentPoints}{scoreMeta.scoreUnit}
                 </div>
               </button>
 
@@ -226,7 +239,7 @@ export const GoalScorerModal: React.FC<GoalScorerModalProps> = ({
                 </div>
                 <div className="font-bold text-sm truncate">{match.awayTeam}</div>
                 <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-                  현재 {match.awayScore ?? 0}점 → 득점 시 {(match.awayScore ?? 0) + 1}점
+                  현재 {match.awayScore ?? 0}{scoreMeta.scoreUnit} → 반영 시 {(match.awayScore ?? 0) + currentPoints}{scoreMeta.scoreUnit}
                 </div>
               </button>
             </div>
@@ -237,7 +250,7 @@ export const GoalScorerModal: React.FC<GoalScorerModalProps> = ({
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                 <Users className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                2. 득점 선수 선택 (
+                2. {scoreMeta.scoreNoun} 선수 선택 (
                 <span className="text-emerald-600 dark:text-emerald-400 font-bold">{currentTeamName}</span>
                 )
               </label>
@@ -249,7 +262,7 @@ export const GoalScorerModal: React.FC<GoalScorerModalProps> = ({
                 }}
                 className="text-[11px] font-bold text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 cursor-pointer"
               >
-                {isManualMode ? '라인업 목록에서 선택하기' : '선수 직접 입력(자책골 등)'}
+                {isManualMode ? '라인업 목록에서 선택하기' : '선수 직접 입력(자책골/외부입력 등)'}
               </button>
             </div>
 
@@ -263,7 +276,13 @@ export const GoalScorerModal: React.FC<GoalScorerModalProps> = ({
                   type="text"
                   value={customPlayerName}
                   onChange={(e) => setCustomPlayerName(e.target.value)}
-                  placeholder="예: 20305 손흥민 또는 상대 수비수 자책골"
+                  placeholder={
+                    match.sport === 'basketball'
+                      ? '예: 20305 손흥민 또는 득점 선수'
+                      : match.sport === 'dodgeball'
+                      ? '예: 20305 손흥민 또는 아웃 성공 선수'
+                      : '예: 20305 손흥민 또는 상대 자책골'
+                  }
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold text-slate-900 dark:text-white focus:outline-hidden focus:border-emerald-500"
                 />
               </div>
@@ -351,7 +370,7 @@ export const GoalScorerModal: React.FC<GoalScorerModalProps> = ({
                 {selectedPlayer && (
                   <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 flex items-center justify-between text-xs">
                     <span className="text-emerald-800 dark:text-emerald-200">
-                      선택된 득점 선수: <strong className="font-bold underline">{selectedPlayer}</strong>
+                      선택된 선수: <strong className="font-bold underline">{selectedPlayer}</strong>
                     </span>
                     <button
                       type="button"
@@ -369,7 +388,7 @@ export const GoalScorerModal: React.FC<GoalScorerModalProps> = ({
                   <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
                   <div>
                     <span className="font-bold">{currentTeamName}</span>의 반장이 사전에 등록한 라인업 명단이 없습니다.
-                    아래 입력창에 득점 선수의 이름 또는 학번을 직접 입력해주세요.
+                    아래 입력창에 {scoreMeta.scoreNoun} 선수의 이름 또는 학번을 직접 입력해주세요.
                   </div>
                 </div>
                 <input
@@ -389,7 +408,7 @@ export const GoalScorerModal: React.FC<GoalScorerModalProps> = ({
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
                 <Clock className="w-3.5 h-3.5 text-slate-400" />
-                3. 득점 시간 (경기 분)
+                3. 기록 시간 (경기 분)
               </label>
               <div className="flex items-center gap-2">
                 <input
@@ -414,23 +433,40 @@ export const GoalScorerModal: React.FC<GoalScorerModalProps> = ({
               </div>
             </div>
 
-            {/* Goal Type */}
+            {/* Score Type */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                4. 득점 유형
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                <span>4. {scoreMeta.scoreNoun} 유형 및 점수</span>
+                <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold">
+                  +{currentPoints}{scoreMeta.scoreUnit}
+                </span>
               </label>
               <select
-                value={goalType}
-                onChange={(e) => setGoalType(e.target.value)}
+                value={selectedOptionId}
+                onChange={(e) => setSelectedOptionId(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-bold focus:outline-hidden focus:border-emerald-500"
               >
-                {GOAL_TYPES.map((t) => (
+                {scoringOptions.map((t) => (
                   <option key={t.id} value={t.id}>
-                    {t.label}
+                    {t.label} ({t.desc})
                   </option>
                 ))}
               </select>
             </div>
+          </div>
+
+          {/* Quick Details of selected scoring option */}
+          <div className="p-3 rounded-xl bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2">
+              <span className="text-base">{scoreMeta.sportIcon}</span>
+              <div>
+                <span className="font-bold text-slate-900 dark:text-white">{currentOption.label}</span>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">{currentOption.desc}</p>
+              </div>
+            </div>
+            <span className="px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-mono font-bold text-xs">
+              +{currentPoints}{scoreMeta.scoreUnit} 반영
+            </span>
           </div>
         </form>
 
@@ -449,7 +485,9 @@ export const GoalScorerModal: React.FC<GoalScorerModalProps> = ({
             disabled={isSubmitting || (!selectedPlayer && !customPlayerName.trim())}
             className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-md"
           >
-            {isSubmitting ? '기록 중...' : '⚽ 골 기록 및 스코어 +1 반영'}
+            {isSubmitting
+              ? '기록 중...'
+              : `${scoreMeta.sportIcon} ${currentOption.label} 기록 (+${currentPoints}${scoreMeta.scoreUnit} 반영)`}
           </button>
         </div>
       </div>
