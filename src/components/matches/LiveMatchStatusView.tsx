@@ -73,6 +73,50 @@ export const LiveMatchStatusView: React.FC<LiveMatchStatusViewProps> = ({
     setNewAwayScore(match.awayScore ?? 0);
   }, [match.homeScore, match.awayScore]);
 
+  // Raw lineups from Firestore
+  const [rawLineups, setRawLineups] = useState<ClassLineup[]>([]);
+
+  // 5-minute lineup reveal policy check
+  const startEpoch = parseMatchStartTime(match.startTime);
+  const now = Date.now();
+  const is5MinBeforeStart = startEpoch !== null && (startEpoch - now <= 5 * 60 * 1000);
+  const isAuthorizedRole = ['admin', 'teacher', 'referee', 'student_council'].includes(currentUser.role);
+
+  const isLineupRevealed = match.status === 'LIVE' || match.status === 'FINISHED' || isAuthorizedRole || is5MinBeforeStart;
+
+  // Mask or unmask lineups whenever rawLineups or reveal status changes
+  useEffect(() => {
+    if (isLineupRevealed) {
+      setLineups(rawLineups);
+    } else {
+      const userClassCode = currentUser.grade && currentUser.classNum
+        ? `${currentUser.grade}${currentUser.classNum.padStart(2, '0')}`
+        : null;
+      const userClassNumTrimmed = currentUser.classNum ? parseInt(currentUser.classNum, 10).toString() : null;
+
+      const maskedLineups = rawLineups.map((l) => {
+        const lClassNumTrimmed = l.classId ? parseInt(l.classId.replace(/\D/g, ''), 10).toString() : '';
+        const isOwnClass = Boolean(
+          (userClassCode && l.classId === userClassCode) ||
+          (userClassNumTrimmed && lClassNumTrimmed === userClassNumTrimmed)
+        );
+
+        if (isOwnClass) {
+          return l;
+        }
+        return {
+          ...l,
+          formation: undefined,
+          formationSlots: [],
+          starterPlayers: [],
+          substitutePlayers: [],
+          runningOrder: []
+        };
+      });
+      setLineups(maskedLineups);
+    }
+  }, [rawLineups, isLineupRevealed, currentUser.grade, currentUser.classNum]);
+
   // Listen to cheers & lineups
   useEffect(() => {
     const unsubCheer = listenCheers(match.id, (c) => {
@@ -81,7 +125,7 @@ export const LiveMatchStatusView: React.FC<LiveMatchStatusViewProps> = ({
 
     const unsubLineup = listenLineups((lList) => {
       const matchLineups = lList.filter((l) => l.matchId === match.id);
-      setLineups(matchLineups);
+      setRawLineups(matchLineups);
     });
 
     return () => {
@@ -285,8 +329,6 @@ export const LiveMatchStatusView: React.FC<LiveMatchStatusViewProps> = ({
 
   const presetReasons = scoreMeta.undoReasons;
 
-  // 5-minute lineup reveal policy check
-  const isLineupRevealed = match.status === 'LIVE' || match.status === 'FINISHED' || currentUser.role === 'admin';
 
   return (
     <div className="space-y-4">
