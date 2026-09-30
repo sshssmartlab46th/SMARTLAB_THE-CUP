@@ -105,11 +105,17 @@ async function setupFirestore() {
   // Initialize Firebase Client SDK with Anonymous Auth for reliable Node.js access in any environment
   const clientApp = !getClientApps().length ? initClientApp(firebaseConfig) : getClientApps()[0];
   const auth = getAuth(clientApp);
-  try {
-    await signInAnonymously(auth);
-    console.log('[RealtimeServer] Firebase Anonymous Auth established.');
-  } catch (authErr) {
-    console.warn('[RealtimeServer] Firebase Anonymous Auth warning:', authErr);
+  if (!auth.currentUser) {
+    try {
+      await signInAnonymously(auth);
+      console.log('[RealtimeServer] Firebase Anonymous Auth established.');
+    } catch (authErr: any) {
+      if (authErr?.code === 'auth/admin-restricted-operation') {
+        console.log('[RealtimeServer] Anonymous Auth restricted in Firebase console; proceeding with unauthenticated Firestore access.');
+      } else {
+        console.warn('[RealtimeServer] Firebase Anonymous Auth note:', authErr?.message || authErr);
+      }
+    }
   }
 
   dbInstance = getClientFirestore(clientApp, databaseId);
