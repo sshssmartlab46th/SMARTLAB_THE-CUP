@@ -36,9 +36,11 @@ import {
   listenAllUsers, 
   listenAuditLogs, 
   listenLineups,
-  deleteUser
+  deleteUser,
+  sanitizeFirestorePayload
 } from '../../services/firebaseService';
-import { collection, doc, setDoc } from 'firebase/firestore';
+import { createAndSaveAuditLog } from '../../utils/auditLogger';
+import { collection, doc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { GoalScorerModal } from '../matches/GoalScorerModal';
 import { getSportScoreMeta } from '../../utils/sportScoreUtils';
@@ -307,21 +309,22 @@ export const RoleDashboardPage: React.FC<RoleDashboardPageProps> = ({
 
       // 2. Record immutable audit log
       try {
-        const auditRef = collection(db, 'audit_logs');
-        const logItem: AuditLogEntry = {
-          id: `audit-expel-${Date.now()}`,
-          operatorId: currentUser?.studentId || 'staff',
-          operatorName: currentUser?.name || '학생회',
-          operatorRole: currentUser?.role || 'student_council',
-          matchId: 'system',
-          matchTitle: '학생 강퇴 조치 (Expel)',
-          action: 'STATUS_CHANGE',
-          reason: `[학생회 조치] 일반 학생 강퇴 (${expelTargetStudent.studentId} ${expelTargetStudent.name}): ${expelReason}`,
-          oldValue: `정상 계정 (${expelTargetStudent.name})`,
-          newValue: '강퇴 및 계정 초기화 완료',
-          timestamp: new Date().toISOString()
-        };
-        await setDoc(doc(auditRef, logItem.id), logItem);
+        await createAndSaveAuditLog(
+          db,
+          {
+            operatorId: currentUser?.studentId || 'staff',
+            operatorName: currentUser?.name || '학생회',
+            operatorRole: currentUser?.role || 'student_council',
+            matchId: 'system',
+            matchTitle: '학생 강퇴 조치 (Expel)',
+            action: 'STATUS_CHANGE',
+            reason: `[학생회 조치] 일반 학생 강퇴 (${expelTargetStudent.studentId} ${expelTargetStudent.name}): ${expelReason}`,
+            oldValue: `정상 계정 (${expelTargetStudent.name})`,
+            newValue: '강퇴 및 계정 초기화 완료',
+            customId: `audit-expel-${Date.now()}`
+          },
+          sanitizeFirestorePayload
+        );
       } catch (logErr) {
         console.warn('Audit log write error during expel:', logErr);
       }
@@ -965,15 +968,20 @@ export const RoleDashboardPage: React.FC<RoleDashboardPageProps> = ({
                       key={log.id}
                       className="p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 text-xs space-y-1"
                     >
-                      <div className="flex items-center justify-between text-[10px] text-slate-400">
-                        <span>{formatKSTTime(log.timestamp)}</span>
+                      <div className="flex items-center justify-between text-[10px] text-slate-400 flex-wrap gap-1">
+                        <span>{formatKSTTime(log.timestamp)} &middot; IP: {log.ipAddress || '127.0.0.1'}</span>
                         <span className="font-bold text-slate-600 dark:text-slate-300">{log.operatorName} ({log.operatorRole})</span>
                       </div>
                       <div className="font-bold text-slate-800 dark:text-slate-200">
                         {log.matchTitle}: <span className="text-red-600">{log.oldValue} &rarr; {log.newValue}</span>
                       </div>
-                      <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                        사유: {log.reason}
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center justify-between gap-2">
+                        <span className="truncate">사유: {log.reason}</span>
+                        {log.hash && (
+                          <span className="font-mono text-[9px] text-slate-400 shrink-0" title={`SHA-256 Hash: ${log.hash}`}>
+                            SHA-256: {log.hash.slice(0, 8)}...
+                          </span>
+                        )}
                       </div>
                     </div>
                   ))}
