@@ -42,6 +42,7 @@ import {
   TimelineEvent
 } from '../types';
 import { DEFAULT_APP_DOCUMENTS } from '../data/defaultDocuments';
+import { createAndSaveAuditLog } from '../utils/auditLogger';
 
 // Ensure Firebase Anonymous Auth for Firestore security rules
 let currentUser: User | null = null;
@@ -1426,23 +1427,26 @@ export async function updateScoreWithAudit(
     events: updatedEvents
   });
 
-  // 2. Create Immutable Audit Log in Firestore
+  // 2. Create Immutable Audit Log in Firestore with SHA-256 chain and client IP
   try {
-    const auditRef = collection(db, 'audit_logs');
-    const logItem: AuditLogEntry = {
-      id: `audit-${Date.now()}`,
-      operatorId: operator.id,
-      operatorName: operator.name,
-      operatorRole: operator.role,
-      matchId: match.id,
-      matchTitle: match.title,
-      action: actionType,
-      reason: reason || (isRollback ? '실시간 점수 정정 (-1)' : '실시간 득점 기록 (+1)'),
-      oldValue: oldScoreStr,
-      newValue: newScoreStr,
-      timestamp: new Date().toISOString()
-    };
-    await setDoc(doc(auditRef, logItem.id), sanitizeFirestorePayload(logItem));
+    await createAndSaveAuditLog(
+      db,
+      {
+        operatorId: operator.id,
+        operatorName: operator.name,
+        operatorRole: operator.role,
+        matchId: match.id,
+        matchTitle: match.title,
+        action: actionType,
+        reason: reason || (isRollback ? '실시간 점수 정정 (-1)' : '실시간 득점 기록 (+1)'),
+        oldValue: oldScoreStr,
+        newValue: newScoreStr,
+        previousScore: oldScoreStr,
+        updatedScore: newScoreStr,
+        venue: match.court
+      },
+      sanitizeFirestorePayload
+    );
   } catch (err) {
     console.warn('[Firebase Audit] Failed to record audit log:', err);
   }

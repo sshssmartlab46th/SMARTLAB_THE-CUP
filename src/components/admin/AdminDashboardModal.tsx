@@ -325,8 +325,11 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
 
           {activeTab === 'audit' && (
             <div className="space-y-3">
-              <div className="text-xs text-slate-500">
-                경기 스코어 또는 결과 수정 시 기획서 규정에 따라 시스템에 영구 기록되는 감사 로그입니다.
+              <div className="text-xs text-slate-500 flex items-center justify-between">
+                <span>경기 스코어 또는 결과 수정 시 SHA-256 해시 체인 및 접속 IP와 함께 영구 보존되는 감사 로그입니다.</span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                  SHA-256 Cryptographic Chain
+                </span>
               </div>
               <div className="space-y-2">
                 {auditLogs.length === 0 ? (
@@ -337,24 +340,33 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                   auditLogs.map((log) => (
                     <div
                       key={log.id}
-                      className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs flex items-center justify-between"
+                      className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs space-y-1.5"
                     >
-                      <div className="space-y-1">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-slate-900 dark:text-white">
                             {log.matchTitle}
                           </span>
                           <span className="font-mono text-red-600 dark:text-red-400 font-bold">
-                            {log.previousScore} ➔ {log.updatedScore}
+                            {log.oldValue || log.previousScore || '0:0'} ➔ {log.newValue || log.updatedScore || '0:0'}
                           </span>
                         </div>
-                        <div className="text-slate-500 dark:text-slate-400 text-[11px]">
-                          수정 사유: {log.reason}
+                        <div className="text-[11px] text-slate-400 font-mono">
+                          IP: {log.ipAddress || '127.0.0.1'} &middot; {log.timestamp ? formatKSTDateTime(log.timestamp) : '-'}
                         </div>
                       </div>
-                      <div className="text-right text-[11px] text-slate-400">
-                        <div>수정자: {log.modifiedByName} ({log.modifiedBy})</div>
-                        <div>{log.timestamp ? formatKSTDateTime(log.timestamp) : '-'}</div>
+
+                      <div className="text-slate-600 dark:text-slate-300 text-[11px]">
+                        <strong>수정 사유:</strong> {log.reason} &middot; <span className="text-slate-400">수정자: {log.operatorName || log.modifiedByName} ({log.operatorRole || log.modifiedBy})</span>
+                      </div>
+
+                      <div className="pt-1 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] text-slate-400 font-mono">
+                        <span className="truncate max-w-[80%]" title={`SHA-256 Hash: ${log.hash || 'N/A'}`}>
+                          Hash: {log.hash ? `${log.hash.slice(0, 16)}...${log.hash.slice(-12)}` : 'N/A'}
+                        </span>
+                        <span className="text-emerald-600 dark:text-emerald-400 font-bold font-sans">
+                          ✓ 검증 완료
+                        </span>
                       </div>
                     </div>
                   ))

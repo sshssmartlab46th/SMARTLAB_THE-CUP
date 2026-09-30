@@ -312,6 +312,9 @@ export interface AuditLogEntry {
   updatedScore?: string;
   modifiedByName?: string;
   modifiedBy?: string;
+  ipAddress?: string;
+  hash?: string;
+  previousHash?: string;
 }
 
 // -------------------------------------------------------------
