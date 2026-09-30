@@ -93,7 +93,7 @@ export interface FormationSlot {
   player?: string; // e.g. '20305 김민준'
 }
 
-export type SportType = 'soccer' | 'basketball' | 'dodgeball' | 'relay_male' | 'relay_female' | 'tug_of_war' | 'group_rope';
+export type SportType = 'soccer' | 'basketball' | 'dodgeball' | 'relay_male' | 'relay_female' | 'tug_of_war';
 
 export interface SportPointsConfig {
   sport: SportType;

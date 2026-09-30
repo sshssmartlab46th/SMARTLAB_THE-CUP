@@ -614,25 +614,6 @@ export async function seedInitialDataIfEmpty(): Promise<boolean> {
         status: 'SCHEDULED',
         period: '경기전',
         startTime: toKSTIsoString(today, '15:00')
-      },
-
-      // 7. 단체 줄넘기
-      {
-        id: 'seed-rope-1',
-        sport: 'group_rope',
-        matchType: 'relay_group',
-        title: '1학년 단체 줄넘기 기록 측정 (전체 반)',
-        round: '기록 측정',
-        court: '체육관 앞 광장',
-        homeTeam: '1학년 1~6반',
-        awayTeam: '1학년 7~12반',
-        homeClass: '101',
-        awayClass: '107',
-        homeScore: 0,
-        awayScore: 0,
-        status: 'SCHEDULED',
-        period: '측정전',
-        startTime: toKSTIsoString(today, '10:00')
       }
     ];
 
@@ -723,7 +704,8 @@ export function listenMatches(callback: (matches: MatchItem[]) => void): () => v
 
   const wrappedCallback = (matches: MatchItem[]) => {
     hasReceivedData = true;
-    callback(matches);
+    const filtered = matches.filter((m) => (m.sport as string) !== 'group_rope');
+    callback(filtered);
   };
 
   // 1. Subscribe via WebSocket relay
@@ -740,10 +722,12 @@ export function listenMatches(callback: (matches: MatchItem[]) => void): () => v
           const list: MatchItem[] = [];
           snapshot.forEach((docSnap) => {
             const data = docSnap.data();
-            list.push({
-              ...data,
-              id: docSnap.id
-            } as MatchItem);
+            if ((data.sport as string) !== 'group_rope') {
+              list.push({
+                ...data,
+                id: docSnap.id
+              } as MatchItem);
+            }
           });
           callback(list);
         } else {
@@ -1137,7 +1121,6 @@ export function getSportNameKorean(sport: SportType): string {
     case 'relay_male': return '남자 계주';
     case 'relay_female': return '여자 계주';
     case 'tug_of_war': return '줄다리기';
-    case 'group_rope': return '단체 줄넘기';
     default: return sport;
   }
 }
@@ -1502,7 +1485,7 @@ export async function recordMatchGoalWithScorer(
   team: 'home' | 'away',
   scorerName: string,
   minute: number,
-  scoreType: string = '필드골',
+  scoreType: string = '득점',
   operator: { id: string; name: string; role: string },
   points: number = 1,
   eventType: TimelineEvent['type'] = 'GOAL'
@@ -1572,8 +1555,9 @@ export async function removeMatchEventWithAudit(
     }
   }
 
+  const meta = getSportScoreMeta(match.sport);
   const desc = targetEvent 
-    ? `[이벤트 삭제] ${targetEvent.minute}분 ${targetEvent.player || ''} ${targetEvent.description}${revertScore && pointsToRevert > 0 ? ` (스코어 ${pointsToRevert}점 차감 환원)` : ''}`
+    ? `[이벤트 삭제] ${targetEvent.minute}분 ${targetEvent.player || ''} ${targetEvent.description}${revertScore && pointsToRevert > 0 ? ` (스코어 ${pointsToRevert}${meta.scoreUnit} 차감 환원)` : ''}`
     : `[이벤트 삭제] ID ${eventId}`;
 
   await updateScoreWithAudit(

@@ -26,8 +26,7 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({
     { key: 'dodgeball', label: '피구' },
     { key: 'tug_of_war', label: '줄다리기' },
     { key: 'relay_male', label: '남자 계주' },
-    { key: 'relay_female', label: '여자 계주' },
-    { key: 'group_rope', label: '단체 줄넘기' }
+    { key: 'relay_female', label: '여자 계주' }
   ];
 
   const filteredMatches = matches.filter(m => {

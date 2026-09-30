@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { MatchItem, UserProfile } from '../../types';
 import { formatKSTTime, parseKSTDateAndTime, getKSTNowParts } from '../../utils/kstTime';
+import { getSportScoreMeta } from '../../utils/sportScoreUtils';
 import { 
   Bell, 
   BellRing, 
@@ -316,8 +317,11 @@ export const TodayScheduleCard: React.FC<TodayScheduleCardProps> = ({
                       </span>
                     )}
                   </div>
-                  <div className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-red-600 dark:group-hover:text-emerald-400 transition truncate">
-                    {item.title} {item.round ? `(${item.round})` : ''}
+                  <div className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-red-600 dark:group-hover:text-emerald-400 transition truncate flex items-center gap-1">
+                    {item.sport && (
+                      <span className="text-xs shrink-0">{getSportScoreMeta(item.sport).sportIcon}</span>
+                    )}
+                    <span className="truncate">{item.title} {item.round ? `(${item.round})` : ''}</span>
                   </div>
                   <div className="text-[11px] text-slate-500 dark:text-slate-300 truncate">
                     {item.homeTeam || item.homeClass || '홈팀'} vs {item.awayTeam || item.awayClass || '원정팀'}

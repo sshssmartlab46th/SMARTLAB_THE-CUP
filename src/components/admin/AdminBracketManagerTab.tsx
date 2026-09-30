@@ -64,8 +64,7 @@ const SPORT_OPTIONS: { key: SportType; label: string; gender: 'male' | 'female' 
   { key: 'dodgeball', label: '피구 (여자 4강 토너먼트)', gender: 'female', defaultCourt: '체육관 2층' },
   { key: 'relay_male', label: '남자 계주 (남자 8개 반 릴레이)', gender: 'male', defaultCourt: '육상 트랙' },
   { key: 'relay_female', label: '여자 계주 (여자 4개 반 릴레이)', gender: 'female', defaultCourt: '육상 트랙' },
-  { key: 'tug_of_war', label: '줄다리기 (단판/토너먼트)', gender: 'both', defaultCourt: '대운동장 중앙' },
-  { key: 'group_rope', label: '단체 줄넘기 (기록 경기)', gender: 'both', defaultCourt: '체육관 앞 광장' }
+  { key: 'tug_of_war', label: '줄다리기 (단판/토너먼트)', gender: 'both', defaultCourt: '대운동장 중앙' }
 ];
 
 export const AdminBracketManagerTab: React.FC<AdminBracketManagerTabProps> = ({

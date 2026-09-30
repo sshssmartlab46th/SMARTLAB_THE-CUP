@@ -276,7 +276,7 @@ export const AdminConsolePage: React.FC<AdminConsolePageProps> = ({
         if (m.sport === 'basketball') fallbackCourt = '야외 농구장';
         else if (m.sport === 'dodgeball') fallbackCourt = '우레탄 구장';
         else if (m.sport === 'relay_male' || m.sport === 'relay_female') fallbackCourt = '대운동장 트랙';
-        else if (m.sport === 'group_rope' || m.sport === 'tug_of_war') fallbackCourt = '대운동장 메인';
+        else if (m.sport === 'tug_of_war') fallbackCourt = '대운동장 메인';
 
         const restoredCourt = m.originalCourt || fallbackCourt;
         await updateMatch(m.id, {

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { MatchItem, UserProfile } from '../../types';
 import { Heart, Flame, ChevronRight, Volume2, Sparkles, Play, Clock } from 'lucide-react';
 import { listenCheers, sendCheer, sendLiveReaction, startMatch, parseMatchStartTime, formatKSTTime } from '../../services/firebaseService';
+import { getSportScoreMeta } from '../../utils/sportScoreUtils';
 
 export interface LiveMatchHeroCardProps {
   match?: MatchItem | null;
@@ -177,11 +178,15 @@ export const LiveMatchHeroCard: React.FC<LiveMatchHeroCardProps> = ({
           }`} />
           <span className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
             {isLive ? '진행 중인 실시간 경기' : isTimeArrived ? '시작 시간 도달 경기 (대기중)' : isPaused ? '일시중지된 경기' : '다음 예정 경기'}
-            {match.sport && (
-              <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-[10px] text-slate-600 dark:text-slate-300 font-semibold">
-                {match.sport}
-              </span>
-            )}
+            {match.sport && (() => {
+              const meta = getSportScoreMeta(match.sport);
+              return (
+                <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-[10px] text-slate-700 dark:text-slate-200 font-semibold inline-flex items-center gap-1 border border-slate-200 dark:border-slate-700">
+                  <span>{meta.sportIcon}</span>
+                  <span>{meta.sportName}</span>
+                </span>
+              );
+            })()}
           </span>
         </div>
 

@@ -117,31 +117,6 @@ const SPORT_SCORE_CONFIGS: Record<string, SportScoreMeta> = {
       '기타 사유 직접 입력'
     ]
   },
-  group_rope: {
-    sport: 'group_rope',
-    sportName: '단체줄넘기',
-    sportIcon: '🪢',
-    scoreUnit: '회',
-    scoreNoun: '성공 횟수',
-    actionButtonLabel: '횟수 기록',
-    primaryPointName: '회',
-    scoringOptions: [
-      { id: '10회 성공', label: '10회 성공 (+10회)', desc: '10회 연속 점프 성공', points: 10, type: 'POINT_3', badge: '🪢 +10' },
-      { id: '5회 성공', label: '5회 성공 (+5회)', desc: '5회 연속 점프 성공', points: 5, type: 'POINT_2', badge: '🪢 +5' },
-      { id: '1회 성공', label: '1회 성공 (+1회)', desc: '단위 횟수 카운트', points: 1, type: 'FREE_THROW', badge: '🪢 +1' }
-    ],
-    quickDeltas: [
-      { delta: 10, label: '+10회', desc: '10회 성공' },
-      { delta: 5, label: '+5회', desc: '5회 성공' },
-      { delta: 1, label: '+1회', desc: '1회 성공' },
-      { delta: -1, label: '-1회', desc: '정정' }
-    ],
-    undoReasons: [
-      '카운트 오차/단순 실수',
-      '줄 걸림 미인정 정정',
-      '시간 초과 후 카운트 무효'
-    ]
-  },
   tug_of_war: {
     sport: 'tug_of_war',
     sportName: '줄다리기',
@@ -221,7 +196,6 @@ export function getSportScoreMeta(sport?: string): SportScoreMeta {
   // Try substring matches
   if (key.includes('basket') || key.includes('농구')) return SPORT_SCORE_CONFIGS.basketball;
   if (key.includes('dodge') || key.includes('피구')) return SPORT_SCORE_CONFIGS.dodgeball;
-  if (key.includes('rope') || key.includes('줄넘기')) return SPORT_SCORE_CONFIGS.group_rope;
   if (key.includes('tug') || key.includes('줄다리기')) return SPORT_SCORE_CONFIGS.tug_of_war;
   if (key.includes('relay') || key.includes('계주') || key.includes('달리기')) return SPORT_SCORE_CONFIGS.relay_male;
   return SPORT_SCORE_CONFIGS.soccer;

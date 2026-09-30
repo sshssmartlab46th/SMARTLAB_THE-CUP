@@ -50,8 +50,7 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
     { key: 'dodgeball', label: '피구', genderNote: '여자 4강' },
     { key: 'relay_male', label: '남자 계주', genderNote: '8개 반 릴레이' },
     { key: 'relay_female', label: '여자 계주', genderNote: '4개 반 릴레이' },
-    { key: 'tug_of_war', label: '줄다리기', genderNote: '토너먼트' },
-    { key: 'group_rope', label: '단체 줄넘기', genderNote: '기록 측정' }
+    { key: 'tug_of_war', label: '줄다리기', genderNote: '토너먼트' }
   ];
 
   // Filter matches by sport and grade using robust getMatchGrade
@@ -64,7 +63,7 @@ export const TournamentBracketView: React.FC<TournamentBracketViewProps> = ({
     return true;
   });
 
-  const isRelayOrTrack = sport === 'relay_male' || sport === 'relay_female' || sport === 'group_rope';
+  const isRelayOrTrack = sport === 'relay_male' || sport === 'relay_female';
   const isDodgeball = sport === 'dodgeball'; // 4-team tournament
 
   // Find match by slot or fallback

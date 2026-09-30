@@ -73,17 +73,6 @@ const DEFAULT_SPORT_POINTS: SportPointsConfig[] = [
     winPerMatch: 60,
     drawPerMatch: 30,
     participation: 50
-  },
-  {
-    sport: 'group_rope',
-    label: '단체 줄넘기',
-    gender: 'mixed',
-    champion: 300,
-    runnerUp: 180,
-    thirdPlace: 100,
-    winPerMatch: 60,
-    drawPerMatch: 30,
-    participation: 50
   }
 ];
 

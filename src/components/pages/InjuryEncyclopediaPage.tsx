@@ -46,8 +46,7 @@ const SPORT_OPTIONS: Array<{ value: InjuryEntry['sport']; label: string }> = [
   { value: 'dodgeball', label: '피구' },
   { value: 'relay_male', label: '남자 계주' },
   { value: 'relay_female', label: '여자 계주' },
-  { value: 'tug_of_war', label: '줄다리기' },
-  { value: 'group_rope', label: '단체 줄넘기' }
+  { value: 'tug_of_war', label: '줄다리기' }
 ];
 
 const STARTER_ENTRIES: InjuryEntry[] = [

@@ -29,8 +29,7 @@ const DEFAULT_SPORTS: { type: SportType; label: string; genderNote: string }[] =
   { type: 'dodgeball', label: '피구', genderNote: '여 4강' },
   { type: 'relay_male', label: '남자 계주', genderNote: '8개 반' },
   { type: 'relay_female', label: '여자 계주', genderNote: '4개 반' },
-  { type: 'tug_of_war', label: '줄다리기', genderNote: '토너먼트' },
-  { type: 'group_rope', label: '단체 줄넘기', genderNote: '기록' }
+  { type: 'tug_of_war', label: '줄다리기', genderNote: '토너먼트' }
 ];
 
 export const TournamentSummaryCard: React.FC<TournamentSummaryCardProps> = ({
@@ -63,7 +62,7 @@ export const TournamentSummaryCard: React.FC<TournamentSummaryCardProps> = ({
       })
     : [];
 
-  const isRelay = activeSport === 'relay_male' || activeSport === 'relay_female' || activeSport === 'group_rope';
+  const isRelay = activeSport === 'relay_male' || activeSport === 'relay_female';
 
   // Extract SF1, SF2, FINAL for tournament view
   const sf1 = filteredMatches.find(m => getMatchTournamentSlot(m) === 'SF1' || m.round?.includes('4강 1') || m.title?.includes('4강 1'));

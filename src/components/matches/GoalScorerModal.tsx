@@ -262,7 +262,9 @@ export const GoalScorerModal: React.FC<GoalScorerModalProps> = ({
                 }}
                 className="text-[11px] font-bold text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 cursor-pointer"
               >
-                {isManualMode ? '라인업 목록에서 선택하기' : '선수 직접 입력(자책골/외부입력 등)'}
+                {isManualMode 
+                  ? '라인업 목록에서 선택하기' 
+                  : (scoreMeta.sport === 'soccer' ? '선수 직접 입력 (자책골/외부입력 등)' : '선수 직접 입력 (명단 외/외부입력 등)')}
               </button>
             </div>
 
@@ -277,10 +279,10 @@ export const GoalScorerModal: React.FC<GoalScorerModalProps> = ({
                   value={customPlayerName}
                   onChange={(e) => setCustomPlayerName(e.target.value)}
                   placeholder={
-                    match.sport === 'basketball'
-                      ? '예: 20305 손흥민 또는 득점 선수'
-                      : match.sport === 'dodgeball'
-                      ? '예: 20305 손흥민 또는 아웃 성공 선수'
+                    scoreMeta.sport === 'basketball'
+                      ? '예: 20305 김상산 또는 득점 선수'
+                      : scoreMeta.sport === 'dodgeball'
+                      ? '예: 10502 이상산 또는 아웃 성공 선수'
                       : '예: 20305 손흥민 또는 상대 자책골'
                   }
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold text-slate-900 dark:text-white focus:outline-hidden focus:border-emerald-500"

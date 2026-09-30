@@ -55,17 +55,6 @@ export const DEFAULT_APP_DOCUMENTS: Record<string, AppDocument> = {
         ]
       },
       {
-        id: 'group_rope',
-        title: '🪢 단체줄넘기 (학급 대항전)',
-        badge: '2분간 연속 측정',
-        icon: 'Users',
-        items: [
-          '줄잡이 2인 포함 총 12인이 동시 참여합니다.',
-          '2분간 회전 중 연속으로 성공한 최고 횟수를 최종 기록으로 반영합니다.',
-          '총 2회의 기회를 제공하여 더 높은 기록을 채택합니다.'
-        ]
-      },
-      {
         id: 'tug_of_war',
         title: '💪 줄다리기 (학급 대항전)',
         badge: '3판 2선승제',
