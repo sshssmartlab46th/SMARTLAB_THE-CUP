@@ -2,7 +2,6 @@
 
 - 라인업 5분 전 공개가 화면에서만 가려짐. lineups 컬렉션은 누구나 읽을 수 있고 클라이언트가 전부 받아오기 때문에, 개발자도구로 상대 반 라인업을 볼 수 있음 (README의 "서버가 아예 안 보낸다"와 다름)
 - 순수 유효 경기시간 타이머가 서버 기준이 아님. elapsedSeconds/lastTimerStartedAt을 Firestore에 저장하는 방식이고 realtimeServer에는 타이머 로직이 없음 (README의 "서버 권위 100Hz, ±0.002s"는 미구현)
-- 감사 로그에 SHA-256 체인과 IP 기록이 없음. 코드에서 해시나 IP 수집을 찾을 수 없고, "불변"은 Firestore 규칙(update/delete 금지)에만 의존함
 - 실제 푸시 알림이 없음. 설정 화면에서 Notification 권한만 요청하고, 서비스워커나 FCM이 없어서 "경기 15분 전 알림"은 앱을 켜놨을 때만 동작함. PWA manifest도 없음
 - STT 라이브 해설 미구현 (코드 없음)
 - 응원 이모지가 fire/clap/heart/cheer 4개로 고정된 상태. 최종 이모지 확정 필요
