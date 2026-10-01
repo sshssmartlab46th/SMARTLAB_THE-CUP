@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { UserProfile, UserRole } from '../../types';
 import { Settings, Moon, Sun, Bell, Volume2, Shield, RefreshCw, CheckCircle2, VolumeX, BellRing } from 'lucide-react';
+import { registerServiceWorker, requestNotificationPermission, sendSWNotification } from '../../services/notificationService';
 
 interface SettingsPageProps {
   currentUser?: UserProfile | null;
@@ -26,6 +27,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     return localStorage.getItem('sangsan_pref_sound') !== 'false';
   });
   const [testNotice, setTestNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    registerServiceWorker();
+  }, []);
 
   // Play synthesized web audio chime
   const playTestChime = () => {
@@ -54,20 +59,15 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   const handleTogglePush = async (val: boolean) => {
     setAllowPush(val);
     localStorage.setItem('sangsan_pref_push', String(val));
-    if (val && typeof window !== 'undefined' && 'Notification' in window) {
-      if (Notification.permission === 'default') {
-        try {
-          const res = await Notification.requestPermission();
-          if (res === 'granted') {
-            setTestNotice('브라우저 푸시 알림 권한이 허용되었습니다.');
-          } else {
-            setTestNotice('브라우저에서 알림이 차단되어 있습니다.');
-          }
-          setTimeout(() => setTestNotice(null), 3000);
-        } catch (e) {
-          console.warn('Notification permission error:', e);
-        }
+    if (val && typeof window !== 'undefined') {
+      const permission = await requestNotificationPermission();
+      if (permission === 'granted') {
+        await registerServiceWorker();
+        setTestNotice('서비스워커 푸시 알림 권한이 허용되었습니다.');
+      } else if (permission === 'denied') {
+        setTestNotice('브라우저에서 알림 권한이 차단되어 있습니다.');
       }
+      setTimeout(() => setTestNotice(null), 3000);
     }
   };
 
@@ -79,13 +79,17 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     }
   };
 
-  const handleTriggerTestPush = () => {
+  const handleTriggerTestPush = async () => {
     if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-      new Notification('상산고 체육대회 경기 알림', {
-        body: '[축구 8강 1경기] 3학년 2반 vs 3학년 4반 경기가 15분 후 시작됩니다.',
-        icon: '/favicon.ico'
+      const sent = await sendSWNotification('상산고 체육대회 경기 알림', {
+        body: '[축구 8강 1경기] 3학년 2반 vs 3학년 4반 경기가 15분 후 시작됩니다. (대운동장 A)',
+        tag: 'test-push-notification'
       });
-      setTestNotice('브라우저 푸시 알림이 발송되었습니다.');
+      if (sent) {
+        setTestNotice('서비스워커 백그라운드 푸시 알림이 발송되었습니다.');
+      } else {
+        setTestNotice('[앱 내 알림] 축구 8강 1경기가 15분 후 시작됩니다.');
+      }
     } else {
       setTestNotice('[앱 내 시뮬레이션 알림] 축구 8강 1경기가 15분 후 시작됩니다.');
     }

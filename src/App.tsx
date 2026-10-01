@@ -88,6 +88,7 @@ import { filterProfanity } from './utils/profanityFilter';
 import { getKSTNowParts } from './utils/kstTime';
 import { useOpenMeteoWeather } from './hooks/useOpenMeteoWeather';
 import { ShieldAlert, LogIn, Lock } from 'lucide-react';
+import { registerServiceWorker, checkAndTrigger15MinMatchNotifications } from './services/notificationService';
 
 export default function App() {
   // Real-time Weather & Atmospheric Visual Effects
@@ -323,6 +324,23 @@ export default function App() {
       setHasShownInitialPopup(true);
     }
   }, [notices, hasShownInitialPopup]);
+
+  // Service Worker registration & 15-minute pre-match notification checking
+  useEffect(() => {
+    registerServiceWorker();
+  }, []);
+
+  useEffect(() => {
+    if (matches.length > 0) {
+      checkAndTrigger15MinMatchNotifications(matches, userReminders);
+    }
+    const interval = setInterval(() => {
+      if (matches.length > 0) {
+        checkAndTrigger15MinMatchNotifications(matches, userReminders);
+      }
+    }, 60000);
+    return () => clearInterval(interval);
+  }, [matches, userReminders]);
 
   // Setup user-specific reminders listener
   useEffect(() => {
