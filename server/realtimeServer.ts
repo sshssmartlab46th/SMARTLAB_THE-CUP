@@ -6,6 +6,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { initializeApp as initAdminApp, getApps as getAdminApps } from 'firebase-admin/app';
 import firebaseConfig from '../firebase-applet-config.json';
 import { createGroqResponse } from './groqHandler';
+import { MatchTimerService } from './timerService';
 
 // Firebase client SDK for reliable Firestore connection in any Node environment
 import { initializeApp as initClientApp, getApps as getClientApps } from 'firebase/app';
@@ -81,6 +82,12 @@ const previousCheersSnapshot = new Map<string, { home: number; away: number }>()
 
 let hasPendingUpdates = false;
 
+// Initialize Server-Authoritative Timer Service
+const timerService = new MatchTimerService(currentMatches);
+timerService.setOnUpdateCallback(() => {
+  hasPendingUpdates = true;
+});
+
 // -------------------------------------------------------------
 // Firebase Firestore Subscription
 // -------------------------------------------------------------
@@ -119,6 +126,8 @@ async function setupFirestore() {
   }
 
   dbInstance = getClientFirestore(clientApp, databaseId);
+  timerService.setDbInstance(dbInstance);
+  timerService.start();
 
   // 1. Initial restore of cheers from Firestore
   try {
@@ -150,10 +159,12 @@ async function setupFirestore() {
         if (change.type === 'removed') {
           currentMatches.delete(change.doc.id);
         } else {
-          currentMatches.set(change.doc.id, {
+          const matchData = {
             ...change.doc.data(),
             id: change.doc.id
-          });
+          };
+          timerService.handleMatchUpdate(matchData);
+          currentMatches.set(change.doc.id, matchData);
         }
       });
       hasPendingUpdates = true;
@@ -411,12 +422,16 @@ app.get('*', (_req, res) => {
 // Graceful Shutdown
 process.on('SIGTERM', async () => {
   console.log('[RealtimeServer] SIGTERM received. Flushing remaining data...');
+  timerService.stop();
+  await timerService.flushToFirestore();
   await flushCheersToFirestore();
   process.exit(0);
 });
 
 process.on('SIGINT', async () => {
   console.log('[RealtimeServer] SIGINT received. Flushing remaining data...');
+  timerService.stop();
+  await timerService.flushToFirestore();
   await flushCheersToFirestore();
   process.exit(0);
 });
