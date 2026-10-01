@@ -43,6 +43,7 @@ import {
 } from '../types';
 import { DEFAULT_APP_DOCUMENTS } from '../data/defaultDocuments';
 import { createAndSaveAuditLog } from '../utils/auditLogger';
+import { maskLineupsForUser } from '../utils/lineupMasking';
 
 // Ensure Firebase Anonymous Auth for Firestore security rules
 let currentUser: User | null = null;
@@ -1626,13 +1627,22 @@ export async function deleteNotice(noticeId: string): Promise<void> {
 // -------------------------------------------------------------
 // Lineups
 // -------------------------------------------------------------
-export function listenLineups(callback: (lineups: ClassLineup[]) => void): () => void {
+export function listenLineups(
+  callback: (lineups: ClassLineup[]) => void,
+  context?: { user?: UserProfile | null; matches?: MatchItem[] }
+): () => void {
   try {
     const q = collection(db, 'lineups');
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const list: ClassLineup[] = [];
       snapshot.forEach((d) => list.push(d.data() as ClassLineup));
-      callback(list);
+
+      if (context?.user !== undefined || context?.matches !== undefined) {
+        const masked = maskLineupsForUser(list, context.matches || [], context.user);
+        callback(masked);
+      } else {
+        callback(list);
+      }
     }, () => callback([]));
     return unsubscribe;
   } catch (e) {

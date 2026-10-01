@@ -123,16 +123,19 @@ export const LiveMatchStatusView: React.FC<LiveMatchStatusViewProps> = ({
       setCheerCounts({ home: c.homeCheers ?? 0, away: c.awayCheers ?? 0 });
     });
 
-    const unsubLineup = listenLineups((lList) => {
-      const matchLineups = lList.filter((l) => l.matchId === match.id);
-      setRawLineups(matchLineups);
-    });
+    const unsubLineup = listenLineups(
+      (lList) => {
+        const matchLineups = lList.filter((l) => l.matchId === match.id);
+        setRawLineups(matchLineups);
+      },
+      { user: currentUser, matches: [match] }
+    );
 
     return () => {
       unsubCheer();
       unsubLineup();
     };
-  }, [match.id]);
+  }, [match.id, currentUser, match]);
 
   // Authorized score editors: Admin, Student Council, Referee/Scorekeeper, Teacher
   const canEditScore = ['admin', 'student_council', 'referee', 'teacher'].includes(currentUser.role);

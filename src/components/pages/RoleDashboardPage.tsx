@@ -81,13 +81,13 @@ export const RoleDashboardPage: React.FC<RoleDashboardPageProps> = ({
   useEffect(() => {
     const unsubUsers = listenAllUsers(setAllUsers);
     const unsubAudit = listenAuditLogs(setAuditLogs);
-    const unsubLineups = listenLineups(setAllLineups);
+    const unsubLineups = listenLineups(setAllLineups, { user: currentUser, matches });
     return () => {
       unsubUsers();
       unsubAudit();
       unsubLineups();
     };
-  }, []);
+  }, [currentUser, matches]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
