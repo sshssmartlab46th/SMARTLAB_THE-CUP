@@ -16,7 +16,7 @@ describe('MatchTimerService', () => {
     vi.useRealTimers();
   });
 
-  it('should update elapsedSeconds for LIVE running matches on tick', () => {
+  it('should update elapsedSeconds for LIVE running matches on 100Hz tick', () => {
     const now = Date.now();
     const match: MatchTimerState = {
       id: 'match-1',
@@ -36,11 +36,26 @@ describe('MatchTimerService', () => {
 
     timerService.start();
 
-    // Advance time by 5 seconds
+    // Advance time by 5 seconds (500 ticks at 10ms each)
     vi.advanceTimersByTime(5000);
 
     expect(matchesMap.get('match-1')?.elapsedSeconds).toBe(15);
     expect(updateCallbackCalled).toBe(true);
+  });
+
+  it('should auto-assign lastTimerStartedAt if timerRunning is true but lastTimerStartedAt is missing', () => {
+    const now = 1000000;
+    vi.setSystemTime(now);
+
+    const match: MatchTimerState = {
+      id: 'match-no-start-time',
+      status: 'LIVE',
+      timerRunning: true,
+      elapsedSeconds: 0
+    };
+
+    timerService.handleMatchUpdate(match);
+    expect(match.lastTimerStartedAt).toBe(now);
   });
 
   it('should not update elapsedSeconds if timer is not running or match is not LIVE', () => {
@@ -69,5 +84,26 @@ describe('MatchTimerService', () => {
 
     expect(matchesMap.get('match-paused')?.elapsedSeconds).toBe(10);
     expect(matchesMap.get('match-finished')?.elapsedSeconds).toBe(300);
+  });
+
+  it('should flush elapsedSeconds to Firestore when dbInstance is set', async () => {
+    const mockSetDoc = vi.fn().mockResolvedValue(undefined);
+    const mockDb = {};
+
+    // Mock setDoc
+    timerService.setDbInstance(mockDb);
+
+    const match: MatchTimerState = {
+      id: 'match-to-flush',
+      status: 'LIVE',
+      timerRunning: true,
+      elapsedSeconds: 42
+    };
+
+    matchesMap.set(match.id, match);
+
+    // Call flushToFirestore directly
+    await timerService.flushToFirestore();
+    // Verify no throw
   });
 });

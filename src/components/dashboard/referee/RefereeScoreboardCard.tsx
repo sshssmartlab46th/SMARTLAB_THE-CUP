@@ -2,6 +2,7 @@ import React from 'react';
 import { MatchItem } from '../../../types';
 import { Pause, Play, StopCircle, Plus, Minus, AlertCircle } from 'lucide-react';
 import { getSportScoreMeta } from '../../../utils/sportScoreUtils';
+import { formatElapsedSeconds, useLiveMatchTimer } from '../../../utils/timerUtils';
 
 export interface RefereeScoreboardCardProps {
   match?: MatchItem | null;
@@ -20,6 +21,8 @@ export const RefereeScoreboardCard: React.FC<RefereeScoreboardCardProps> = ({
   onToggleTimer,
   onEndMatch
 }) => {
+  const liveElapsedSeconds = useLiveMatchTimer(match);
+
   if (!match) {
     return (
       <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/90 p-8 text-center text-slate-400 text-xs">
@@ -29,13 +32,6 @@ export const RefereeScoreboardCard: React.FC<RefereeScoreboardCardProps> = ({
   }
 
   const scoreMeta = getSportScoreMeta(match.sport);
-
-  const formatElapsed = (seconds: number) => {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-  };
-
   const isSoccer = match.sport === 'soccer';
 
   return (
@@ -54,7 +50,7 @@ export const RefereeScoreboardCard: React.FC<RefereeScoreboardCardProps> = ({
         </div>
 
         <span className="px-2.5 py-1 rounded bg-slate-900 text-white font-mono font-bold text-xs">
-          {formatElapsed(match.elapsedSeconds || 0)} {match.timerRunning ? 'LIVE' : 'STOP'}
+          {formatElapsedSeconds(liveElapsedSeconds)} {match.timerRunning ? 'LIVE' : 'STOP'}
         </span>
       </div>
 

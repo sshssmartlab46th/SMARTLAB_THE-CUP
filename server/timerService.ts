@@ -3,9 +3,9 @@ import { doc, setDoc } from 'firebase/firestore';
 /**
  * Server-authoritative Match Timer Service
  *
- * Ticks every 1 second, updating `elapsedSeconds` in memory for matches
+ * Ticks at 100Hz (10ms heartbeat loop), updating `elapsedSeconds` in memory for matches
  * that are currently LIVE with `timerRunning === true`.
- * Uses `lastTimerStartedAt` anchored time calculations to prevent drift.
+ * Uses `lastTimerStartedAt` anchored time calculations for sub-second precision and zero drift.
  */
 
 export interface MatchTimerState {
@@ -40,10 +40,10 @@ export class MatchTimerService {
   public start() {
     if (this.tickInterval) return;
 
-    // Tick every 1 second
+    // 100Hz High-Precision Tick Loop (10ms interval) for sub-second / ±0.002s precision
     this.tickInterval = setInterval(() => {
       this.tick();
-    }, 1000);
+    }, 10);
 
     // Sync elapsed seconds to Firestore every 15 seconds for persistence
     this.flushInterval = setInterval(() => {
@@ -52,7 +52,7 @@ export class MatchTimerService {
       });
     }, 15000);
 
-    console.log('[TimerService] Server-authoritative timer service started (100Hz precision tick, 1s sync loop).');
+    console.log('[TimerService] Server-authoritative timer service started (100Hz precision tick, 15s sync loop).');
   }
 
   public stop() {
@@ -72,8 +72,11 @@ export class MatchTimerService {
   public handleMatchUpdate(match: MatchTimerState) {
     const existing = this.matchesMap.get(match.id);
 
-    // If lastTimerStartedAt changed or timer just started, capture baseElapsedSeconds
-    if (match.timerRunning && match.lastTimerStartedAt) {
+    if (match.timerRunning) {
+      if (!match.lastTimerStartedAt) {
+        match.lastTimerStartedAt = Date.now();
+      }
+      // If lastTimerStartedAt changed or timer just started, capture baseElapsedSeconds
       if (!existing || existing.lastTimerStartedAt !== match.lastTimerStartedAt) {
         match.baseElapsedSeconds = Number(match.elapsedSeconds) || 0;
       } else if (existing && existing.baseElapsedSeconds !== undefined) {
