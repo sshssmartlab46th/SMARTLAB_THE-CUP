@@ -40,7 +40,8 @@ import {
   AppDocument,
   SportType,
   TimelineEvent,
-  LiveReactionType
+  LiveReactionType,
+  LiveCommentaryItem
 } from '../types';
 import { DEFAULT_APP_DOCUMENTS } from '../data/defaultDocuments';
 import { createAndSaveAuditLog } from '../utils/auditLogger';
@@ -2711,6 +2712,91 @@ export async function resetAppDocument(docId: string, operatorName: string = '�
   return restoredDoc;
 }
 
+// -------------------------------------------------------------
+// STT Live Commentary Methods (실시간 음성 해설)
+// -------------------------------------------------------------
+
+export async function addLiveCommentary(
+  matchId: string,
+  commentatorName: string,
+  text: string,
+  isSttGenerated: boolean,
+  user: UserProfile
+): Promise<string> {
+  if (!text || !text.trim()) return '';
+  await ensureFirebaseAuth();
+
+  const id = `comm_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+  const now = new Date();
+  const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+
+  const item: LiveCommentaryItem = {
+    id,
+    matchId,
+    authorId: user.studentId || user.uid,
+    authorName: user.name,
+    authorRole: user.role,
+    commentatorName: commentatorName || `${user.name} 해설위원`,
+    text: text.trim(),
+    isSttGenerated,
+    timestamp: timeStr,
+    createdAt: now.toISOString()
+  };
+
+  const docRef = doc(db, 'live_commentaries', id);
+  await setDoc(docRef, sanitizeFirestorePayload(item));
+  return id;
+}
+
+export function listenLiveCommentaries(
+  matchId: string,
+  callback: (items: LiveCommentaryItem[]) => void
+): () => void {
+  try {
+    let q;
+    if (matchId) {
+      q = query(
+        collection(db, 'live_commentaries'),
+        where('matchId', '==', matchId)
+      );
+    } else {
+      q = collection(db, 'live_commentaries');
+    }
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const list: LiveCommentaryItem[] = [];
+        snapshot.forEach((d) => {
+          list.push(d.data() as LiveCommentaryItem);
+        });
+        list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        callback(list);
+      },
+      (error) => {
+        console.warn('[Firebase] listenLiveCommentaries error:', error);
+        callback([]);
+      }
+    );
+    return unsubscribe;
+  } catch (e) {
+    console.warn('[Firebase] listenLiveCommentaries init error:', e);
+    callback([]);
+    return () => {};
+  }
+}
+
+export async function deleteLiveCommentary(commentaryId: string): Promise<void> {
+  if (!commentaryId) return;
+  try {
+    await ensureFirebaseAuth();
+    const docRef = doc(db, 'live_commentaries', commentaryId);
+    await deleteDoc(docRef);
+  } catch (e) {
+    console.error('[Firebase] deleteLiveCommentary error:', e);
+    throw e;
+  }
+}
 
 
 

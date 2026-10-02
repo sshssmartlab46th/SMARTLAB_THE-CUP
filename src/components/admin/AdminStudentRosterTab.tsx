@@ -86,6 +86,7 @@ export const AdminStudentRosterTab: React.FC<AdminStudentRosterTabProps> = ({
       case 'class_president': return '반장';
       case 'teacher': return '선생님 (지도교사)';
       case 'referee': return '공식 심판 / 기록원';
+      case 'commentator': return '해설위원 (STT 중계)';
       case 'health_officer': return '보건담당';
       case 'student': return '일반 학생';
       default: return role;
@@ -387,6 +388,7 @@ export const AdminStudentRosterTab: React.FC<AdminStudentRosterTabProps> = ({
                                   r === 'class_president' ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800' :
                                   r === 'teacher' ? 'bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800' :
                                   r === 'referee' ? 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800' :
+                                  r === 'commentator' ? 'bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800' :
                                   r === 'health_officer' ? 'bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800' :
                                   'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
                                 }`}
@@ -498,6 +500,7 @@ export const AdminStudentRosterTab: React.FC<AdminStudentRosterTabProps> = ({
                 { role: 'student_council' as UserRole, label: '학생회 / 체육부', desc: '실시간 경기 스코어 기록, 전교 공지 작성, 건의함 답변', color: 'text-blue-600' },
                 { role: 'admin' as UserRole, label: '총괄 관리자 (운영본부)', desc: '전교 시스템 제어, 대진표 생성, 학생 명부 및 감사 로그', color: 'text-red-600' },
                 { role: 'referee' as UserRole, label: '공식 심판 / 기록원', desc: '경기 현장 배정 및 실시간 점수 판정/기록', color: 'text-amber-600' },
+                { role: 'commentator' as UserRole, label: '해설위원 (STT 중계)', desc: '실시간 음성(STT) 라이브 경기 해설 및 스트리밍 방송', color: 'text-purple-600' },
                 { role: 'health_officer' as UserRole, label: '보건담당 (응급/의무)', desc: '부상 지식백과 관리 및 응급 가이드 작성', color: 'text-rose-600' }
               ].map(({ role, label, desc }) => {
                 const isChecked = modalRoles.includes(role);

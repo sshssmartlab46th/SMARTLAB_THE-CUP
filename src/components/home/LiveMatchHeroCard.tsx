@@ -3,6 +3,7 @@ import { MatchItem, UserProfile, LiveReactionType } from '../../types';
 import { Heart, Flame, ChevronRight, Volume2, Sparkles, Play, Clock, Trophy, Star, PartyPopper } from 'lucide-react';
 import { listenCheers, sendCheer, sendLiveReaction, startMatch, parseMatchStartTime, formatKSTTime } from '../../services/firebaseService';
 import { getSportScoreMeta } from '../../utils/sportScoreUtils';
+import { LiveCommentaryFeed } from '../commentary/LiveCommentaryFeed';
 
 export interface LiveMatchHeroCardProps {
   match?: MatchItem | null;
@@ -303,6 +304,11 @@ export const LiveMatchHeroCard: React.FC<LiveMatchHeroCardProps> = ({
           <span>{cheeredMessage}</span>
         </div>
       )}
+
+      {/* STT Live Commentary Snippet */}
+      <div className="mb-3">
+        <LiveCommentaryFeed match={match} compactMode={true} />
+      </div>
 
       {/* Admin / Referee Quick Start Button */}
       {canStartMatch && (
