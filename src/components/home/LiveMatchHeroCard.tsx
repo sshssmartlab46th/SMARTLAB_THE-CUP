@@ -12,7 +12,7 @@ export interface LiveMatchHeroCardProps {
   onVoteCheer?: () => void;
   isVoting?: boolean;
   onOpenLiveScore?: () => void;
-  onCheerReaction?: (reactionType: LiveReactionType) => void;
+  onCheerReaction?: (reactionType: LiveReactionType, matchId?: string) => void;
   onToggleReminder?: (matchOrId: any) => void;
   isReminderSet?: boolean;
 }
@@ -141,8 +141,9 @@ export const LiveMatchHeroCard: React.FC<LiveMatchHeroCardProps> = ({
 
     try {
       await sendCheer(match.id, team, emoji);
-      await sendLiveReaction(team === 'home' ? 'heart' : 'fire');
-      onCheerReaction?.(team === 'home' ? 'heart' : 'fire');
+      const reactionType: LiveReactionType = team === 'home' ? 'heart' : 'fire';
+      await sendLiveReaction(match.id, reactionType);
+      onCheerReaction?.(reactionType, match.id);
 
       const targetName = team === 'home' ? leftTeamLabel : rightTeamLabel;
       setCheeredMessage(`${targetName}에 응원을 보냈습니다! ${emoji}`);

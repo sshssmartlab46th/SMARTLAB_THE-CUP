@@ -67,18 +67,22 @@ interface CheerState {
   updatedAt?: string;
 }
 
+function getDefaultReactions() {
+  return {
+    fire: 0,
+    clap: 0,
+    heart: 0,
+    cheer: 0,
+    trophy: 0,
+    sparkles: 0,
+    star: 0
+  };
+}
+
 const currentMatches = new Map<string, any>();
 const currentCheers = new Map<string, CheerState>();
 let currentCheersFeed: any[] = [];
-const inMemoryReactions = {
-  fire: 0,
-  clap: 0,
-  heart: 0,
-  cheer: 0,
-  trophy: 0,
-  sparkles: 0,
-  star: 0
-};
+const currentReactions = new Map<string, ReturnType<typeof getDefaultReactions>>();
 
 // Snapshot from 5 minutes ago for growth calculation
 const previousCheersSnapshot = new Map<string, { home: number; away: number }>();
@@ -153,6 +157,28 @@ async function setupFirestore() {
     console.log(`[RealtimeServer] Restored ${currentCheers.size} cheer records into memory.`);
   } catch (err) {
     console.warn('[RealtimeServer] Failed to restore cheers initial snapshot:', err);
+  }
+
+  // 1b. Initial restore of live_reactions from Firestore
+  try {
+    const reactionsSnap = await getDocs(collection(dbInstance, 'live_reactions'));
+    reactionsSnap.forEach((docSnap) => {
+      const data = docSnap.data();
+      const matchId = docSnap.id;
+      const reactions = {
+        ...getDefaultReactions(),
+        ...(data.reactions || {})
+      };
+      ['fire', 'clap', 'heart', 'cheer', 'trophy', 'sparkles', 'star'].forEach((k) => {
+        if (typeof data[k] === 'number') {
+          (reactions as any)[k] = data[k];
+        }
+      });
+      currentReactions.set(matchId, reactions);
+    });
+    console.log(`[RealtimeServer] Restored ${currentReactions.size} reaction records into memory.`);
+  } catch (err) {
+    console.warn('[RealtimeServer] Failed to restore live_reactions initial snapshot:', err);
   }
 
   // 2. onSnapshot: matches collection
@@ -238,6 +264,43 @@ async function setupFirestore() {
   } catch (err) {
     console.error('[RealtimeServer] Failed to subscribe to cheer_messages:', err);
   }
+
+  // 5. onSnapshot: live_reactions collection (External updates, if any)
+  try {
+    onSnapshot(collection(dbInstance, 'live_reactions'), (snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        if (change.type !== 'removed') {
+          const docId = change.doc.id;
+          const data = change.doc.data();
+          const incoming = {
+            ...getDefaultReactions(),
+            ...(data.reactions || {})
+          };
+          ['fire', 'clap', 'heart', 'cheer', 'trophy', 'sparkles', 'star'].forEach((k) => {
+            if (typeof data[k] === 'number') {
+              (incoming as any)[k] = data[k];
+            }
+          });
+          const existing = currentReactions.get(docId) || getDefaultReactions();
+          let changed = false;
+          (Object.keys(incoming) as Array<keyof typeof incoming>).forEach((k) => {
+            const key = k as keyof typeof incoming;
+            if (incoming[key] > existing[key]) {
+              existing[key] = incoming[key];
+              changed = true;
+            }
+          });
+          currentReactions.set(docId, existing);
+          if (changed) hasPendingUpdates = true;
+        }
+      });
+    }, (error) => {
+      console.error('[RealtimeServer] live_reactions onSnapshot error:', error);
+    });
+    console.log('[RealtimeServer] Subscribed to live_reactions collection.');
+  } catch (err) {
+    console.error('[RealtimeServer] Failed to subscribe to live_reactions:', err);
+  }
 }
 
 // -------------------------------------------------------------
@@ -260,7 +323,7 @@ function broadcastBatch() {
     matches: Array.from(currentMatches.values()),
     cheers: Object.fromEntries(currentCheers),
     cheersFeed: currentCheersFeed.slice(0, 30),
-    reactions: inMemoryReactions
+    reactions: Object.fromEntries(currentReactions)
   });
 
   wss.clients.forEach((client) => {
@@ -323,7 +386,30 @@ async function flushCheersToFirestore() {
   }
 }
 
-setInterval(flushCheersToFirestore, FIVE_MINUTES_MS);
+async function flushReactionsToFirestore() {
+  if (!dbInstance) return;
+  console.log(`[RealtimeServer] Flushing ${currentReactions.size} reaction records to Firestore...`);
+
+  const now = new Date().toISOString();
+
+  for (const [matchId, reactions] of currentReactions.entries()) {
+    try {
+      const docRef = doc(dbInstance, 'live_reactions', matchId);
+      await setDoc(docRef, {
+        matchId,
+        reactions,
+        updatedAt: now
+      }, { merge: true });
+    } catch (err) {
+      console.error(`[RealtimeServer] Error saving live_reactions doc for match ${matchId}:`, err);
+    }
+  }
+}
+
+setInterval(() => {
+  flushCheersToFirestore();
+  flushReactionsToFirestore();
+}, FIVE_MINUTES_MS);
 
 // -------------------------------------------------------------
 // WebSocket Client Handling
@@ -336,7 +422,7 @@ wss.on('connection', (ws) => {
     matches: Array.from(currentMatches.values()),
     cheers: Object.fromEntries(currentCheers),
     cheersFeed: currentCheersFeed.slice(0, 30),
-    reactions: inMemoryReactions
+    reactions: Object.fromEntries(currentReactions)
   });
 
   try {
@@ -358,7 +444,7 @@ wss.on('connection', (ws) => {
           matches: Array.from(currentMatches.values()),
           cheers: Object.fromEntries(currentCheers),
           cheersFeed: currentCheersFeed.slice(0, 30),
-          reactions: inMemoryReactions
+          reactions: Object.fromEntries(currentReactions)
         }));
         return;
       }
@@ -395,9 +481,15 @@ wss.on('connection', (ws) => {
       }
 
       if (data.action === 'reaction' && data.reactionType) {
-        const type = data.reactionType as keyof typeof inMemoryReactions;
-        if (inMemoryReactions[type] !== undefined) {
-          inMemoryReactions[type] += 1;
+        const matchId = data.matchId || Array.from(currentMatches.keys())[0] || 'global';
+        const type = data.reactionType as keyof ReturnType<typeof getDefaultReactions>;
+        let matchReactions = currentReactions.get(matchId);
+        if (!matchReactions) {
+          matchReactions = getDefaultReactions();
+          currentReactions.set(matchId, matchReactions);
+        }
+        if (matchReactions[type] !== undefined) {
+          matchReactions[type] += 1;
           hasPendingUpdates = true;
         }
         return;
@@ -428,6 +520,7 @@ process.on('SIGTERM', async () => {
   timerService.stop();
   await timerService.flushToFirestore();
   await flushCheersToFirestore();
+  await flushReactionsToFirestore();
   process.exit(0);
 });
 
@@ -436,6 +529,7 @@ process.on('SIGINT', async () => {
   timerService.stop();
   await timerService.flushToFirestore();
   await flushCheersToFirestore();
+  await flushReactionsToFirestore();
   process.exit(0);
 });
 

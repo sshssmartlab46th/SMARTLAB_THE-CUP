@@ -456,9 +456,10 @@ export default function App() {
     }
   };
 
-  const handleSendReaction = async (reactionType: LiveReactionType) => {
+  const handleSendReaction = async (reactionType: LiveReactionType, matchId?: string) => {
     try {
-      await sendLiveReaction(reactionType);
+      const targetMatchId = matchId || currentLiveMatch?.id || 'global';
+      await sendLiveReaction(targetMatchId, reactionType);
     } catch (e) {
       console.error('Reaction error:', e);
     }
