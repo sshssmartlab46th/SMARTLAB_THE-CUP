@@ -1,4 +1,4 @@
-import { MatchItem, CheerCount, CheerMessageItem } from '../types';
+import { MatchItem, CheerCount, CheerMessageItem, LiveReactionType } from '../types';
 
 type Listener<T> = (data: T) => void;
 
@@ -8,7 +8,7 @@ interface BatchMessage {
   matches?: MatchItem[];
   cheers?: Record<string, CheerCount>;
   cheersFeed?: CheerMessageItem[];
-  reactions?: { fire: number; clap: number; heart: number; cheer: number };
+  reactions?: Record<LiveReactionType, number>;
 }
 
 class RealtimeWsClient {
@@ -26,7 +26,15 @@ class RealtimeWsClient {
   private cachedMatches: MatchItem[] | null = null;
   private cachedCheers = new Map<string, CheerCount>();
   private cachedCheersFeed: CheerMessageItem[] = [];
-  private cachedReactions = { fire: 0, clap: 0, heart: 0, cheer: 0 };
+  private cachedReactions: Record<LiveReactionType, number> = {
+    fire: 0,
+    clap: 0,
+    heart: 0,
+    cheer: 0,
+    trophy: 0,
+    sparkles: 0,
+    star: 0
+  };
 
   // Listeners
   private matchListeners = new Set<Listener<MatchItem[]>>();
@@ -278,7 +286,7 @@ class RealtimeWsClient {
     return sent;
   }
 
-  public sendReaction(reactionType: 'fire' | 'clap' | 'heart' | 'cheer'): boolean {
+  public sendReaction(reactionType: LiveReactionType): boolean {
     if (this.cachedReactions[reactionType] !== undefined) {
       this.cachedReactions[reactionType] += 1;
     }

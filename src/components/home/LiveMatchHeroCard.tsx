@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { MatchItem, UserProfile } from '../../types';
-import { Heart, Flame, ChevronRight, Volume2, Sparkles, Play, Clock } from 'lucide-react';
+import { MatchItem, UserProfile, LiveReactionType } from '../../types';
+import { Heart, Flame, ChevronRight, Volume2, Sparkles, Play, Clock, Trophy, Star, PartyPopper } from 'lucide-react';
 import { listenCheers, sendCheer, sendLiveReaction, startMatch, parseMatchStartTime, formatKSTTime } from '../../services/firebaseService';
 import { getSportScoreMeta } from '../../utils/sportScoreUtils';
 
@@ -11,7 +11,7 @@ export interface LiveMatchHeroCardProps {
   onVoteCheer?: () => void;
   isVoting?: boolean;
   onOpenLiveScore?: () => void;
-  onCheerReaction?: (reactionType: 'fire' | 'clap' | 'heart' | 'cheer') => void;
+  onCheerReaction?: (reactionType: LiveReactionType) => void;
   onToggleReminder?: (matchOrId: any) => void;
   isReminderSet?: boolean;
 }

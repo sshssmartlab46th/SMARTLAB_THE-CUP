@@ -239,6 +239,8 @@ export interface DirectMessage {
   deletedFor?: string[]; // studentIds who have deleted/hidden this message from their inbox
 }
 
+export type LiveReactionType = 'fire' | 'clap' | 'heart' | 'cheer' | 'trophy' | 'sparkles' | 'star';
+
 export interface CheerCount {
   matchId: string;
   homeCheers: number;

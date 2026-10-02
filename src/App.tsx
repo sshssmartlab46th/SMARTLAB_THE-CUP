@@ -9,7 +9,8 @@ import {
   CheerMessageItem,
   ClassStandingItem,
   AuditLogEntry,
-  SuggestionItem
+  SuggestionItem,
+  LiveReactionType
 } from './types';
 import { 
   Navbar, 
@@ -455,7 +456,7 @@ export default function App() {
     }
   };
 
-  const handleSendReaction = async (reactionType: 'fire' | 'clap' | 'heart' | 'cheer') => {
+  const handleSendReaction = async (reactionType: LiveReactionType) => {
     try {
       await sendLiveReaction(reactionType);
     } catch (e) {
