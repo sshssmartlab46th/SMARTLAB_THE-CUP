@@ -5,7 +5,21 @@ export type UserRole =
   | 'student_council' 
   | 'health_officer' 
   | 'referee'
+  | 'commentator'
   | 'admin';
+
+export interface LiveCommentaryItem {
+  id: string;
+  matchId: string;
+  authorId: string;
+  authorName: string;
+  authorRole?: string;
+  commentatorName: string;
+  text: string;
+  isSttGenerated?: boolean;
+  timestamp: string;
+  createdAt: string;
+}
 
 export interface UserProfile {
   uid: string;

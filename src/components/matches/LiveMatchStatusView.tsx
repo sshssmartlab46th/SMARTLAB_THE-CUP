@@ -17,6 +17,8 @@ import {
 import { MVPVotingModal } from './MVPVotingModal';
 import { GoalScorerModal } from './GoalScorerModal';
 import { PenaltyShootoutBoard } from './PenaltyShootoutBoard';
+import { STTCommentatorBroadcaster } from '../commentary/STTCommentatorBroadcaster';
+import { LiveCommentaryFeed } from '../commentary/LiveCommentaryFeed';
 import { getSportScoreMeta, getTimelineEventDisplay } from '../../utils/sportScoreUtils';
 import { 
   Flame, 
@@ -139,6 +141,10 @@ export const LiveMatchStatusView: React.FC<LiveMatchStatusViewProps> = ({
 
   // Authorized score editors: Admin, Student Council, Referee/Scorekeeper, Teacher
   const canEditScore = ['admin', 'student_council', 'referee', 'teacher'].includes(currentUser.role);
+
+  // Authorized commentators: Commentator (해설위원), Admin, Student Council, Referee
+  const canCommentate = ['commentator', 'admin', 'student_council', 'referee'].includes(currentUser.role) ||
+    Boolean(currentUser.roles && currentUser.roles.some((r) => ['commentator', 'admin', 'student_council', 'referee'].includes(r)));
 
   const showToast = (text: string, type: 'success' | 'error' = 'success') => {
     setStatusMessage({ type, text });
@@ -605,6 +611,9 @@ export const LiveMatchStatusView: React.FC<LiveMatchStatusViewProps> = ({
           />
         )}
 
+        {/* Live Commentary Feed Snippet */}
+        <LiveCommentaryFeed match={match} compactMode={true} />
+
         {/* Action bar (Score Edit & MVP Vote) */}
         <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
           {canEditScore && (
@@ -771,6 +780,18 @@ export const LiveMatchStatusView: React.FC<LiveMatchStatusViewProps> = ({
           </div>
         )}
       </div>
+
+      {/* STT Live Commentary Broadcaster (for Commentators & Officials) */}
+      {canCommentate && (
+        <STTCommentatorBroadcaster
+          currentUser={currentUser}
+          match={match}
+          onNotice={(txt, type) => showToast(txt, type || 'success')}
+        />
+      )}
+
+      {/* Live STT Commentary Stream Feed */}
+      <LiveCommentaryFeed match={match} compactMode={false} />
 
       {/* Match Events Timeline */}
       <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-xs space-y-3">
