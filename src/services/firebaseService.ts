@@ -39,7 +39,8 @@ import {
   LoginInquiry,
   AppDocument,
   SportType,
-  TimelineEvent
+  TimelineEvent,
+  LiveReactionType
 } from '../types';
 import { DEFAULT_APP_DOCUMENTS } from '../data/defaultDocuments';
 import { createAndSaveAuditLog } from '../utils/auditLogger';
@@ -1842,7 +1843,7 @@ export async function sendCheerMessage(
   }
 }
 
-export async function sendLiveReaction(reactionType: 'fire' | 'clap' | 'heart' | 'cheer'): Promise<void> {
+export async function sendLiveReaction(reactionType: LiveReactionType): Promise<void> {
   // Transmit reaction directly via WebSocket in-memory relay; eliminates per-click Firestore document creation
   realtimeWsClient.sendReaction(reactionType);
 }

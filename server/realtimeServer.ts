@@ -74,7 +74,10 @@ const inMemoryReactions = {
   fire: 0,
   clap: 0,
   heart: 0,
-  cheer: 0
+  cheer: 0,
+  trophy: 0,
+  sparkles: 0,
+  star: 0
 };
 
 // Snapshot from 5 minutes ago for growth calculation
