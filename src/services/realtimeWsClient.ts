@@ -8,7 +8,19 @@ interface BatchMessage {
   matches?: MatchItem[];
   cheers?: Record<string, CheerCount>;
   cheersFeed?: CheerMessageItem[];
-  reactions?: Record<LiveReactionType, number>;
+  reactions?: Record<string, any>;
+}
+
+function getDefaultReactions(): Record<LiveReactionType, number> {
+  return {
+    fire: 0,
+    clap: 0,
+    heart: 0,
+    cheer: 0,
+    trophy: 0,
+    sparkles: 0,
+    star: 0
+  };
 }
 
 class RealtimeWsClient {
@@ -26,20 +38,13 @@ class RealtimeWsClient {
   private cachedMatches: MatchItem[] | null = null;
   private cachedCheers = new Map<string, CheerCount>();
   private cachedCheersFeed: CheerMessageItem[] = [];
-  private cachedReactions: Record<LiveReactionType, number> = {
-    fire: 0,
-    clap: 0,
-    heart: 0,
-    cheer: 0,
-    trophy: 0,
-    sparkles: 0,
-    star: 0
-  };
+  private cachedReactions = new Map<string, Record<LiveReactionType, number>>();
 
   // Listeners
   private matchListeners = new Set<Listener<MatchItem[]>>();
   private cheerListeners = new Map<string, Set<Listener<CheerCount>>>();
   private cheerFeedListeners = new Set<Listener<CheerMessageItem[]>>();
+  private reactionListeners = new Map<string, Set<Listener<Record<LiveReactionType, number>>>>();
   private statusListeners = new Set<Listener<boolean>>();
 
   constructor() {
@@ -187,7 +192,21 @@ class RealtimeWsClient {
 
       // 4. Reactions
       if (msg.reactions) {
-        this.cachedReactions = msg.reactions;
+        Object.entries(msg.reactions).forEach(([key, val]) => {
+          if (typeof val === 'number') {
+            const globalReactions = this.cachedReactions.get('global') || getDefaultReactions();
+            (globalReactions as any)[key] = val;
+            this.cachedReactions.set('global', globalReactions);
+            const listeners = this.reactionListeners.get('global');
+            if (listeners) listeners.forEach((fn) => fn({ ...globalReactions }));
+          } else if (val && typeof val === 'object') {
+            const matchId = key;
+            const matchReactions = { ...getDefaultReactions(), ...val };
+            this.cachedReactions.set(matchId, matchReactions);
+            const listeners = this.reactionListeners.get(matchId);
+            if (listeners) listeners.forEach((fn) => fn({ ...matchReactions }));
+          }
+        });
       }
     }
   }
@@ -257,6 +276,34 @@ class RealtimeWsClient {
   }
 
   // -------------------------------------------------------------
+  // Subscription handlers for reactions
+  // -------------------------------------------------------------
+  public subscribeReactions(matchId: string, callback: Listener<Record<LiveReactionType, number>>): () => void {
+    const key = matchId || 'global';
+    if (!this.reactionListeners.has(key)) {
+      this.reactionListeners.set(key, new Set());
+    }
+    this.reactionListeners.get(key)!.add(callback);
+
+    const cached = this.cachedReactions.get(key);
+    if (cached) {
+      callback({ ...cached });
+    } else {
+      callback(getDefaultReactions());
+    }
+
+    return () => {
+      const set = this.reactionListeners.get(key);
+      if (set) {
+        set.delete(callback);
+        if (set.size === 0) {
+          this.reactionListeners.delete(key);
+        }
+      }
+    };
+  }
+
+  // -------------------------------------------------------------
   // Optimistic Cheer Event Sending
   // -------------------------------------------------------------
   public sendCheer(matchId: string, team: 'home' | 'away', emoji: string): boolean {
@@ -286,13 +333,33 @@ class RealtimeWsClient {
     return sent;
   }
 
-  public sendReaction(reactionType: LiveReactionType): boolean {
-    if (this.cachedReactions[reactionType] !== undefined) {
-      this.cachedReactions[reactionType] += 1;
+  public sendReaction(matchIdOrReactionType: string, reactionType?: LiveReactionType): boolean {
+    let matchId: string;
+    let type: LiveReactionType;
+
+    if (reactionType) {
+      matchId = matchIdOrReactionType;
+      type = reactionType;
+    } else {
+      matchId = 'global';
+      type = matchIdOrReactionType as LiveReactionType;
     }
+
+    const cached = this.cachedReactions.get(matchId) || getDefaultReactions();
+    if (cached[type] !== undefined) {
+      cached[type] += 1;
+    }
+    this.cachedReactions.set(matchId, cached);
+
+    const listeners = this.reactionListeners.get(matchId);
+    if (listeners) {
+      listeners.forEach((fn) => fn({ ...cached }));
+    }
+
     return this.send({
       action: 'reaction',
-      reactionType
+      matchId,
+      reactionType: type
     });
   }
 }
