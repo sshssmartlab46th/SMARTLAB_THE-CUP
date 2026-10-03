@@ -127,4 +127,26 @@ describe('MVP Voting Service Verification', () => {
 
     expect(submitFn).not.toHaveBeenCalled();
   });
+
+  it('rejects vote if candidateName is empty or missing', async () => {
+    const emptyCandVote: MVPVote = { ...validVote, candidateName: '   ' };
+    const submitFn = vi.fn();
+
+    await expect(
+      validateAndSubmitMVPVote(baseMatch, emptyCandVote, validUser, Date.now(), submitFn)
+    ).rejects.toThrow('투표할 선수를 선택해 주세요.');
+
+    expect(submitFn).not.toHaveBeenCalled();
+  });
+
+  it('rejects vote if currentUser is missing studentId', async () => {
+    const userWithoutId = { ...validUser, studentId: '' };
+    const submitFn = vi.fn();
+
+    await expect(
+      validateAndSubmitMVPVote(baseMatch, validVote, userWithoutId, Date.now(), submitFn)
+    ).rejects.toThrow('인증 정보가 없습니다. 다시 로그인해 주세요.');
+
+    expect(submitFn).not.toHaveBeenCalled();
+  });
 });
