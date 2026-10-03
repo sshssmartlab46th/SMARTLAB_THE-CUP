@@ -6,6 +6,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { initializeApp as initAdminApp, getApps as getAdminApps } from 'firebase-admin/app';
 import firebaseConfig from '../firebase-applet-config.json';
 import { createGroqResponse } from './groqHandler';
+import { handleAdminLogin } from './adminAuthHandler';
 import { MatchTimerService } from './timerService';
 import { CheerService, CheerState } from './cheerService';
 
@@ -48,6 +49,17 @@ app.post('/api/groq', async (req, res) => {
   } catch (error) {
     console.error('[Groq] request failed:', error);
     res.status(502).json({ error: 'Groq request failed.' });
+  }
+});
+
+// Admin authentication endpoint
+app.post('/api/admin-login', (req, res) => {
+  try {
+    const result = handleAdminLogin(req.body || {});
+    res.status(result.status).json(result.body);
+  } catch (error) {
+    console.error('[AdminLogin] request failed:', error);
+    res.status(500).json({ success: false, message: 'Internal server error.' });
   }
 });
 

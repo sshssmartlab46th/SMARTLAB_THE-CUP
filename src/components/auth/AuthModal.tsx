@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { parseStudentId } from '../../utils/studentIdParser';
 import { UserProfile } from '../../types';
 import { checkStudentIdExists, createAccount, getUserProfile, syncUserProfile } from '../../services/firebaseService';
+import { verifyAdminCredentials } from '../../services/adminAuthService';
 import { SangsanLogo } from '../common/SangsanLogo';
 import { Shield, CheckCircle, AlertTriangle, LogIn, UserCheck, Key, HelpCircle } from 'lucide-react';
 import { LoginProblemModal } from './LoginProblemModal';
@@ -135,29 +136,24 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess, isOpen = true }
   };
 
   // Admin login
-  const handleAdminLogin = (e: React.FormEvent) => {
+  const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
 
-    if (adminId.trim() === 'sshsgym' && adminPw === 'sshsgymgo') {
-      const adminProfile: UserProfile = {
-        uid: 'admin_sshsgym',
-        studentId: 'sshsgym',
-        name: '총괄본부 관리자',
-        role: 'admin',
-        grade: '본부',
-        classNum: '00',
-        studentNum: '00',
-        gender: 'other',
-        isTeacher: false,
-        canAnswerSuggestion: true,
-        createdAt: new Date().toISOString(),
-        lastLogin: new Date().toISOString()
-      };
-      localStorage.setItem('sangsan_user_session', JSON.stringify(adminProfile));
-      onSuccess(adminProfile);
-    } else {
-      setErrorMessage('관리자 아이디 또는 비밀번호가 일치하지 않습니다.');
+    setIsSubmitting(true);
+    try {
+      const res = await verifyAdminCredentials(adminId, adminPw);
+      if (res.success && res.profile) {
+        localStorage.setItem('sangsan_user_session', JSON.stringify(res.profile));
+        onSuccess(res.profile);
+      } else {
+        setErrorMessage(res.message || '관리자 아이디 또는 비밀번호가 일치하지 않습니다.');
+      }
+    } catch (err) {
+      console.error(err);
+      setErrorMessage('관리자 로그인 중 오류가 발생했습니다.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -317,10 +313,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess, isOpen = true }
               <div className="pt-2">
                 <button
                   type="submit"
-                  className="w-full py-3 px-4 bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white text-sm font-semibold rounded-xl shadow-md transition flex items-center justify-center gap-2"
+                  disabled={isSubmitting}
+                  className="w-full py-3 px-4 bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white text-sm font-semibold rounded-xl shadow-md transition flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   <Key className="w-4 h-4 text-amber-400" />
-                  <span>총괄 관리자 로그인</span>
+                  <span>{isSubmitting ? '인증 중...' : '총괄 관리자 로그인'}</span>
                 </button>
               </div>
             </form>

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { parseStudentId } from '../../utils/studentIdParser';
 import { UserProfile, getUserRoles } from '../../types';
 import { checkStudentIdExists, createAccount, getUserProfile, syncUserProfile } from '../../services/firebaseService';
+import { verifyAdminCredentials } from '../../services/adminAuthService';
 import { SangsanLogo } from '../common/SangsanLogo';
 import { SmartlabLogo } from '../common/SmartlabLogo';
 import { 
@@ -384,35 +385,25 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onCancel }) => 
       return;
     }
 
-    // Official Sangsan Admin Credentials (sshsgym / sshsgymgo)
-    if (
-      (trimmedAdmin === 'sshsgym' || trimmedAdmin === 'admin') && 
-      (trimmedPw === 'sshsgymgo' || trimmedPw === 'admin1234' || trimmedPw === 'sangsan2026')
-    ) {
-      const adminProfile: UserProfile = {
-        uid: 'admin_sshsgym',
-        studentId: 'sshsgym',
-        name: '총괄 관리자',
-        role: 'admin',
-        roles: ['admin', 'student'],
-        grade: '본부',
-        classNum: '00',
-        studentNum: '00',
-        gender: 'other',
-        isTeacher: false,
-        canAnswerSuggestion: true,
-        createdAt: new Date().toISOString(),
-        lastLogin: new Date().toISOString()
-      };
-      try {
-        await syncUserProfile(adminProfile);
-      } catch (e) {
-        console.warn('Admin profile sync fallback:', e);
+    setIsSubmitting(true);
+    try {
+      const res = await verifyAdminCredentials(trimmedAdmin, trimmedPw);
+      if (res.success && res.profile) {
+        try {
+          await syncUserProfile(res.profile);
+        } catch (e) {
+          console.warn('Admin profile sync fallback:', e);
+        }
+        localStorage.setItem('sangsan_current_user', JSON.stringify(res.profile));
+        onSuccess(res.profile);
+      } else {
+        setErrorMessage(res.message || '관리자 아이디 또는 비밀번호가 일치하지 않습니다.');
       }
-      localStorage.setItem('sangsan_current_user', JSON.stringify(adminProfile));
-      onSuccess(adminProfile);
-    } else {
-      setErrorMessage('관리자 아이디 또는 비밀번호가 일치하지 않습니다. (아이디: sshsgym / 패스워드: sshsgymgo)');
+    } catch (err) {
+      console.error(err);
+      setErrorMessage('관리자 로그인 처리 중 오류가 발생했습니다.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -586,7 +577,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onCancel }) => 
                   type="password"
                   value={adminPw}
                   onChange={(e) => setAdminPw(e.target.value)}
-                  placeholder="sshsgymgo"
+                  placeholder="비밀번호 입력"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-mono focus:outline-hidden focus:border-red-500 transition"
                 />
               </div>
@@ -603,10 +594,11 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onCancel }) => 
 
               <button
                 type="submit"
-                className="w-full py-3 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-950 text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+                disabled={isSubmitting}
+                className="w-full py-3 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-950 text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-sm disabled:opacity-50"
               >
                 <Key className="w-4 h-4" />
-                총괄 관리자 로그인
+                {isSubmitting ? '인증 중...' : '총괄 관리자 로그인'}
               </button>
             </form>
           )}
