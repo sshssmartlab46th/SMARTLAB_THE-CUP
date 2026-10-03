@@ -3,6 +3,38 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import {defineConfig} from 'vite';
 import {createGroqResponse} from './server/groqHandler';
+import {handleAdminLogin} from './server/adminAuthHandler';
+
+const adminAuthApiPlugin = () => ({
+  name: 'sangsan-admin-auth-api',
+  configureServer(server: any) {
+    server.middlewares.use('/api/admin-login', async (req: any, res: any) => {
+      if (req.method !== 'POST') {
+        res.statusCode = 405;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ success: false, message: 'Method not allowed.' }));
+        return;
+      }
+
+      try {
+        const chunks: Buffer[] = [];
+        for await (const chunk of req) {
+          chunks.push(Buffer.from(chunk));
+        }
+        const input = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}');
+        const result = handleAdminLogin(input);
+        res.statusCode = result.status;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify(result.body));
+      } catch (error) {
+        console.error('[AdminLogin] dev request failed:', error);
+        res.statusCode = 500;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ success: false, message: 'Internal server error.' }));
+      }
+    });
+  }
+});
 
 const groqApiPlugin = () => ({
   name: 'sangsan-groq-api',
@@ -37,7 +69,7 @@ const groqApiPlugin = () => ({
 
 export default defineConfig(() => {
   return {
-    plugins: [react(), tailwindcss(), groqApiPlugin()],
+    plugins: [react(), tailwindcss(), groqApiPlugin(), adminAuthApiPlugin()],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
