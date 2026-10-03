@@ -7,6 +7,7 @@ import { initializeApp as initAdminApp, getApps as getAdminApps } from 'firebase
 import firebaseConfig from '../firebase-applet-config.json';
 import { createGroqResponse } from './groqHandler';
 import { MatchTimerService } from './timerService';
+import { CheerService, CheerState } from './cheerService';
 
 // Firebase client SDK for reliable Firestore connection in any Node environment
 import { initializeApp as initClientApp, getApps as getClientApps } from 'firebase/app';
@@ -57,16 +58,6 @@ app.use(express.static(distPath));
 // -------------------------------------------------------------
 // In-Memory State & Buffer Management
 // -------------------------------------------------------------
-interface CheerState {
-  matchId: string;
-  homeCheers: number;
-  awayCheers: number;
-  lastEmoji?: string;
-  fiveMinIncrement?: number;
-  fiveMinGrowthRate?: number;
-  updatedAt?: string;
-}
-
 function getDefaultReactions() {
   return {
     fire: 0,
@@ -80,14 +71,16 @@ function getDefaultReactions() {
 }
 
 const currentMatches = new Map<string, any>();
-const currentCheers = new Map<string, CheerState>();
 let currentCheersFeed: any[] = [];
 const currentReactions = new Map<string, ReturnType<typeof getDefaultReactions>>();
 
-// Snapshot from 5 minutes ago for growth calculation
-const previousCheersSnapshot = new Map<string, { home: number; away: number }>();
-
 let hasPendingUpdates = false;
+
+// Initialize Server-Authoritative Cheer Service with short 10s debounced flush + 5min metrics
+const cheerService = new CheerService();
+cheerService.setOnUpdateCallback(() => {
+  hasPendingUpdates = true;
+});
 
 // Initialize Server-Authoritative Timer Service
 const timerService = new MatchTimerService(currentMatches);
@@ -136,25 +129,21 @@ async function setupFirestore() {
   timerService.setDbInstance(dbInstance);
   timerService.start();
 
+  cheerService.setDbInstance(dbInstance);
+  cheerService.start(10000, 300000); // 10s debounced flush, 5m growth metrics
+
   // 1. Initial restore of cheers from Firestore
   try {
     const cheersSnap = await getDocs(collection(dbInstance, 'cheers'));
+    const records: Array<{ id: string; data: CheerState }> = [];
     cheersSnap.forEach((docSnap) => {
-      const data = docSnap.data() as CheerState;
-      currentCheers.set(docSnap.id, {
-        matchId: docSnap.id,
-        homeCheers: Number(data.homeCheers) || 0,
-        awayCheers: Number(data.awayCheers) || 0,
-        lastEmoji: data.lastEmoji || '🔥',
-        fiveMinIncrement: data.fiveMinIncrement || 0,
-        fiveMinGrowthRate: data.fiveMinGrowthRate || 0
-      });
-      previousCheersSnapshot.set(docSnap.id, {
-        home: Number(data.homeCheers) || 0,
-        away: Number(data.awayCheers) || 0
+      records.push({
+        id: docSnap.id,
+        data: docSnap.data() as CheerState
       });
     });
-    console.log(`[RealtimeServer] Restored ${currentCheers.size} cheer records into memory.`);
+    cheerService.restoreInitialState(records);
+    console.log(`[RealtimeServer] Restored ${records.length} cheer records into memory.`);
   } catch (err) {
     console.warn('[RealtimeServer] Failed to restore cheers initial snapshot:', err);
   }
@@ -210,35 +199,7 @@ async function setupFirestore() {
     onSnapshot(collection(dbInstance, 'cheers'), (snapshot) => {
       snapshot.docChanges().forEach((change) => {
         if (change.type !== 'removed') {
-          const data = change.doc.data() as CheerState;
-          const existing = currentCheers.get(change.doc.id);
-          // Only update if incoming from DB is higher to prevent clobbering in-memory clicks
-          const incomingHome = Number(data.homeCheers) || 0;
-          const incomingAway = Number(data.awayCheers) || 0;
-          if (!existing) {
-            currentCheers.set(change.doc.id, {
-              matchId: change.doc.id,
-              homeCheers: incomingHome,
-              awayCheers: incomingAway,
-              lastEmoji: data.lastEmoji || '🔥'
-            });
-            hasPendingUpdates = true;
-          } else {
-            let changed = false;
-            if (incomingHome > existing.homeCheers) {
-              existing.homeCheers = incomingHome;
-              changed = true;
-            }
-            if (incomingAway > existing.awayCheers) {
-              existing.awayCheers = incomingAway;
-              changed = true;
-            }
-            if (data.lastEmoji && data.lastEmoji !== existing.lastEmoji) {
-              existing.lastEmoji = data.lastEmoji;
-              changed = true;
-            }
-            if (changed) hasPendingUpdates = true;
-          }
+          cheerService.handleExternalUpdate(change.doc.id, change.doc.data() as CheerState);
         }
       });
     }, (error) => {
@@ -304,7 +265,7 @@ async function setupFirestore() {
 }
 
 // -------------------------------------------------------------
-// 3~5s Batch Broadcast Timer
+// 3.5s Batch Broadcast Timer
 // -------------------------------------------------------------
 const BATCH_INTERVAL_MS = 3500; // 3.5 seconds
 
@@ -321,7 +282,7 @@ function broadcastBatch() {
     type: 'BATCH_UPDATE',
     timestamp: Date.now(),
     matches: Array.from(currentMatches.values()),
-    cheers: Object.fromEntries(currentCheers),
+    cheers: cheerService.getCheersRecord(),
     cheersFeed: currentCheersFeed.slice(0, 30),
     reactions: Object.fromEntries(currentReactions)
   });
@@ -342,49 +303,9 @@ function broadcastBatch() {
 setInterval(broadcastBatch, BATCH_INTERVAL_MS);
 
 // -------------------------------------------------------------
-// 5-Minute Firestore Flush for Cheer Counts
+// 5-Minute Firestore Flush for Live Reactions
 // -------------------------------------------------------------
 const FIVE_MINUTES_MS = 5 * 60 * 1000;
-
-async function flushCheersToFirestore() {
-  if (!dbInstance) return;
-  console.log(`[RealtimeServer] Flushing ${currentCheers.size} cheer records to Firestore...`);
-
-  const now = new Date().toISOString();
-
-  for (const [matchId, cheer] of currentCheers.entries()) {
-    try {
-      const prev = previousCheersSnapshot.get(matchId) || { home: 0, away: 0 };
-      const currentTotal = cheer.homeCheers + cheer.awayCheers;
-      const prevTotal = prev.home + prev.away;
-      const fiveMinIncrement = Math.max(0, currentTotal - prevTotal);
-      const growthRate = prevTotal > 0 ? Number(((fiveMinIncrement / prevTotal) * 100).toFixed(1)) : 0;
-
-      cheer.fiveMinIncrement = fiveMinIncrement;
-      cheer.fiveMinGrowthRate = growthRate;
-      cheer.updatedAt = now;
-
-      // Update previous snapshot for next 5-min calculation
-      previousCheersSnapshot.set(matchId, {
-        home: cheer.homeCheers,
-        away: cheer.awayCheers
-      });
-
-      const docRef = doc(dbInstance, 'cheers', matchId);
-      await setDoc(docRef, {
-        matchId,
-        homeCheers: cheer.homeCheers,
-        awayCheers: cheer.awayCheers,
-        lastEmoji: cheer.lastEmoji || '🔥',
-        fiveMinIncrement,
-        fiveMinGrowthRate: growthRate,
-        updatedAt: now
-      }, { merge: true });
-    } catch (err) {
-      console.error(`[RealtimeServer] Error saving cheer doc for match ${matchId}:`, err);
-    }
-  }
-}
 
 async function flushReactionsToFirestore() {
   if (!dbInstance) return;
@@ -407,7 +328,6 @@ async function flushReactionsToFirestore() {
 }
 
 setInterval(() => {
-  flushCheersToFirestore();
   flushReactionsToFirestore();
 }, FIVE_MINUTES_MS);
 
@@ -420,7 +340,7 @@ wss.on('connection', (ws) => {
     type: 'INITIAL_STATE',
     timestamp: Date.now(),
     matches: Array.from(currentMatches.values()),
-    cheers: Object.fromEntries(currentCheers),
+    cheers: cheerService.getCheersRecord(),
     cheersFeed: currentCheersFeed.slice(0, 30),
     reactions: Object.fromEntries(currentReactions)
   });
@@ -442,7 +362,7 @@ wss.on('connection', (ws) => {
           type: 'FULL_SYNC',
           timestamp: Date.now(),
           matches: Array.from(currentMatches.values()),
-          cheers: Object.fromEntries(currentCheers),
+          cheers: cheerService.getCheersRecord(),
           cheersFeed: currentCheersFeed.slice(0, 30),
           reactions: Object.fromEntries(currentReactions)
         }));
@@ -456,26 +376,7 @@ wss.on('connection', (ws) => {
 
       if (data.action === 'cheer' && data.matchId && data.team) {
         const { matchId, team, emoji } = data;
-        let cheer = currentCheers.get(matchId);
-        if (!cheer) {
-          cheer = {
-            matchId,
-            homeCheers: 0,
-            awayCheers: 0,
-            lastEmoji: emoji || '🔥'
-          };
-          currentCheers.set(matchId, cheer);
-        }
-
-        if (team === 'home') {
-          cheer.homeCheers += 1;
-        } else if (team === 'away') {
-          cheer.awayCheers += 1;
-        }
-        if (emoji) {
-          cheer.lastEmoji = emoji;
-        }
-
+        cheerService.incrementCheer(matchId, team, emoji);
         hasPendingUpdates = true;
         return;
       }
@@ -518,8 +419,9 @@ app.get('*', (_req, res) => {
 process.on('SIGTERM', async () => {
   console.log('[RealtimeServer] SIGTERM received. Flushing remaining data...');
   timerService.stop();
+  cheerService.stop();
   await timerService.flushToFirestore();
-  await flushCheersToFirestore();
+  await cheerService.flushAllToFirestore();
   await flushReactionsToFirestore();
   process.exit(0);
 });
@@ -527,8 +429,9 @@ process.on('SIGTERM', async () => {
 process.on('SIGINT', async () => {
   console.log('[RealtimeServer] SIGINT received. Flushing remaining data...');
   timerService.stop();
+  cheerService.stop();
   await timerService.flushToFirestore();
-  await flushCheersToFirestore();
+  await cheerService.flushAllToFirestore();
   await flushReactionsToFirestore();
   process.exit(0);
 });
