@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { UserProfile, MatchItem, MVPVote } from '../../types';
-import { submitMVPVote, listenMVPVotes, updateMatch } from '../../services/firebaseService';
-import { Trophy, Clock, Check, Award, X } from 'lucide-react';
+import { listenMVPVotes } from '../../services/firebaseService';
+import { validateAndSubmitMVPVote, getMvpVotingTimeLeftSeconds } from '../../services/mvpService';
+import { Trophy, Clock, Check, Award, X, AlertCircle } from 'lucide-react';
 
 interface MVPVotingModalProps {
   currentUser: UserProfile;
@@ -20,12 +21,15 @@ export const MVPVotingModal: React.FC<MVPVotingModalProps> = ({
   const [selectedCandidate, setSelectedCandidate] = useState<string | null>(null);
   const [hasVoted, setHasVoted] = useState(false);
   const [votes, setVotes] = useState<MVPVote[]>([]);
-  const [timeLeftSeconds, setTimeLeftSeconds] = useState(60);
+  const [timeLeftSeconds, setTimeLeftSeconds] = useState(() => getMvpVotingTimeLeftSeconds(match));
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Setup candidate list from match events/players or default team representation
   useEffect(() => {
     if (!isOpen) return;
+
+    setErrorMessage(null);
 
     // Collect players mentioned in events or candidate pool
     const playerSet = new Set<string>();
@@ -53,16 +57,14 @@ export const MVPVotingModal: React.FC<MVPVotingModalProps> = ({
       }
     });
 
-    // 1-minute countdown timer
-    const interval = setInterval(() => {
-      setTimeLeftSeconds((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+    // Sync remaining time strictly from server match finish timestamp / deadline
+    const updateTimeLeft = () => {
+      const remaining = getMvpVotingTimeLeftSeconds(match);
+      setTimeLeftSeconds(remaining);
+    };
+
+    updateTimeLeft();
+    const interval = setInterval(updateTimeLeft, 1000);
 
     return () => {
       unsub();
@@ -76,17 +78,23 @@ export const MVPVotingModal: React.FC<MVPVotingModalProps> = ({
     if (!selectedCandidate || hasVoted || timeLeftSeconds <= 0) return;
 
     setIsSubmitting(true);
+    setErrorMessage(null);
     try {
-      await submitMVPVote({
-        id: `mvp_${match.id}_${currentUser.studentId}`,
-        matchId: match.id,
-        voterStudentId: currentUser.studentId,
-        candidateName: selectedCandidate,
-        createdAt: new Date().toISOString()
-      });
+      await validateAndSubmitMVPVote(
+        match,
+        {
+          id: `mvp_${match.id}_${currentUser.studentId}`,
+          matchId: match.id,
+          voterStudentId: currentUser.studentId,
+          candidateName: selectedCandidate,
+          createdAt: new Date().toISOString()
+        },
+        currentUser
+      );
       setHasVoted(true);
-    } catch (e) {
-      console.error(e);
+    } catch (e: any) {
+      console.error('[MVP Vote Error]', e);
+      setErrorMessage(e?.message || '투표 제출 중 오류가 발생했습니다.');
     } finally {
       setIsSubmitting(false);
     }
@@ -131,9 +139,17 @@ export const MVPVotingModal: React.FC<MVPVotingModalProps> = ({
           </div>
         </div>
 
+        {/* Error message banner */}
+        {errorMessage && (
+          <div className="p-3 bg-red-50 dark:bg-red-950/50 text-red-700 dark:text-red-300 rounded-xl border border-red-200 dark:border-red-800 text-xs flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
+            <span>{errorMessage}</span>
+          </div>
+        )}
+
         {/* Privacy rule notice from Planning Doc */}
         <p className="text-[11px] text-slate-500 leading-relaxed">
-          * 기획서 규정: 득표율 및 득표수는 비공개 처리되며, 투표 종료 후 최다 득표자(MVP) 결과만 공식 발표됩니다. (1인 1표, 자기 반 투표 가능)
+          * 기획서 규정: 득표율 및 득표수는 비공개 처리되며, 투표 종료 후 최다 득표자(MVP) 결과만 공식 발표됩니다. (1인 1표, 학번 및 1분 타임아웃 서버 검증)
         </p>
 
         {/* Candidate selection or Winner announcement */}
