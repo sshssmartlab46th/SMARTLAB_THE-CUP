@@ -2308,6 +2308,8 @@ export async function updateUserRoles(
 // -------------------------------------------------------------
 // MVP Voting System (1분간 투표)
 // -------------------------------------------------------------
+export { validateAndSubmitMVPVote, getMvpVotingDeadline, getMvpVotingTimeLeftSeconds } from './mvpService';
+
 export async function submitMVPVote(vote: MVPVote): Promise<void> {
   try {
     await ensureFirebaseAuth();
