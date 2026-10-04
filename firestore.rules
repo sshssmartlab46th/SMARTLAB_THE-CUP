@@ -79,9 +79,14 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
-    // MVP Votes Collection (경기 종료 후 MVP 투표)
+    // MVP Votes Collection (경기 종료 후 MVP 투표 - document ID: matchId_voterStudentId)
     match /mvp_votes/{voteId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow create, update: if request.resource.data.voterStudentId != null
+        && request.resource.data.matchId != null
+        && voteId == request.resource.data.matchId + '_' + request.resource.data.voterStudentId
+        && request.resource.data.candidateName is string
+        && request.resource.data.candidateName.size() > 0;
     }
 
     // Match Reminders Collection
