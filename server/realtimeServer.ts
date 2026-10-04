@@ -10,6 +10,7 @@ import { handleAdminLogin } from './adminAuthHandler';
 import { handleMvpVote } from './mvpHandler';
 import { MatchTimerService } from './timerService';
 import { CheerService, CheerState } from './cheerService';
+import { ReactionService, LiveReactionType } from './reactionService';
 
 // Firebase client SDK for reliable Firestore connection in any Node environment
 import { initializeApp as initClientApp, getApps as getClientApps } from 'firebase/app';
@@ -82,27 +83,20 @@ app.use(express.static(distPath));
 // -------------------------------------------------------------
 // In-Memory State & Buffer Management
 // -------------------------------------------------------------
-function getDefaultReactions() {
-  return {
-    fire: 0,
-    clap: 0,
-    heart: 0,
-    cheer: 0,
-    trophy: 0,
-    sparkles: 0,
-    star: 0
-  };
-}
-
 const currentMatches = new Map<string, any>();
 let currentCheersFeed: any[] = [];
-const currentReactions = new Map<string, ReturnType<typeof getDefaultReactions>>();
 
 let hasPendingUpdates = false;
 
 // Initialize Server-Authoritative Cheer Service with short 10s debounced flush + 5min metrics
 const cheerService = new CheerService();
 cheerService.setOnUpdateCallback(() => {
+  hasPendingUpdates = true;
+});
+
+// Initialize Server-Authoritative Reaction Service with short 10s debounced flush
+const reactionService = new ReactionService();
+reactionService.setOnUpdateCallback(() => {
   hasPendingUpdates = true;
 });
 
@@ -156,6 +150,9 @@ async function setupFirestore() {
   cheerService.setDbInstance(dbInstance);
   cheerService.start(10000, 300000); // 10s debounced flush, 5m growth metrics
 
+  reactionService.setDbInstance(dbInstance);
+  reactionService.start(10000); // 10s debounced flush
+
   // 1. Initial restore of cheers from Firestore
   try {
     const cheersSnap = await getDocs(collection(dbInstance, 'cheers'));
@@ -175,21 +172,15 @@ async function setupFirestore() {
   // 1b. Initial restore of live_reactions from Firestore
   try {
     const reactionsSnap = await getDocs(collection(dbInstance, 'live_reactions'));
+    const reactionRecords: Array<{ id: string; data: any }> = [];
     reactionsSnap.forEach((docSnap) => {
-      const data = docSnap.data();
-      const matchId = docSnap.id;
-      const reactions = {
-        ...getDefaultReactions(),
-        ...(data.reactions || {})
-      };
-      ['fire', 'clap', 'heart', 'cheer', 'trophy', 'sparkles', 'star'].forEach((k) => {
-        if (typeof data[k] === 'number') {
-          (reactions as any)[k] = data[k];
-        }
+      reactionRecords.push({
+        id: docSnap.id,
+        data: docSnap.data()
       });
-      currentReactions.set(matchId, reactions);
     });
-    console.log(`[RealtimeServer] Restored ${currentReactions.size} reaction records into memory.`);
+    reactionService.restoreInitialState(reactionRecords);
+    console.log(`[RealtimeServer] Restored ${reactionRecords.length} reaction records into memory.`);
   } catch (err) {
     console.warn('[RealtimeServer] Failed to restore live_reactions initial snapshot:', err);
   }
@@ -255,28 +246,7 @@ async function setupFirestore() {
     onSnapshot(collection(dbInstance, 'live_reactions'), (snapshot) => {
       snapshot.docChanges().forEach((change) => {
         if (change.type !== 'removed') {
-          const docId = change.doc.id;
-          const data = change.doc.data();
-          const incoming = {
-            ...getDefaultReactions(),
-            ...(data.reactions || {})
-          };
-          ['fire', 'clap', 'heart', 'cheer', 'trophy', 'sparkles', 'star'].forEach((k) => {
-            if (typeof data[k] === 'number') {
-              (incoming as any)[k] = data[k];
-            }
-          });
-          const existing = currentReactions.get(docId) || getDefaultReactions();
-          let changed = false;
-          (Object.keys(incoming) as Array<keyof typeof incoming>).forEach((k) => {
-            const key = k as keyof typeof incoming;
-            if (incoming[key] > existing[key]) {
-              existing[key] = incoming[key];
-              changed = true;
-            }
-          });
-          currentReactions.set(docId, existing);
-          if (changed) hasPendingUpdates = true;
+          reactionService.handleExternalUpdate(change.doc.id, change.doc.data());
         }
       });
     }, (error) => {
@@ -308,7 +278,7 @@ function broadcastBatch() {
     matches: Array.from(currentMatches.values()),
     cheers: cheerService.getCheersRecord(),
     cheersFeed: currentCheersFeed.slice(0, 30),
-    reactions: Object.fromEntries(currentReactions)
+    reactions: reactionService.getReactionsRecord()
   });
 
   wss.clients.forEach((client) => {
@@ -327,35 +297,6 @@ function broadcastBatch() {
 setInterval(broadcastBatch, BATCH_INTERVAL_MS);
 
 // -------------------------------------------------------------
-// 5-Minute Firestore Flush for Live Reactions
-// -------------------------------------------------------------
-const FIVE_MINUTES_MS = 5 * 60 * 1000;
-
-async function flushReactionsToFirestore() {
-  if (!dbInstance) return;
-  console.log(`[RealtimeServer] Flushing ${currentReactions.size} reaction records to Firestore...`);
-
-  const now = new Date().toISOString();
-
-  for (const [matchId, reactions] of currentReactions.entries()) {
-    try {
-      const docRef = doc(dbInstance, 'live_reactions', matchId);
-      await setDoc(docRef, {
-        matchId,
-        reactions,
-        updatedAt: now
-      }, { merge: true });
-    } catch (err) {
-      console.error(`[RealtimeServer] Error saving live_reactions doc for match ${matchId}:`, err);
-    }
-  }
-}
-
-setInterval(() => {
-  flushReactionsToFirestore();
-}, FIVE_MINUTES_MS);
-
-// -------------------------------------------------------------
 // WebSocket Client Handling
 // -------------------------------------------------------------
 wss.on('connection', (ws) => {
@@ -366,7 +307,7 @@ wss.on('connection', (ws) => {
     matches: Array.from(currentMatches.values()),
     cheers: cheerService.getCheersRecord(),
     cheersFeed: currentCheersFeed.slice(0, 30),
-    reactions: Object.fromEntries(currentReactions)
+    reactions: reactionService.getReactionsRecord()
   });
 
   try {
@@ -388,7 +329,7 @@ wss.on('connection', (ws) => {
           matches: Array.from(currentMatches.values()),
           cheers: cheerService.getCheersRecord(),
           cheersFeed: currentCheersFeed.slice(0, 30),
-          reactions: Object.fromEntries(currentReactions)
+          reactions: reactionService.getReactionsRecord()
         }));
         return;
       }
@@ -407,16 +348,8 @@ wss.on('connection', (ws) => {
 
       if (data.action === 'reaction' && data.reactionType) {
         const matchId = data.matchId || Array.from(currentMatches.keys())[0] || 'global';
-        const type = data.reactionType as keyof ReturnType<typeof getDefaultReactions>;
-        let matchReactions = currentReactions.get(matchId);
-        if (!matchReactions) {
-          matchReactions = getDefaultReactions();
-          currentReactions.set(matchId, matchReactions);
-        }
-        if (matchReactions[type] !== undefined) {
-          matchReactions[type] += 1;
-          hasPendingUpdates = true;
-        }
+        reactionService.incrementReaction(matchId, data.reactionType as LiveReactionType);
+        hasPendingUpdates = true;
         return;
       }
     } catch (parseErr) {
@@ -444,9 +377,10 @@ process.on('SIGTERM', async () => {
   console.log('[RealtimeServer] SIGTERM received. Flushing remaining data...');
   timerService.stop();
   cheerService.stop();
+  reactionService.stop();
   await timerService.flushToFirestore();
   await cheerService.flushAllToFirestore();
-  await flushReactionsToFirestore();
+  await reactionService.flushAllToFirestore();
   process.exit(0);
 });
 
@@ -454,9 +388,10 @@ process.on('SIGINT', async () => {
   console.log('[RealtimeServer] SIGINT received. Flushing remaining data...');
   timerService.stop();
   cheerService.stop();
+  reactionService.stop();
   await timerService.flushToFirestore();
   await cheerService.flushAllToFirestore();
-  await flushReactionsToFirestore();
+  await reactionService.flushAllToFirestore();
   process.exit(0);
 });
 
