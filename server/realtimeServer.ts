@@ -7,6 +7,7 @@ import { initializeApp as initAdminApp, getApps as getAdminApps } from 'firebase
 import firebaseConfig from '../firebase-applet-config.json';
 import { createGroqResponse } from './groqHandler';
 import { handleAdminLogin } from './adminAuthHandler';
+import { handleMvpVote } from './mvpHandler';
 import { MatchTimerService } from './timerService';
 import { CheerService, CheerState } from './cheerService';
 
@@ -59,6 +60,17 @@ app.post('/api/admin-login', (req, res) => {
     res.status(result.status).json(result.body);
   } catch (error) {
     console.error('[AdminLogin] request failed:', error);
+    res.status(500).json({ success: false, message: 'Internal server error.' });
+  }
+});
+
+// MVP vote submission endpoint (Server-authoritative student ID and 1-min timer validation)
+app.post('/api/mvp-vote', async (req, res) => {
+  try {
+    const result = await handleMvpVote(req.body || {}, dbInstance, currentMatches);
+    res.status(result.status).json(result.body);
+  } catch (error) {
+    console.error('[MVPVote] request failed:', error);
     res.status(500).json({ success: false, message: 'Internal server error.' });
   }
 });
