@@ -5,7 +5,7 @@ import { submitMVPVote } from './firebaseService';
  * Returns the voting deadline (epoch ms) for a given match.
  * The voting window is 1 minute (60,000ms) from when the match finished or when voting opened.
  */
-export function getMvpVotingDeadline(match: MatchItem): number {
+export function getMvpVotingDeadline(match: MatchItem, fallbackNowMs: number = Date.now()): number {
   if (match.mvpVotingClosedAt) {
     const t = new Date(match.mvpVotingClosedAt).getTime();
     if (!isNaN(t)) return t;
@@ -14,7 +14,7 @@ export function getMvpVotingDeadline(match: MatchItem): number {
     const t = new Date(match.updatedAt).getTime();
     if (!isNaN(t)) return t + 60 * 1000;
   }
-  return Date.now() + 60 * 1000;
+  return fallbackNowMs + 60 * 1000;
 }
 
 /**
@@ -24,7 +24,7 @@ export function getMvpVotingTimeLeftSeconds(match: MatchItem, nowMs: number = Da
   if (match.status !== 'FINISHED' && !match.mvpWinner) {
     return 60;
   }
-  const deadline = getMvpVotingDeadline(match);
+  const deadline = getMvpVotingDeadline(match, nowMs);
   const diffMs = deadline - nowMs;
   return Math.max(0, Math.floor(diffMs / 1000));
 }
