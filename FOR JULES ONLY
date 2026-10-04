@@ -5,7 +5,6 @@
 
 [개선해야 할 부분: 보안 (제일 급함)]
 
-- 관리자 비밀번호가 클라이언트 코드에 그대로 박혀 있음 (AuthModal.tsx의 adminPw 비교). 공개 레포라 누구나 볼 수 있으니 즉시 교체하고 코드에서 제거해야 함
 - 로그인 세션이 localStorage의 JSON 그대로라서, role을 admin으로 바꿔 넣으면 관리자 행세가 가능함. 서버 발급 토큰(서명된 세션)으로 바꿔야 함
 - firestore.rules가 거의 전부 allow read, write: if true 상태. 누구나 점수 수정, 유저 role 변경, 공지 작성이 가능함. 최소한 matches/users/system/app_documents 쓰기는 서버(Admin SDK)만 하도록 막아야 함
 - /api/groq가 인증도 요청 제한도 없음. 아무나 호출해서 Groq 키 한도를 소진할 수 있고 model, max_tokens도 클라이언트가 정함. 모델 고정, 토큰 상한, IP/학번별 rate limit, 로그인 사용자만 허용이 필요함
