@@ -87,6 +87,7 @@ import {
 import { parseStudentId } from './utils/studentIdParser';
 import { filterProfanity } from './utils/profanityFilter';
 import { getKSTNowParts } from './utils/kstTime';
+import { verifySavedSession, createSignedSession } from './utils/sessionToken';
 import { useOpenMeteoWeather } from './hooks/useOpenMeteoWeather';
 import { ShieldAlert, LogIn, Lock } from 'lucide-react';
 import { registerServiceWorker, checkAndTrigger15MinMatchNotifications } from './services/notificationService';
@@ -97,29 +98,61 @@ export default function App() {
     refreshIntervalMs: 60000
   });
 
-  // 1. Current User state
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => {
-    try {
-      const saved = localStorage.getItem('sangsan_current_user');
-      return saved ? JSON.parse(saved) : null;
-    } catch {
-      return null;
-    }
-  });
+  // 1. Current User state with session signature validation
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [isSessionRestored, setIsSessionRestored] = useState<boolean>(false);
 
-  const [currentRole, setCurrentRole] = useState<UserRole>(() => {
-    return currentUser?.role || 'student';
-  });
+  // Validate saved session signature on mount
+  useEffect(() => {
+    let isCancelled = false;
+    const restoreSession = async () => {
+      try {
+        const raw = localStorage.getItem('sangsan_current_user');
+        const validProfile = await verifySavedSession(raw);
+        if (!isCancelled) {
+          if (validProfile) {
+            setCurrentUser(validProfile);
+            setCurrentRole(validProfile.role);
+          } else if (raw) {
+            // Tampered or legacy session
+            console.warn('[Session] Saved session is invalid or tampered. Discarding session.');
+            localStorage.removeItem('sangsan_current_user');
+            setCurrentUser(null);
+            setCurrentRole('student');
+          }
+        }
+      } catch (err) {
+        if (!isCancelled) {
+          localStorage.removeItem('sangsan_current_user');
+          setCurrentUser(null);
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsSessionRestored(true);
+        }
+      }
+    };
+
+    restoreSession();
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
+  const [currentRole, setCurrentRole] = useState<UserRole>('student');
 
   // 2. Navigation & UI state: Show login page by default on first entry
-  const [activeTab, setActiveTabState] = useState<MainNavTab>(() => {
-    try {
-      const saved = localStorage.getItem('sangsan_current_user');
-      return saved ? 'home' : 'login';
-    } catch {
-      return 'login';
+  const [activeTab, setActiveTabState] = useState<MainNavTab>('login');
+
+  useEffect(() => {
+    if (isSessionRestored) {
+      if (currentUser) {
+        setActiveTabState('home');
+      } else {
+        setActiveTabState('login');
+      }
     }
-  });
+  }, [isSessionRestored, currentUser]);
 
   const protectedTabs = useMemo<Set<MainNavTab>>(() => new Set([
     'home',
@@ -358,10 +391,11 @@ export default function App() {
   }, [currentUser?.studentId]);
 
   // Handle Login & Logout
-  const handleLoginSuccess = (user: UserProfile) => {
+  const handleLoginSuccess = async (user: UserProfile) => {
     setCurrentUser(user);
     setCurrentRole(user.role);
-    localStorage.setItem('sangsan_current_user', JSON.stringify(user));
+    const signedSession = await createSignedSession(user);
+    localStorage.setItem('sangsan_current_user', JSON.stringify(signedSession));
     setActiveTabState('home');
   };
 

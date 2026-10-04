@@ -1,4 +1,5 @@
 import { UserProfile } from '../src/types';
+import { createSignedSessionToken } from './sessionService';
 
 interface AdminLoginRequest {
   adminId?: string;
@@ -10,6 +11,7 @@ interface AdminLoginResult {
   body: {
     success: boolean;
     profile?: UserProfile;
+    token?: string;
     message?: string;
   };
 }
@@ -49,11 +51,14 @@ export function handleAdminLogin(input: AdminLoginRequest): AdminLoginResult {
       lastLogin: new Date().toISOString()
     };
 
+    const token = createSignedSessionToken(adminProfile);
+
     return {
       status: 200,
       body: {
         success: true,
-        profile: adminProfile
+        profile: adminProfile,
+        token
       }
     };
   }

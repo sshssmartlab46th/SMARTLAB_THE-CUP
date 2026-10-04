@@ -3,6 +3,7 @@ import { parseStudentId } from '../../utils/studentIdParser';
 import { UserProfile, getUserRoles } from '../../types';
 import { checkStudentIdExists, createAccount, getUserProfile, syncUserProfile } from '../../services/firebaseService';
 import { verifyAdminCredentials } from '../../services/adminAuthService';
+import { createSignedSession } from '../../utils/sessionToken';
 import { SangsanLogo } from '../common/SangsanLogo';
 import { SmartlabLogo } from '../common/SmartlabLogo';
 import { 
@@ -182,7 +183,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onCancel }) => 
     } catch (e) {
       console.warn('Sync profile fallback:', e);
     }
-    localStorage.setItem('sangsan_current_user', JSON.stringify(profile));
+    const signedSession = await createSignedSession(profile);
+    localStorage.setItem('sangsan_current_user', JSON.stringify(signedSession));
     setIsSubmitting(false);
     onSuccess(profile);
   };
@@ -250,7 +252,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onCancel }) => 
         } catch (e) {
           console.warn('Sync profile fallback:', e);
         }
-        localStorage.setItem('sangsan_current_user', JSON.stringify(updatedProfile));
+        const signedSession = await createSignedSession(updatedProfile);
+        localStorage.setItem('sangsan_current_user', JSON.stringify(signedSession));
         onSuccess(updatedProfile);
         return;
       }
@@ -344,7 +347,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onCancel }) => 
         }
       }
 
-      localStorage.setItem('sangsan_current_user', JSON.stringify(pendingProfile));
+      const signedSession = await createSignedSession(pendingProfile);
+      localStorage.setItem('sangsan_current_user', JSON.stringify(signedSession));
       setIsSubmitting(false);
       setShowConfirmModal(false);
       onSuccess(pendingProfile);
@@ -365,7 +369,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onCancel }) => 
       } catch (e2) {
         console.warn('syncUserProfile fallback:', e2);
       }
-      localStorage.setItem('sangsan_current_user', JSON.stringify(pendingProfile));
+      const signedSession = await createSignedSession(pendingProfile);
+      localStorage.setItem('sangsan_current_user', JSON.stringify(signedSession));
       setIsSubmitting(false);
       setShowConfirmModal(false);
       onSuccess(pendingProfile);
@@ -394,7 +399,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onCancel }) => 
         } catch (e) {
           console.warn('Admin profile sync fallback:', e);
         }
-        localStorage.setItem('sangsan_current_user', JSON.stringify(res.profile));
+        const signedSession = await createSignedSession(res.profile, res.token);
+        localStorage.setItem('sangsan_current_user', JSON.stringify(signedSession));
         onSuccess(res.profile);
       } else {
         setErrorMessage(res.message || '관리자 아이디 또는 비밀번호가 일치하지 않습니다.');
