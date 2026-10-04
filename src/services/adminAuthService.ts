@@ -3,6 +3,7 @@ import { UserProfile } from '../types';
 export interface AdminLoginResponse {
   success: boolean;
   profile?: UserProfile;
+  token?: string;
   message?: string;
 }
 
@@ -37,7 +38,8 @@ export async function verifyAdminCredentials(
     if (response.ok && data?.success) {
       return {
         success: true,
-        profile: data.profile
+        profile: data.profile,
+        token: data.token
       };
     }
 

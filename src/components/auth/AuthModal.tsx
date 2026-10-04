@@ -3,6 +3,7 @@ import { parseStudentId } from '../../utils/studentIdParser';
 import { UserProfile } from '../../types';
 import { checkStudentIdExists, createAccount, getUserProfile, syncUserProfile } from '../../services/firebaseService';
 import { verifyAdminCredentials } from '../../services/adminAuthService';
+import { createSignedSession } from '../../utils/sessionToken';
 import { SangsanLogo } from '../common/SangsanLogo';
 import { Shield, CheckCircle, AlertTriangle, LogIn, UserCheck, Key, HelpCircle } from 'lucide-react';
 import { LoginProblemModal } from './LoginProblemModal';
@@ -74,7 +75,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess, isOpen = true }
           lastLogin: new Date().toISOString()
         };
         await syncUserProfile(updatedProfile);
-        localStorage.setItem('sangsan_current_user', JSON.stringify(updatedProfile));
+        const signedSession = await createSignedSession(updatedProfile);
+        localStorage.setItem('sangsan_current_user', JSON.stringify(signedSession));
         onSuccess(updatedProfile);
         return;
       }
@@ -123,8 +125,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess, isOpen = true }
         return;
       }
 
-      // Store in session/localStorage for passwordless continuous session
-      localStorage.setItem('sangsan_user_session', JSON.stringify(pendingProfile));
+      const signedSession = await createSignedSession(pendingProfile);
+      localStorage.setItem('sangsan_current_user', JSON.stringify(signedSession));
       setShowConfirmModal(false);
       onSuccess(pendingProfile);
     } catch (err) {
@@ -144,7 +146,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess, isOpen = true }
     try {
       const res = await verifyAdminCredentials(adminId, adminPw);
       if (res.success && res.profile) {
-        localStorage.setItem('sangsan_user_session', JSON.stringify(res.profile));
+        const signedSession = await createSignedSession(res.profile, res.token);
+        localStorage.setItem('sangsan_current_user', JSON.stringify(signedSession));
         onSuccess(res.profile);
       } else {
         setErrorMessage(res.message || '관리자 아이디 또는 비밀번호가 일치하지 않습니다.');
