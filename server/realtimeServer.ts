@@ -11,6 +11,7 @@ import { handleMvpVote } from './mvpHandler';
 import { MatchTimerService } from './timerService';
 import { CheerService, CheerState } from './cheerService';
 import { ReactionService, LiveReactionType } from './reactionService';
+import { WsRateLimiter } from './wsRateLimiter';
 
 // Firebase client SDK for reliable Firestore connection in any Node environment
 import { initializeApp as initClientApp, getApps as getClientApps } from 'firebase/app';
@@ -115,6 +116,12 @@ reactionService.setOnUpdateCallback(() => {
 const timerService = new MatchTimerService(currentMatches);
 timerService.setOnUpdateCallback(() => {
   hasPendingUpdates = true;
+});
+
+// Initialize WebSocket per-connection Rate Limiter (max 10 msgs / sec per connection)
+const wsRateLimiter = new WsRateLimiter<WebSocket>({
+  maxMessagesPerWindow: 10,
+  windowMs: 1000
 });
 
 // -------------------------------------------------------------
@@ -329,6 +336,11 @@ wss.on('connection', (ws) => {
 
   // 2. Handle incoming client events (cheers, reactions, sync requests)
   ws.on('message', (messageData) => {
+    if (!wsRateLimiter.consume(ws)) {
+      // Exceeded rate limit per connection: drop message to prevent spam/flooding
+      return;
+    }
+
     try {
       const data = JSON.parse(messageData.toString());
 
@@ -370,6 +382,10 @@ wss.on('connection', (ws) => {
 
   ws.on('error', (err) => {
     console.warn('[RealtimeServer] WebSocket client error:', err);
+  });
+
+  ws.on('close', () => {
+    wsRateLimiter.cleanup(ws);
   });
 });
 
