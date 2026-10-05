@@ -12,19 +12,22 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
-    // Users Collection (Student ID based registration & profile sync)
+    // Users Collection (Student ID based registration & profile sync - Server Admin SDK write only)
     match /users/{userId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if false;
     }
 
-    // Notices Collection (Public festival announcements)
+    // Notices Collection (Public festival announcements - Server Admin SDK write only)
     match /notices/{noticeId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if false;
     }
 
-    // Matches Collection (Competition schedules, live scores and timers)
+    // Matches Collection (Competition schedules, live scores and timers - Server Admin SDK write only)
     match /matches/{matchId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if false;
     }
 
     // Lineups Collection (Class competition lineups)
@@ -74,9 +77,10 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
-    // System & Festival Config Collection
+    // System & Festival Config Collection (Server Admin SDK write only)
     match /system/{docId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if false;
     }
 
     // MVP Votes Collection (경기 종료 후 MVP 투표 - document ID: matchId_voterStudentId)
@@ -104,9 +108,10 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
-    // App Documents (체육대회 규정집, 스마트랩 소개, 개인정보처리방침 등)
+    // App Documents (체육대회 규정집, 스마트랩 소개, 개인정보처리방침 등 - Server Admin SDK write only)
     match /app_documents/{docId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if false;
     }
   }
 }
