@@ -46,7 +46,18 @@ app.get('/api/health', (_req, res) => {
 // AI groq proxy endpoint
 app.post('/api/groq', async (req, res) => {
   try {
-    const result = await createGroqResponse(req.body || {});
+    const authHeader = req.headers.authorization;
+    const token =
+      typeof authHeader === 'string' && authHeader.startsWith('Bearer ')
+        ? authHeader.slice(7)
+        : (req.headers['x-session-token'] as string) || req.body?.token || req.body?.sessionToken;
+    const ip =
+      (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+      req.ip ||
+      req.socket.remoteAddress ||
+      '127.0.0.1';
+
+    const result = await createGroqResponse(req.body || {}, { token, ip });
     res.status(result.status).json(result.body);
   } catch (error) {
     console.error('[Groq] request failed:', error);
