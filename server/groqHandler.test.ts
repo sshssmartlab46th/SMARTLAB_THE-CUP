@@ -100,6 +100,41 @@ describe('Groq AI Proxy Handler Security & Logic', () => {
     expect(limitedRes.body.code).toBe('TOO_MANY_REQUESTS');
   });
 
+  it('enforces rate limits by IP address even across different user accounts', async () => {
+    const user2: UserProfile = {
+      ...sampleUser,
+      uid: 'user_30102',
+      studentId: '30102'
+    };
+    const token2 = createSignedSessionToken(user2);
+
+    const sharedIp = '203.0.113.5';
+
+    // 10 requests from user1 on sharedIp
+    for (let i = 0; i < 10; i++) {
+      const globalFetch = vi.fn().mockResolvedValue({
+        status: 200,
+        json: async () => ({ choices: [{ message: { content: '응답' } }] })
+      });
+      vi.stubGlobal('fetch', globalFetch);
+
+      const res = await createGroqResponse(
+        { messages: [{ role: 'user', content: `요청 ${i}` }] },
+        { token: validToken, ip: sharedIp }
+      );
+      expect(res.status).toBe(200);
+    }
+
+    // Next request from user2 on same sharedIp should be blocked by IP rate limit
+    const limitedRes = await createGroqResponse(
+      { messages: [{ role: 'user', content: '다른 학번 요청' }] },
+      { token: token2, ip: sharedIp }
+    );
+
+    expect(limitedRes.status).toBe(429);
+    expect(limitedRes.body.code).toBe('TOO_MANY_REQUESTS');
+  });
+
   it('locks unauthorized models to default text model (llama-3.3-70b-versatile)', async () => {
     let capturedBody: any = null;
 
