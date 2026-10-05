@@ -53,7 +53,17 @@ const groqApiPlugin = () => ({
           chunks.push(Buffer.from(chunk));
         }
         const input = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}');
-        const result = await createGroqResponse(input);
+        const authHeader = req.headers?.authorization;
+        const token =
+          typeof authHeader === 'string' && authHeader.startsWith('Bearer ')
+            ? authHeader.slice(7)
+            : (req.headers?.['x-session-token'] as string) || input?.token || input?.sessionToken;
+        const ip =
+          (req.headers?.['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+          req.socket?.remoteAddress ||
+          '127.0.0.1';
+
+        const result = await createGroqResponse(input, { token, ip });
         res.statusCode = result.status;
         res.setHeader('Content-Type', 'application/json');
         res.end(JSON.stringify(result.body));
