@@ -1,9 +1,3 @@
-[개선해야 할 부분: 보안 (제일 급함)]
-
-- firestore.rules가 거의 전부 allow read, write: if true 상태. 누구나 점수 수정, 유저 role 변경, 공지 작성이 가능함. 최소한 matches/users/system/app_documents 쓰기는 서버(Admin SDK)만 하도록 막아야 함
-- /api/groq가 인증도 요청 제한도 없음. 아무나 호출해서 Groq 키 한도를 소진할 수 있고 model, max_tokens도 클라이언트가 정함. 모델 고정, 토큰 상한, IP/학번별 rate limit, 로그인 사용자만 허용이 필요함
-- WebSocket 서버가 인증, Origin 체크, 연결당 메시지 제한이 없음. 응원 스팸 자체는 괜찮다고 했지만, 초당 수천 건이 들어오면 서버가 죽을 수 있으니 연결당 초당 N회 상한은 필요함
-
 [개선해야 할 부분: 아키텍처와 정리]
 
 - 문서와 코드가 서로 다른 스택을 말함. README는 Oracle VM/Vercel/Supabase/Gemini, 코드는 Cloud Run 주석/Firebase/Groq. package.json에 @supabase, @google/genai가 남아 있고 .env.example도 Supabase 변수임. 실제 쓰는 것만 남기고 정리 필요
@@ -30,7 +24,7 @@
 - 접근성: 글자 크기 조절, 색약 대응 색상, 다크모드 대비 점검
 - 대회 전 부하 테스트 (k6 등으로 WS 1,000 연결 실측)
 
-우선순위를 추천하면 이렇게 하는 게 좋아요. 1순위는 관리자 비밀번호 제거, Firestore 규칙, Groq 프록시 보호입니다. 2순위는 라인업 서버 측 공개 제어와 서버 기준 타이머, 3순위는 문서와 스택 정리 및 부하 테스트예요.
+우선순위를 추천하면 이렇게 하는 게 좋아요. 문서와 스택 정리 및 부하 테스트가 필요합니다.
 
 
 
