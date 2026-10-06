@@ -99,8 +99,8 @@ class RealtimeWsClient {
     const customWsUrl = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_WS_URL)
       || (typeof process !== 'undefined' && process.env?.VITE_WS_URL);
 
-    // Skip WS connection immediately on static/Vercel preview environments ONLY IF no custom VITE_WS_URL is provided
     if (!customWsUrl && this.isVercelEnvironment()) {
+      console.warn('[RealtimeWs] VITE_WS_URL is not configured for Vercel environment. Set VITE_WS_URL to connect to dedicated WebSocket server and prevent Firestore read quota exhaustion.');
       this.hasFailedOnce = true;
       this.notifyStatus(false);
       return;
