@@ -269,8 +269,8 @@ flowchart LR
 
 | 계층 (Layer) | 담당 인프라 | 대상 데이터 및 워크로드 | 제로 비용(Free-Tier) 방어 기법 |
 | :--- | :--- | :--- | :--- |
-| **Tier 1: 클라이언트 엣지** | React 19 + Vite Edge CDN | UI 렌더링, 축구 라인업 D&D, 로컬 상태 캐싱 | 정적 에셋 영구 캐싱, 지수 백오프 자동 재연결 |
-| **Tier 2: 실시간 고빈도 엔진** | Oracle Cloud Free-Tier VM (Node.js) | 실시간 점수(Live Score), 경기 타이머, 실시간 이모지, 날씨 위젯 | **HTTP 폴링 원천 배제**, 초당 수천 건 응원 클릭을 인메모리에서 1초 단위로 합산 전송 (DB 부하 99.8% 절감) |
+| **Tier 1: 클라이언트 엣지** | React 19 + Vercel / Vite Edge CDN | UI 렌더링, 축구 라인업 D&D, 로컬 상태 캐싱 | 정적 에셋 영구 캐싱, VITE_WS_URL 연동을 통한 웹소켓 직결 |
+| **Tier 2: 실시간 고빈도 엔진** | Dedicated WebSocket Server (OCI VM / Cloud Run / Node.js) | 실시간 점수(Live Score), 경기 타이머, 실시간 이모지, 날씨 위젯 | **HTTP 폴링 원천 배제**, VITE_WS_URL을 통해 Vercel 클라이언트와 전용 WebSocket 서버 간 실시간 통신 연동 |
 | **Tier 3: 트랜잭션 영구 저장소** | Firebase Firestore / Supabase | 학번 인증, 대진표, 라인업, 공지사항, 감사 로그, 문서 | 읽기/쓰기 쿼터 최소화, 이벤트 기반 비동기 영구 저장 |
 
 ### 🛡️ 4. 트래픽 폭주 방지 3대 핵심 수칙
@@ -319,19 +319,25 @@ flowchart LR
 </details>
 
 <details>
-<summary><b>Q6. 상대 반이 우리 반 축구 선발 명단을 미리 엿볼 수 있나요?</b></summary>
+<summary><b>Q6. Vercel 정적 웹 호스팅 환경에서 WebSocket 통신은 어떻게 설정하나요?</b></summary>
+<br>
+Vercel 정적 호스팅 환경(<code>vercel.app</code>)에서는 Serverless 특성상 전용 백엔드 WebSocket 서버 URL을 환경변수(<code>VITE_WS_URL</code>)로 지정하여 연결합니다. <code>VITE_WS_URL</code>을 설정하면 클라이언트가 Firestore 직접 구독으로 우회하지 않고 전용 WebSocket 서버와 실시간 통신을 수행하여 Firestore 읽기 한도 초과 문제를 원천 차단합니다.
+</details>
+
+<details>
+<summary><b>Q7. 상대 반이 우리 반 축구 선발 명단을 미리 엿볼 수 있나요?</b></summary>
 <br>
 불가능합니다. 반장이 라인업을 미리 저장해 두더라도, 서버에서 <b>경기 시작 정확히 5분 전</b>이 되기 전까지는 타 학급 클라이언트로 선수 명단 데이터를 전송하지 않습니다.
 </details>
 
 <details>
-<summary><b>Q7. 학번이나 이름을 잘못 입력하고 가입을 완료했습니다.</b></summary>
+<summary><b>Q8. 학번이나 이름을 잘못 입력하고 가입을 완료했습니다.</b></summary>
 <br>
 시스템 무결성을 위해 클라이언트에서는 임의 변경이 잠겨 있습니다. 대회 본부석의 총괄 관리자(<code>sshsgym</code>)에게 학번 수정을 요청하면 관리자 콘솔을 통해 즉시 정상화할 수 있습니다.
 </details>
 
 <details>
-<summary><b>Q8. 야외 대운동장의 날씨나 온열질환(열사병)은 어떻게 대비하나요?</b></summary>
+<summary><b>Q9. 야외 대운동장의 날씨나 온열질환(열사병)은 어떻게 대비하나요?</b></summary>
 <br>
 시스템 메인 화면에 <b>Open-Meteo 연동 실시간 대운동장 날씨 및 온열지수(WBGT) 위젯</b>이 탑재되어 있습니다. 기온, 체감온도, 열사병 위험도 단계를 실시간으로 안내하여 탈진 및 부상을 사전에 예방합니다.
 </details>
