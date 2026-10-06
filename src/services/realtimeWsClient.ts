@@ -72,10 +72,22 @@ class RealtimeWsClient {
     this.statusListeners.forEach((l) => l(connected));
   }
 
-  private isVercelEnvironment(): boolean {
+  public isVercelEnvironment(): boolean {
     if (typeof window === 'undefined') return false;
     const hostname = window.location.hostname;
     return hostname.includes('vercel.app') || hostname.includes('webcontainer') || hostname.includes('local-credentialless');
+  }
+
+  public getWsUrl(): string {
+    const envUrl = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_WS_URL)
+      || (typeof process !== 'undefined' && process.env?.VITE_WS_URL);
+    if (envUrl) {
+      return envUrl;
+    }
+    if (typeof window === 'undefined') return '';
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = window.location.host;
+    return `${protocol}//${host}`;
   }
 
   public initConnection() {
@@ -84,16 +96,17 @@ class RealtimeWsClient {
       return;
     }
 
-    // Skip WS connection immediately on static/Vercel preview environments
-    if (this.isVercelEnvironment()) {
+    const customWsUrl = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_WS_URL)
+      || (typeof process !== 'undefined' && process.env?.VITE_WS_URL);
+
+    // Skip WS connection immediately on static/Vercel preview environments ONLY IF no custom VITE_WS_URL is provided
+    if (!customWsUrl && this.isVercelEnvironment()) {
       this.hasFailedOnce = true;
       this.notifyStatus(false);
       return;
     }
 
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.host;
-    const wsUrl = `${protocol}//${host}`;
+    const wsUrl = this.getWsUrl();
 
     try {
       this.socket = new WebSocket(wsUrl);
