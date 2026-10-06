@@ -62,4 +62,36 @@ describe('realtimeWsClient', () => {
     realtimeWsClient.initConnection();
     expect(spyIsVercel).not.toHaveBeenCalled();
   });
+
+  it('should warn when VITE_WS_URL is missing in Vercel environment during initConnection', () => {
+    delete process.env.VITE_WS_URL;
+    if ((import.meta as any).env) {
+      delete (import.meta as any).env.VITE_WS_URL;
+    }
+
+    const origWindow = (globalThis as any).window;
+    (globalThis as any).window = {
+      location: {
+        protocol: 'https:',
+        host: 'test.vercel.app',
+        hostname: 'test.vercel.app'
+      }
+    };
+
+    const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(realtimeWsClient, 'isVercelEnvironment').mockReturnValue(true);
+
+    try {
+      realtimeWsClient.initConnection();
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[RealtimeWs] VITE_WS_URL is not configured for Vercel environment')
+      );
+    } finally {
+      if (origWindow === undefined) {
+        delete (globalThis as any).window;
+      } else {
+        (globalThis as any).window = origWindow;
+      }
+    }
+  });
 });
