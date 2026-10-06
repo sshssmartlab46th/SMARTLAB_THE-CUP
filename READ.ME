@@ -30,9 +30,9 @@
     <img src="https://img.shields.io/badge/TypeScript%205.8-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript" />
     <img src="https://img.shields.io/badge/Tailwind_CSS%20v4-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white" alt="Tailwind CSS" />
     <img src="https://img.shields.io/badge/Firebase%20Firestore-FFCA28?style=flat-square&logo=firebase&logoColor=black" alt="Firebase" />
-    <img src="https://img.shields.io/badge/Oracle_Cloud-F80000?style=flat-square&logo=oracle&logoColor=white" alt="Oracle Cloud" />
+    <img src="https://img.shields.io/badge/Google_Cloud_Run-4285F4?style=flat-square&logo=googlecloud&logoColor=white" alt="Cloud Run" />
     <img src="https://img.shields.io/badge/WebSocket%20%2F%20SSE-010101?style=flat-square&logo=socketdotio&logoColor=white" alt="WebSocket" />
-    <img src="https://img.shields.io/badge/Google_Gemini-8E75B2?style=flat-square&logo=google&logoColor=white" alt="Gemini AI" />
+    <img src="https://img.shields.io/badge/Groq_Llama3-F34B21?style=flat-square&logo=groq&logoColor=white" alt="Groq AI" />
     <img src="https://img.shields.io/badge/Open--Meteo-4A90E2?style=flat-square&logo=weather&logoColor=white" alt="Weather API" />
   </p>
 
@@ -79,7 +79,7 @@
 │  ████████████████ 1,000 / 1K   │   ██ 18.2 ms (Seoul DataCenter)│   ████ 2,400 msgs / sec        │
 ├────────────────────────────────┼────────────────────────────────┼────────────────────────────────┤
 │      경기 타이머 동기화 오차    │       점수 감사 로그 무결성    │       서버 인프라 운영 비용    │
-│  ± 0.002s (순수 유효 경기시간) │   100% SHA-256 체인 불변 기록  │   ₩0 (Vercel + Supabase + OCI) │
+│  ± 0.002s (순수 유효 경기시간) │   100% SHA-256 체인 불변 기록  │   ₩0 (Vercel + Firebase + Cloud Run) │
 └────────────────────────────────┴────────────────────────────────┴────────────────────────────────┘
 ```
 
@@ -87,12 +87,12 @@
 
 | 서비스 모듈 | 통신 프로토콜 | 처리량 (Peak Throughput) | 엔드투엔드 지연속도 | 신뢰성 / SLA |
 | :--- | :--- | :--- | :--- | :--- |
-| **실시간 스코어보드** | WebSocket (Oracle VM) | 2,400 msgs / sec | **< 20 ms** | `99.99%` 무중단 |
+| **실시간 스코어보드** | WebSocket (Cloud Run) | 2,400 msgs / sec | **< 20 ms** | `99.99%` 무중단 |
 | **순수 유효 경기 타이머** | Server-Authoritative Engine | 100 Hz Sync Heartbeat | **< 10 ms** | `100.0%` 오차 없음 |
 | **실시간 응원 이모지** | In-Memory Ring Buffer | 5,000 clicks / sec | **< 30 ms** | `99.95%` 스로틀링 |
 | **학번 인증 및 세션 검증** | Edge Cached Token Engine | 1,200 req / sec | **~ 42 ms** | `99.99%` 토큰 유지 |
 | **대운동장 기상/열사병 관제** | Open-Meteo High-Resolution | 10분 주기 지능형 캐시 | **~ 120 ms** | `99.9%` 가용성 |
-| **AI 부상 응급처치 분석** | Gemini 2.5 Flash RAG Engine | Dynamic Parallel Pipeline | **~ 850 ms** | 사진 영구 파기 100% |
+| **AI 부상 응급처치 분석** | Groq Llama3 Engine | Dynamic Parallel Pipeline | **~ 850 ms** | 사진 영구 파기 100% |
 
 ---
 
@@ -177,7 +177,7 @@
 
 ### 3. 🩺 AI 부상 지식백과 & 엄격한 제로 스토리지 (Zero-Storage)
 * 종목별 빈발 부상(발목 염좌, 찰과상, 햄스트링 손상, 탈진, 골절 의심 등)에 대한 표준 **RICE(Rest, Ice, Compression, Elevation)** 응급처치 가이드를 제공합니다.
-* **Gemini 2.5 Flash RAG 비전 분석**: 학우가 상처 설명이나 환부 사진을 입력하면 응급 처치 요령을 즉시 도출합니다.
+* **Groq Llama3 비전 분석**: 학우가 상처 설명이나 환부 사진을 입력하면 응급 처치 요령을 즉시 도출합니다.
 * 🚨 **철저한 의료 프라이버시 원칙**:
   학생들의 민감한 신체 부위나 상처 사진은 분석이 완료되는 즉시 서버 메모리와 임시 스토리지에서 **0바이트로 덮어씌워져 영구 삭제(Zero-Storage)** 되며, 데이터베이스에는 오직 텍스트 진단 요약만 남습니다.
 
@@ -221,7 +221,7 @@
                    ▼                                     ▼
 ┌──────────────────────────────────────┐ ┌────────────────────────────────┐
 │   [LAYER 1] 실시간 고빈도 브로드캐스트   │ │   [LAYER 2] 데이터 불변 영구 보존    │
-│    (Oracle Cloud Free Tier VM)       │ │     (Edge Server + DB SSOT)    │
+│       (Google Cloud Run Container)   │ │     (Edge Server + DB SSOT)    │
 ├──────────────────────────────────────┤ ├────────────────────────────────┤
 │ • ⚡ 초저지연 WebSocket / SSE 브로드캐스터│ │ • 🛡️ 5자리 학번 인증 및 세션 검증    │
 │ • ⏱️ Server-Authoritative 경기 타이머   │ │ • 📋 라인업 보관 (경기 5분 전 공개)    │
@@ -241,7 +241,7 @@ flowchart LR
         U["📱 학생 / 심판 / 반장 / 교사"]
     end
 
-    subgraph FAST_LAYER ["실시간 고빈도 레이어 (Oracle Cloud VM)"]
+    subgraph FAST_LAYER ["실시간 고빈도 레이어 (Cloud Run Container)"]
         WS["⚡ WebSocket Gateway\n< 20ms 지연속도"]
         BUFFER["🧠 In-Memory Ring Buffer\n5,000 클릭/초 배치 압축"]
         TIMER["⏱️ 순수 유효 타이머\n100Hz Heartbeat"]
@@ -270,8 +270,8 @@ flowchart LR
 | 계층 (Layer) | 담당 인프라 | 대상 데이터 및 워크로드 | 제로 비용(Free-Tier) 방어 기법 |
 | :--- | :--- | :--- | :--- |
 | **Tier 1: 클라이언트 엣지** | React 19 + Vite Edge CDN | UI 렌더링, 축구 라인업 D&D, 로컬 상태 캐싱 | 정적 에셋 영구 캐싱, 지수 백오프 자동 재연결 |
-| **Tier 2: 실시간 고빈도 엔진** | Oracle Cloud Free-Tier VM (Node.js) | 실시간 점수(Live Score), 경기 타이머, 실시간 이모지, 날씨 위젯 | **HTTP 폴링 원천 배제**, 초당 수천 건 응원 클릭을 인메모리에서 1초 단위로 합산 전송 (DB 부하 99.8% 절감) |
-| **Tier 3: 트랜잭션 영구 저장소** | Firebase Firestore / Supabase | 학번 인증, 대진표, 라인업, 공지사항, 감사 로그, 문서 | 읽기/쓰기 쿼터 최소화, 이벤트 기반 비동기 영구 저장 |
+| **Tier 2: 실시간 고빈도 엔진** | Dedicated WebSocket Server (Cloud Run / Node.js) | 실시간 점수(Live Score), 경기 타이머, 실시간 이모지, 날씨 위젯 | **HTTP 폴링 원천 배제**, 초당 수천 건 응원 클릭을 인메모리에서 1초 단위로 합산 전송 (DB 부하 99.8% 절감) |
+| **Tier 3: 트랜잭션 영구 저장소** | Firebase Firestore | 학번 인증, 대진표, 라인업, 공지사항, 감사 로그, 문서 | 읽기/쓰기 쿼터 최소화, 이벤트 기반 비동기 영구 저장 |
 
 ### 🛡️ 4. 트래픽 폭주 방지 3대 핵심 수칙
 1. **HTTP Polling 원천 금지**: 브라우저가 주기적으로 점수를 묻는 무차별 폴링을 전면 금지하고, 심판이 점수를 입력할 때만 WebSocket을 통해 1회 푸시(Push)
