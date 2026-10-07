@@ -23,7 +23,7 @@ export class MatchTimerService {
   private dbInstance: any = null;
   private tickInterval: NodeJS.Timeout | null = null;
   private flushInterval: NodeJS.Timeout | null = null;
-  private onUpdateCallback?: () => void;
+  private onUpdateCallback?: (matchId?: string) => void;
 
   constructor(matchesMap: Map<string, MatchTimerState>) {
     this.matchesMap = matchesMap;
@@ -33,7 +33,7 @@ export class MatchTimerService {
     this.dbInstance = db;
   }
 
-  public setOnUpdateCallback(cb: () => void) {
+  public setOnUpdateCallback(cb: (matchId?: string) => void) {
     this.onUpdateCallback = cb;
   }
 
@@ -103,6 +103,9 @@ export class MatchTimerService {
         if (match.elapsedSeconds !== newElapsed) {
           match.elapsedSeconds = newElapsed;
           updatedAny = true;
+          if (this.onUpdateCallback) {
+            this.onUpdateCallback(match.id);
+          }
         }
       }
     }

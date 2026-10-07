@@ -63,6 +63,52 @@ describe('realtimeWsClient', () => {
     expect(spyIsVercel).not.toHaveBeenCalled();
   });
 
+  it('should process BATCH_UPDATE diffs and update cached matches incrementally', () => {
+    const listener = vi.fn();
+    realtimeWsClient.subscribeMatches(listener);
+
+    const handleMessage = (realtimeWsClient as any).handleIncomingMessage.bind(realtimeWsClient);
+
+    // Initial full state with 2 matches
+    handleMessage({
+      type: 'INITIAL_STATE',
+      matches: [
+        { id: 'm1', sport: 'soccer', homeTeam: 'A', awayTeam: 'B' },
+        { id: 'm2', sport: 'basketball', homeTeam: 'C', awayTeam: 'D' }
+      ]
+    });
+
+    expect(listener).toHaveBeenLastCalledWith([
+      { id: 'm1', sport: 'soccer', homeTeam: 'A', awayTeam: 'B' },
+      { id: 'm2', sport: 'basketball', homeTeam: 'C', awayTeam: 'D' }
+    ]);
+
+    // Batch update with only m1 updated
+    handleMessage({
+      type: 'BATCH_UPDATE',
+      matches: [
+        { id: 'm1', sport: 'soccer', homeTeam: 'A', awayTeam: 'B', homeScore: 1 }
+      ]
+    });
+
+    expect(listener).toHaveBeenLastCalledWith([
+      { id: 'm1', sport: 'soccer', homeTeam: 'A', awayTeam: 'B', homeScore: 1 },
+      { id: 'm2', sport: 'basketball', homeTeam: 'C', awayTeam: 'D' }
+    ]);
+
+    // Batch update with m2 deleted
+    handleMessage({
+      type: 'BATCH_UPDATE',
+      matches: [
+        { id: 'm2', _deleted: true }
+      ]
+    });
+
+    expect(listener).toHaveBeenLastCalledWith([
+      { id: 'm1', sport: 'soccer', homeTeam: 'A', awayTeam: 'B', homeScore: 1 }
+    ]);
+  });
+
   it('should warn when VITE_WS_URL is missing in Vercel environment during initConnection', () => {
     delete process.env.VITE_WS_URL;
     if ((import.meta as any).env) {

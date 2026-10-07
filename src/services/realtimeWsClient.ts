@@ -180,10 +180,23 @@ class RealtimeWsClient {
 
   private handleIncomingMessage(msg: BatchMessage) {
     if (msg.type === 'INITIAL_STATE' || msg.type === 'FULL_SYNC' || msg.type === 'BATCH_UPDATE') {
-      // 1. Matches update
+      // 1. Matches update (Full sync vs Incremental diff)
       if (Array.isArray(msg.matches)) {
-        this.cachedMatches = msg.matches;
-        this.matchListeners.forEach((fn) => fn(msg.matches!));
+        if (msg.type === 'INITIAL_STATE' || msg.type === 'FULL_SYNC' || !this.cachedMatches) {
+          this.cachedMatches = msg.matches.filter((m: any) => !m._deleted);
+        } else {
+          // BATCH_UPDATE diff merging logic
+          const existingMap = new Map<string, MatchItem>(this.cachedMatches.map((m) => [m.id, m]));
+          msg.matches.forEach((item: any) => {
+            if (item._deleted) {
+              existingMap.delete(item.id);
+            } else if (item.id) {
+              existingMap.set(item.id, item as MatchItem);
+            }
+          });
+          this.cachedMatches = Array.from(existingMap.values());
+        }
+        this.matchListeners.forEach((fn) => fn(this.cachedMatches!));
       }
 
       // 2. Cheers map update
