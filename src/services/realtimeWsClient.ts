@@ -49,8 +49,35 @@ class RealtimeWsClient {
 
   constructor() {
     if (typeof window !== 'undefined') {
+      this.initNetworkListeners();
       this.initConnection();
     }
+  }
+
+  private initNetworkListeners() {
+    if (typeof window === 'undefined') return;
+
+    window.addEventListener('online', () => {
+      this.reconnectImmediately();
+    });
+
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+          this.reconnectImmediately();
+        }
+      });
+    }
+  }
+
+  public reconnectImmediately() {
+    if (typeof window === 'undefined') return;
+    if (this.socket && (this.socket.readyState === WebSocket.OPEN || this.socket.readyState === WebSocket.CONNECTING)) {
+      return;
+    }
+    clearTimeout(this.reconnectTimeout);
+    this.reconnectDelay = 1000;
+    this.initConnection();
   }
 
   public isWsActive(): boolean {
@@ -170,8 +197,8 @@ class RealtimeWsClient {
 
   private scheduleReconnect() {
     clearTimeout(this.reconnectTimeout);
-    // When socket is repeatedly unavailable, quiet down retry frequency to 60s
-    const delay = this.consecutiveFailures > 3 ? 60000 : this.reconnectDelay;
+    // Cap reconnect interval at maxReconnectDelay (30s max) for outdoor playground WiFi environment
+    const delay = Math.min(this.reconnectDelay, this.maxReconnectDelay);
     this.reconnectTimeout = setTimeout(() => {
       this.reconnectDelay = Math.min(this.reconnectDelay * 2, this.maxReconnectDelay);
       this.initConnection();

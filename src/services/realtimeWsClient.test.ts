@@ -140,4 +140,72 @@ describe('realtimeWsClient', () => {
       }
     }
   });
+
+  it('should cap reconnection delay at 30000ms even after multiple consecutive failures', () => {
+    vi.useFakeTimers();
+    const initSpy = vi.spyOn(realtimeWsClient, 'initConnection').mockImplementation(() => {});
+
+    // Set consecutive failures to high number (> 3)
+    (realtimeWsClient as any).consecutiveFailures = 10;
+    (realtimeWsClient as any).reconnectDelay = 60000; // maxReconnectDelay is 30000
+    (realtimeWsClient as any).scheduleReconnect();
+
+    // Advance timers by 29900ms - initConnection should not be called yet
+    vi.advanceTimersByTime(29900);
+    expect(initSpy).not.toHaveBeenCalled();
+
+    // Advance past 30000ms
+    vi.advanceTimersByTime(200);
+    expect(initSpy).toHaveBeenCalledTimes(1);
+
+    vi.useRealTimers();
+  });
+
+  it('should trigger reconnectImmediately when online or visibilitychange event occurs', () => {
+    const reconnectSpy = vi.spyOn(realtimeWsClient, 'reconnectImmediately').mockImplementation(() => {});
+
+    const listeners: Record<string, EventListener> = {};
+    const origWindow = (globalThis as any).window;
+    const origDoc = (globalThis as any).document;
+
+    const mockDoc = {
+      visibilityState: 'visible',
+      addEventListener: vi.fn((event: string, fn: EventListener) => {
+        listeners[event] = fn;
+      })
+    };
+
+    const mockWin = {
+      addEventListener: vi.fn((event: string, fn: EventListener) => {
+        listeners[event] = fn;
+      })
+    };
+
+    (globalThis as any).window = mockWin;
+    (globalThis as any).document = mockDoc;
+
+    try {
+      (realtimeWsClient as any).initNetworkListeners();
+
+      // Trigger online event
+      if (listeners['online']) {
+        listeners['online']({} as Event);
+        expect(reconnectSpy).toHaveBeenCalled();
+      }
+
+      reconnectSpy.mockClear();
+
+      // Trigger visibilitychange event when visible
+      if (listeners['visibilitychange']) {
+        listeners['visibilitychange']({} as Event);
+        expect(reconnectSpy).toHaveBeenCalled();
+      }
+    } finally {
+      if (origWindow === undefined) delete (globalThis as any).window;
+      else (globalThis as any).window = origWindow;
+
+      if (origDoc === undefined) delete (globalThis as any).document;
+      else (globalThis as any).document = origDoc;
+    }
+  });
 });
