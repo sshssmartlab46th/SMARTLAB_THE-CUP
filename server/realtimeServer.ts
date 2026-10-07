@@ -96,6 +96,7 @@ app.use(express.static(distPath));
 // In-Memory State & Buffer Management
 // -------------------------------------------------------------
 const currentMatches = new Map<string, any>();
+const changedMatchIds = new Set<string>();
 let currentCheersFeed: any[] = [];
 
 let hasPendingUpdates = false;
@@ -114,7 +115,10 @@ reactionService.setOnUpdateCallback(() => {
 
 // Initialize Server-Authoritative Timer Service
 const timerService = new MatchTimerService(currentMatches);
-timerService.setOnUpdateCallback(() => {
+timerService.setOnUpdateCallback((updatedMatchId) => {
+  if (updatedMatchId) {
+    changedMatchIds.add(updatedMatchId);
+  }
   hasPendingUpdates = true;
 });
 
@@ -209,6 +213,7 @@ async function setupFirestore() {
       snapshot.docChanges().forEach((change) => {
         if (change.type === 'removed') {
           currentMatches.delete(change.doc.id);
+          changedMatchIds.add(change.doc.id);
         } else {
           const matchData = {
             ...change.doc.data(),
@@ -216,6 +221,7 @@ async function setupFirestore() {
           };
           timerService.handleMatchUpdate(matchData);
           currentMatches.set(change.doc.id, matchData);
+          changedMatchIds.add(change.doc.id);
         }
       });
       hasPendingUpdates = true;
@@ -290,10 +296,17 @@ function broadcastBatch() {
     return;
   }
 
+  // Build diff of matches: only changed matches (or deleted indicators if needed)
+  const changedMatches = Array.from(changedMatchIds).map((id) => {
+    const match = currentMatches.get(id);
+    if (match) return match;
+    return { id, _deleted: true };
+  });
+
   const payload = JSON.stringify({
     type: 'BATCH_UPDATE',
     timestamp: Date.now(),
-    matches: Array.from(currentMatches.values()),
+    matches: changedMatches,
     cheers: cheerService.getCheersRecord(),
     cheersFeed: currentCheersFeed.slice(0, 30),
     reactions: reactionService.getReactionsRecord()
@@ -309,6 +322,7 @@ function broadcastBatch() {
     }
   });
 
+  changedMatchIds.clear();
   hasPendingUpdates = false;
 }
 
