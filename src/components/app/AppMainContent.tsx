@@ -1,5 +1,6 @@
 import React from 'react';
 import { AppData } from '../../hooks/useAppData';
+import { OfflineFallbackPage } from '../pages/OfflineFallbackPage';
 import {
   LoginPage,
   NoticesPage,
@@ -61,8 +62,23 @@ export const AppMainContent: React.FC<AppMainContentProps> = ({ appData }) => {
     handleSendReaction,
     cheersFeed,
     isSubmittingCheer,
-    handleSubmitCheerMessage
+    handleSubmitCheerMessage,
+    offlineFallback
   } = appData;
+
+  // Render Offline Fallback Page if tab is fallback or if offline fallback mode is triggered
+  if (activeTab === 'fallback' || offlineFallback.isFallbackActive) {
+    return (
+      <main className="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6 pb-20 md:pb-6">
+        <OfflineFallbackPage
+          snapshot={offlineFallback.snapshot}
+          onRetryConnection={offlineFallback.retryConnection}
+          onExitFallbackMode={() => offlineFallback.setIsManualFallback(false)}
+          isOnline={offlineFallback.isOnline}
+        />
+      </main>
+    );
+  }
 
   return (
     <main className="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6 pb-20 md:pb-6">

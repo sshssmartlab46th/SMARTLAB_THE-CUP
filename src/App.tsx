@@ -22,7 +22,8 @@ export default function App() {
     activeNotice,
     setSelectedNoticeForPopup,
     userReminders,
-    handleLogout
+    handleLogout,
+    offlineFallback
   } = appData;
 
   // Emergency lockdown check
@@ -74,6 +75,8 @@ export default function App() {
         onOpenInjuries={() => navigateTo('injury')}
         onOpenAdminConsole={() => navigateTo('admin')}
         onLogout={handleLogout}
+        isFallbackActive={offlineFallback.isFallbackActive}
+        onToggleFallback={offlineFallback.toggleManualFallback}
       />
 
       {/* 2. Notice Ticker with Click-to-Popup */}

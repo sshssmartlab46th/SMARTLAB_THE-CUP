@@ -35,6 +35,7 @@ import { filterProfanity } from '../utils/profanityFilter';
 import { verifySavedSession, createSignedSession } from '../utils/sessionToken';
 import { useOpenMeteoWeather } from './useOpenMeteoWeather';
 import { registerServiceWorker, checkAndTrigger15MinMatchNotifications } from '../services/notificationService';
+import { useOfflineFallback } from './useOfflineFallback';
 
 export function useAppData() {
   // Real-time Weather & Atmospheric Visual Effects
@@ -470,6 +471,13 @@ export function useAppData() {
     return items;
   }, [matches]);
 
+  // Offline Fallback State Hook
+  const offlineFallback = useOfflineFallback({
+    matches,
+    notices,
+    standings: calculatedStandings
+  });
+
   // Currently live or next upcoming match
   const currentLiveMatch = useMemo(() => {
     if (activeMatchForLive) return activeMatchForLive;
@@ -530,7 +538,8 @@ export function useAppData() {
     handleSendReaction,
     calculatedStandings,
     currentLiveMatch,
-    activeNotice
+    activeNotice,
+    offlineFallback
   };
 }
 
