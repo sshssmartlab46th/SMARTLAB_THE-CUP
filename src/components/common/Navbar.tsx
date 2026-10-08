@@ -11,7 +11,8 @@ import {
   LogOut, 
   LogIn, 
   Eye, 
-  Sliders 
+  Sliders,
+  WifiOff
 } from 'lucide-react';
 
 export type MainNavTab = 
@@ -33,7 +34,8 @@ export type MainNavTab =
   | 'formation' 
   | 'admin'
   | 'roledashboard'
-  | 'weather';
+  | 'weather'
+  | 'fallback';
 
 export interface NavbarProps {
   currentRole: UserRole;
@@ -50,6 +52,8 @@ export interface NavbarProps {
   onOpenInjuries?: () => void;
   onOpenAdminConsole?: () => void;
   onLogout?: () => void;
+  isFallbackActive?: boolean;
+  onToggleFallback?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -65,7 +69,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenMessages,
   onOpenInjuries,
   onOpenAdminConsole,
-  onLogout
+  onLogout,
+  isFallbackActive,
+  onToggleFallback
 }) => {
   const isAdmin = hasUserRole(userProfile, 'admin');
   const isClassPresident = hasUserRole(userProfile, 'class_president');
@@ -161,6 +167,23 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Right Tools & Shortcuts */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          {/* Emergency Offline / Static Fallback Button */}
+          {onToggleFallback && (
+            <button
+              type="button"
+              onClick={onToggleFallback}
+              title={isFallbackActive ? '실시간 모드로 복귀' : '비상 읽기전용 폴백 모드 켜기'}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer border ${
+                isFallbackActive
+                  ? 'bg-amber-500 text-white border-amber-600 shadow-xs animate-pulse'
+                  : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-amber-50 hover:text-amber-600'
+              }`}
+            >
+              <WifiOff className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">{isFallbackActive ? '폴백 모드 중' : '비상 폴백'}</span>
+            </button>
+          )}
+
           {/* Simple Live Temperature Badge */}
           {propWeather && (
             <button
