@@ -44,6 +44,16 @@ describe('sportScoreUtils', () => {
       expect(unknown.sport).toBe('soccer');
       expect(unknown.scoreUnit).toBe('골');
     });
+
+    it('provides non-empty scoringOptions, quickDeltas, and undoReasons for all sports', () => {
+      const sports = ['soccer', 'basketball', 'dodgeball', 'tug_of_war', 'relay_male', 'relay_female'];
+      sports.forEach((s) => {
+        const meta = getSportScoreMeta(s);
+        expect(meta.scoringOptions.length).toBeGreaterThan(0);
+        expect(meta.quickDeltas.length).toBeGreaterThan(0);
+        expect(meta.undoReasons.length).toBeGreaterThan(0);
+      });
+    });
   });
 
   describe('getTimelineEventDisplay', () => {
@@ -214,6 +224,11 @@ describe('sportScoreUtils', () => {
     it('formats score action text for other sports with custom units', () => {
       const text = formatScoreActionText('tug_of_war', '1-2반', '팀A', 2, '세트 승리', 1);
       expect(text).toBe('1-2반 팀A 선수 2분 세트 승리 (+1승)');
+    });
+
+    it('handles undefined sport parameter and falls back to soccer formatting', () => {
+      const text = formatScoreActionText(undefined, '1-1반', '홍길동', 10, '필드골', 1);
+      expect(text).toBe('1-1반 홍길동 선수 10분 골 (필드골)');
     });
   });
 });

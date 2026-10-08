@@ -28,4 +28,7 @@ jobs:
         run: npm run lint
 
       - name: Run unit tests
-        run: npx vitest run
+        run: npm test
+
+      - name: Build project
+        run: npm run build
