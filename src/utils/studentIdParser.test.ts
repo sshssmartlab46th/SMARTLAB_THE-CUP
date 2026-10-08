@@ -102,6 +102,30 @@ describe('studentIdParser', () => {
       expect(res.classNum).toBe('11');
       expect(res.studentNum).toBe('20');
     });
+
+    it('handles student number boundary cases (01 min and 45 max)', () => {
+      const minRes = parseStudentId('10101');
+      expect(minRes.isValid).toBe(true);
+      expect(minRes.studentNum).toBe('01');
+
+      const maxRes = parseStudentId('31245');
+      expect(maxRes.isValid).toBe(true);
+      expect(maxRes.studentNum).toBe('45');
+    });
+
+    it('rejects student number 00 for normal students (handled as teacher or invalid if formatted incorrectly)', () => {
+      const res = parseStudentId('10100');
+      expect(res.isValid).toBe(true);
+      expect(res.isTeacher).toBe(true);
+      expect(res.defaultRole).toBe('teacher');
+    });
+
+    it('handles tabs and newlines in input string gracefully', () => {
+      const res = parseStudentId('\t20510\n');
+      expect(res.isValid).toBe(true);
+      expect(res.studentId).toBe('20510');
+      expect(res.gender).toBe('female');
+    });
   });
 
   describe('getRoleBadgeInfo', () => {

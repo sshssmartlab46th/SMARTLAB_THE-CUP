@@ -286,6 +286,33 @@ describe('Tournament Advancement Logic', () => {
       expect(winner).toEqual({ name: '1-4반', classId: '104' });
       expect(loser).toEqual({ name: '1-3반', classId: '103' });
     });
+
+    it('returns null for winner and loser when match is FINISHED in a draw without penalty shootout winner', () => {
+      const drawMatch: MatchItem = {
+        id: 'm-draw',
+        sport: 'soccer',
+        matchType: 'tournament',
+        title: '8강 3경기',
+        round: '8강 3경기',
+        homeTeam: '1-5반',
+        awayTeam: '1-6반',
+        homeClass: '105',
+        awayClass: '106',
+        homeScore: 2,
+        awayScore: 2,
+        status: 'FINISHED',
+        period: '경기 종료',
+        elapsedSeconds: 1200,
+        timerRunning: false,
+        startTime: '2026-09-15T11:00:00.000Z',
+        court: '대운동장 A',
+        events: [],
+        updatedAt: '2026-09-15T11:45:00.000Z'
+      };
+
+      expect(getMatchWinner(drawMatch)).toBeNull();
+      expect(getMatchLoser(drawMatch)).toBeNull();
+    });
   });
 
   describe('getRoundCompletionStatus', () => {
@@ -703,6 +730,14 @@ describe('Tournament Advancement Logic', () => {
       expect(result.logs.some((l) => l.includes('2-1반'))).toBe(true);
       expect(result.logs.some((l) => l.includes('2-4반'))).toBe(true);
       expect(updateDoc).toHaveBeenCalledTimes(2);
+    });
+
+    it('returns empty result when passed empty matches array', async () => {
+      const result = await syncCompletedTournamentRounds([]);
+      expect(result.updatedCount).toBe(0);
+      expect(result.logs).toHaveLength(0);
+      expect(result.pendingInfo).toHaveLength(0);
+      expect(updateDoc).not.toHaveBeenCalled();
     });
   });
 });
