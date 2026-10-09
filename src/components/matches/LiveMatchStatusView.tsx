@@ -19,6 +19,7 @@ import { GoalScorerModal } from './GoalScorerModal';
 import { PenaltyShootoutBoard } from './PenaltyShootoutBoard';
 import { STTCommentatorBroadcaster } from '../commentary/STTCommentatorBroadcaster';
 import { LiveCommentaryFeed } from '../commentary/LiveCommentaryFeed';
+import { OfflineScoreQueueBanner } from '../common/OfflineScoreQueueBanner';
 import { getSportScoreMeta, getTimelineEventDisplay } from '../../utils/sportScoreUtils';
 import { 
   Flame, 
@@ -351,6 +352,9 @@ export const LiveMatchStatusView: React.FC<LiveMatchStatusViewProps> = ({
           <span>경기 목록으로 돌아가기</span>
         </button>
       )}
+
+      {/* Offline Score Queue Banner */}
+      <OfflineScoreQueueBanner />
 
       {/* Toast notification */}
       {statusMessage && (

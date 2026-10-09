@@ -15,3 +15,4 @@ export * from './firebase/firebaseAuth';
 export * from './firebase/firebaseMatches';
 export * from './firebase/firebaseCheers';
 export * from './firebase/firebaseNotices';
+export * from './offlineScoreQueue';
