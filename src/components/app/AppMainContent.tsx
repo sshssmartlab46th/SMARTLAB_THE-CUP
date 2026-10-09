@@ -41,6 +41,7 @@ export const AppMainContent: React.FC<AppMainContentProps> = ({ appData }) => {
     notices,
     setSelectedNoticeForPopup,
     matches,
+    setMatches,
     selectedSport,
     setSelectedSport,
     userReminders,
@@ -187,6 +188,7 @@ export const AppMainContent: React.FC<AppMainContentProps> = ({ appData }) => {
           festivalConfig={festivalConfig}
           currentUser={currentUser}
           onNavigateToTab={(t) => navigateTo(t as any)}
+          onUpdateMatches={setMatches}
         />
       )}
 

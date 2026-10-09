@@ -206,7 +206,7 @@ export function OfflineFallbackPage({
                               ? 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
                               : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
                           }`}>
-                            {isLive ? 'LIVE (스냅샷)' : isFinished ? '경기 종료' : m.time || '예정'}
+                            {isLive ? 'LIVE (스냅샷)' : isFinished ? '경기 종료' : m.startTime || '예정'}
                           </span>
                         </div>
 
@@ -271,15 +271,15 @@ export function OfflineFallbackPage({
                           {idx + 1}
                         </span>
                         <span className="font-bold text-sm text-slate-800 dark:text-slate-100">
-                          {item.className || `${item.grade}-${item.classNum}반`}
+                          {item.classLabel || `${item.grade}-${item.classNum}반`}
                         </span>
                       </div>
                       <div className="flex items-center gap-4 text-xs font-medium">
                         <span className="text-slate-500 dark:text-slate-400">
-                          {item.wins || 0}승 {item.draws || 0}무 {item.losses || 0}패
+                          🥇 {item.goldCount || 0} 🥈 {item.silverCount || 0} 🥉 {item.bronzeCount || 0}
                         </span>
                         <span className="font-extrabold text-sm text-rose-600 dark:text-rose-400">
-                          {item.points ?? item.totalPoints ?? 0} P
+                          {item.points ?? 0} P
                         </span>
                       </div>
                     </div>
@@ -310,7 +310,7 @@ export function OfflineFallbackPage({
                         )}
                         {n.title}
                       </span>
-                      <span className="text-xs text-slate-400">{n.date || '대회 공지'}</span>
+                      <span className="text-xs text-slate-400">{n.createdAt || '대회 공지'}</span>
                     </div>
                     <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line">
                       {n.content}
