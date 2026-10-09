@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { UserProfile, UserRole, AuditLogEntry, FestivalConfig } from '../../types';
+import { UserProfile, UserRole, AuditLogEntry, FestivalConfig, MatchItem } from '../../types';
 import { 
   listenAllUsers, 
   deleteUser, 
@@ -10,22 +10,27 @@ import {
 } from '../../services/firebaseService';
 import { getRoleBadgeInfo } from '../../utils/studentIdParser';
 import { formatKSTDateTime } from '../../utils/kstTime';
-import { Shield, Users, FileText, ToggleLeft, ToggleRight, Trash2, Check, X, Search, ShieldAlert, HelpCircle, BookOpen } from 'lucide-react';
+import { Shield, Users, FileText, ToggleLeft, ToggleRight, Trash2, Check, X, Search, ShieldAlert, HelpCircle, BookOpen, PlayCircle } from 'lucide-react';
 import { AdminLoginInquiriesTab } from './AdminLoginInquiriesTab';
 import { AdminDocumentManagerTab } from './AdminDocumentManagerTab';
+import { AdminRehearsalTab } from './AdminRehearsalTab';
 
 interface AdminDashboardModalProps {
   currentUser: UserProfile;
   isOpen: boolean;
   onClose: () => void;
+  matches?: MatchItem[];
+  onUpdateMatches?: (updatedMatches: MatchItem[]) => void;
 }
 
 export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
   currentUser,
   isOpen,
-  onClose
+  onClose,
+  matches = [],
+  onUpdateMatches
 }) => {
-  const [activeTab, setActiveTab] = useState<'system' | 'users' | 'documents' | 'audit' | 'inquiries'>('system');
+  const [activeTab, setActiveTab] = useState<'system' | 'rehearsal' | 'users' | 'documents' | 'audit' | 'inquiries'>('system');
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
   const [festivalConfig, setFestivalConfig] = useState<FestivalConfig | null>(null);
@@ -134,6 +139,19 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
           >
             <ToggleRight className="w-3.5 h-3.5" />
             시스템 및 대회 개폐
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('rehearsal')}
+            className={`px-3.5 py-1.5 rounded-lg font-bold flex items-center gap-1.5 transition ${
+              activeTab === 'rehearsal'
+                ? 'bg-amber-500 text-white'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+            }`}
+          >
+            <PlayCircle className="w-3.5 h-3.5" />
+            대회 리허설 모드
           </button>
 
           <button
@@ -379,6 +397,14 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
             <div className="space-y-4">
               <AdminDocumentManagerTab currentUser={currentUser} />
             </div>
+          )}
+
+          {activeTab === 'rehearsal' && (
+            <AdminRehearsalTab
+              matches={matches}
+              onNotice={showNotice}
+              onUpdateMatches={onUpdateMatches}
+            />
           )}
 
           {activeTab === 'inquiries' && (
