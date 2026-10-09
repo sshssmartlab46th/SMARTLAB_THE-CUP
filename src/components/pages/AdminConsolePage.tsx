@@ -25,7 +25,8 @@ import {
   MessageSquare,
   HelpCircle,
   BookOpen,
-  Eye
+  Eye,
+  PlayCircle
 } from 'lucide-react';
 import { AdminLoginInquiriesTab } from '../admin/AdminLoginInquiriesTab';
 import { 
@@ -44,6 +45,7 @@ import { AdminBracketManagerTab } from '../admin/AdminBracketManagerTab';
 import { AdminPointsConfigTab } from '../admin/AdminPointsConfigTab';
 import { AdminNoticeManagerTab } from '../admin/AdminNoticeManagerTab';
 import { AdminDocumentManagerTab } from '../admin/AdminDocumentManagerTab';
+import { AdminRehearsalTab } from '../admin/AdminRehearsalTab';
 import { NoticeItem } from '../../types';
 
 interface AdminConsolePageProps {
@@ -55,6 +57,7 @@ interface AdminConsolePageProps {
   currentUser?: UserProfile | null;
   onRefresh?: () => void;
   onNavigateToTab?: (tab: string) => void;
+  onUpdateMatches?: (updatedMatches: MatchItem[]) => void;
 }
 
 export const AdminConsolePage: React.FC<AdminConsolePageProps> = ({
@@ -64,9 +67,10 @@ export const AdminConsolePage: React.FC<AdminConsolePageProps> = ({
   inquiries,
   festivalConfig,
   currentUser,
-  onNavigateToTab
+  onNavigateToTab,
+  onUpdateMatches
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'overview' | 'roster' | 'brackets' | 'notices' | 'documents' | 'points' | 'audit' | 'login_inquiries'>('roster');
+  const [activeSubTab, setActiveSubTab] = useState<'overview' | 'rehearsal' | 'roster' | 'brackets' | 'notices' | 'documents' | 'points' | 'audit' | 'login_inquiries'>('rehearsal');
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
   const [scoreRequests, setScoreRequests] = useState<ScoreApprovalRequestItem[]>([]);
   const [noticeMessage, setNoticeMessage] = useState<string | null>(null);
@@ -355,6 +359,7 @@ export const AdminConsolePage: React.FC<AdminConsolePageProps> = ({
         {/* Sub Navigation Tabs */}
         <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl overflow-x-auto">
           {[
+            { key: 'rehearsal', label: '대회 리허설(시뮬레이션)', icon: PlayCircle },
             { key: 'roster', label: '반별 학생 명단 & 엑셀', icon: Users },
             { key: 'brackets', label: '대진표 관리 (남녀 구분)', icon: Trophy },
             { key: 'notices', label: '전교 공지사항 관리', icon: Bell },
@@ -390,6 +395,15 @@ export const AdminConsolePage: React.FC<AdminConsolePageProps> = ({
           <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
           <span>{noticeMessage}</span>
         </div>
+      )}
+
+      {/* 0. Rehearsal Subtab: Tournament Simulation & Flow Rehearsal */}
+      {activeSubTab === 'rehearsal' && (
+        <AdminRehearsalTab
+          matches={matches}
+          onNotice={handleNotice}
+          onUpdateMatches={onUpdateMatches}
+        />
       )}
 
       {/* 1. Roster Subtab: Class-by-class Student Roster & Excel Download */}

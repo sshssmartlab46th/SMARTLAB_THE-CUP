@@ -149,6 +149,10 @@ export async function createMatch(matchData: Partial<MatchItem>): Promise<string
 
 export async function updateMatch(matchId: string, partial: Partial<MatchItem>): Promise<void> {
   if (!matchId) return;
+  // Skip Firestore network calls for local rehearsal simulation matches
+  if (matchId.startsWith('rehearsal-sim-')) {
+    return;
+  }
   try {
     ensureFirebaseAuth().catch(() => {});
     const docRef = doc(db, 'matches', matchId);
@@ -632,12 +636,24 @@ export async function syncCompletedTournamentRounds(
           const w1 = getMatchWinner(qf1);
           const w2 = getMatchWinner(qf2);
           if (w1 && (sf1.homeTeam !== w1.name || sf1.homeClass !== w1.classId)) {
-            await updateMatch(sf1.id, { homeTeam: w1.name, homeClass: w1.classId });
+            sf1.homeTeam = w1.name;
+            sf1.homeClass = w1.classId;
+            try {
+              await updateMatch(sf1.id, { homeTeam: w1.name, homeClass: w1.classId });
+            } catch (e) {
+              console.warn(`[Tournament Auto-Advance] Local match ${sf1.id} updated in memory:`, e);
+            }
             totalUpdated++;
             allLogs.push(`[${grade}학년 ${sportMetaLabel} 8강 전 경기 종료] 8강 1경기 승자 ${w1.name} → 4강 1경기(홈) 자동 진출`);
           }
           if (w2 && (sf1.awayTeam !== w2.name || sf1.awayClass !== w2.classId)) {
-            await updateMatch(sf1.id, { awayTeam: w2.name, awayClass: w2.classId });
+            sf1.awayTeam = w2.name;
+            sf1.awayClass = w2.classId;
+            try {
+              await updateMatch(sf1.id, { awayTeam: w2.name, awayClass: w2.classId });
+            } catch (e) {
+              console.warn(`[Tournament Auto-Advance] Local match ${sf1.id} updated in memory:`, e);
+            }
             totalUpdated++;
             allLogs.push(`[${grade}학년 ${sportMetaLabel} 8강 전 경기 종료] 8강 2경기 승자 ${w2.name} → 4강 1경기(원정) 자동 진출`);
           }
@@ -648,12 +664,24 @@ export async function syncCompletedTournamentRounds(
           const w3 = getMatchWinner(qf3);
           const w4 = getMatchWinner(qf4);
           if (w3 && (sf2.homeTeam !== w3.name || sf2.homeClass !== w3.classId)) {
-            await updateMatch(sf2.id, { homeTeam: w3.name, homeClass: w3.classId });
+            sf2.homeTeam = w3.name;
+            sf2.homeClass = w3.classId;
+            try {
+              await updateMatch(sf2.id, { homeTeam: w3.name, homeClass: w3.classId });
+            } catch (e) {
+              console.warn(`[Tournament Auto-Advance] Local match ${sf2.id} updated in memory:`, e);
+            }
             totalUpdated++;
             allLogs.push(`[${grade}학년 ${sportMetaLabel} 8강 전 경기 종료] 8강 3경기 승자 ${w3.name} → 4강 2경기(홈) 자동 진출`);
           }
           if (w4 && (sf2.awayTeam !== w4.name || sf2.awayClass !== w4.classId)) {
-            await updateMatch(sf2.id, { awayTeam: w4.name, awayClass: w4.classId });
+            sf2.awayTeam = w4.name;
+            sf2.awayClass = w4.classId;
+            try {
+              await updateMatch(sf2.id, { awayTeam: w4.name, awayClass: w4.classId });
+            } catch (e) {
+              console.warn(`[Tournament Auto-Advance] Local match ${sf2.id} updated in memory:`, e);
+            }
             totalUpdated++;
             allLogs.push(`[${grade}학년 ${sportMetaLabel} 8강 전 경기 종료] 8강 4경기 승자 ${w4.name} → 4강 2경기(원정) 자동 진출`);
           }
@@ -685,12 +713,24 @@ export async function syncCompletedTournamentRounds(
 
           // Final: SF1 Winner (Home) vs SF2 Winner (Away) - 3·4위전은 미진행 정책
           if (finalMatch && w1 && (finalMatch.homeTeam !== w1.name || finalMatch.homeClass !== w1.classId)) {
-            await updateMatch(finalMatch.id, { homeTeam: w1.name, homeClass: w1.classId });
+            finalMatch.homeTeam = w1.name;
+            finalMatch.homeClass = w1.classId;
+            try {
+              await updateMatch(finalMatch.id, { homeTeam: w1.name, homeClass: w1.classId });
+            } catch (e) {
+              console.warn(`[Tournament Auto-Advance] Local match ${finalMatch.id} updated in memory:`, e);
+            }
             totalUpdated++;
             allLogs.push(`[${grade}학년 ${sportMetaLabel} 4강 전 경기 종료] 4강 1경기 승자 ${w1.name} → 결승전(홈) 자동 진출`);
           }
           if (finalMatch && w2 && (finalMatch.awayTeam !== w2.name || finalMatch.awayClass !== w2.classId)) {
-            await updateMatch(finalMatch.id, { awayTeam: w2.name, awayClass: w2.classId });
+            finalMatch.awayTeam = w2.name;
+            finalMatch.awayClass = w2.classId;
+            try {
+              await updateMatch(finalMatch.id, { awayTeam: w2.name, awayClass: w2.classId });
+            } catch (e) {
+              console.warn(`[Tournament Auto-Advance] Local match ${finalMatch.id} updated in memory:`, e);
+            }
             totalUpdated++;
             allLogs.push(`[${grade}학년 ${sportMetaLabel} 4강 전 경기 종료] 4강 2경기 승자 ${w2.name} → 결승전(원정) 자동 진출`);
           }

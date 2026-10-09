@@ -519,6 +519,7 @@ export function useAppData() {
     selectedNoticeForPopup,
     setSelectedNoticeForPopup,
     matches,
+    setMatches,
     notices,
     cheersFeed,
     festivalConfig,
