@@ -44,6 +44,7 @@ import { collection, doc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { GoalScorerModal } from '../matches/GoalScorerModal';
 import { getSportScoreMeta } from '../../utils/sportScoreUtils';
+import { OfflineScoreQueueBanner } from '../common/OfflineScoreQueueBanner';
 
 interface RoleDashboardPageProps {
   currentUser: UserProfile | null;
@@ -349,6 +350,9 @@ export const RoleDashboardPage: React.FC<RoleDashboardPageProps> = ({
           <span>{toastMessage}</span>
         </div>
       )}
+
+      {/* Offline Score Queue Banner */}
+      <OfflineScoreQueueBanner />
 
       {/* Header Bar */}
       <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 sm:p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">

@@ -42,6 +42,7 @@ import {
   getKSTNowParts
 } from '../../utils/kstTime';
 import { getSportScoreMeta, formatScoreActionText } from '../../utils/sportScoreUtils';
+import { offlineScoreQueue, QueuedScoreAction } from '../offlineScoreQueue';
 
 export function listenMatches(callback: (matches: MatchItem[]) => void): () => void {
   let firestoreUnsub: (() => void) | null = null;
@@ -767,7 +768,7 @@ export async function syncAllTournamentAdvancements(
   return await syncCompletedTournamentRounds(allMatches);
 }
 
-export async function updateScoreWithAudit(
+export async function executeRawScoreUpdateWithAudit(
   match: MatchItem,
   newHomeScore: number,
   newAwayScore: number,
@@ -828,10 +829,43 @@ export async function updateScoreWithAudit(
   }
 }
 
-/**
- * Quick score step adjustment (+1, -1, +2, +3) with instant audit log
- */
-export async function quickAdjustScore(
+export async function updateScoreWithAudit(
+  match: MatchItem,
+  newHomeScore: number,
+  newAwayScore: number,
+  reason: string,
+  operator: { id: string; name: string; role: string },
+  newEventDesc?: string
+): Promise<void> {
+  const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+  if (isOffline) {
+    offlineScoreQueue.enqueueAction('SCORE_UPDATE', {
+      match,
+      newHomeScore,
+      newAwayScore,
+      reason,
+      operator,
+      newEventDesc
+    });
+    return;
+  }
+
+  try {
+    await executeRawScoreUpdateWithAudit(match, newHomeScore, newAwayScore, reason, operator, newEventDesc);
+  } catch (err) {
+    console.warn('[Firebase Matches] updateScoreWithAudit network error. Queueing offline:', err);
+    offlineScoreQueue.enqueueAction('SCORE_UPDATE', {
+      match,
+      newHomeScore,
+      newAwayScore,
+      reason,
+      operator,
+      newEventDesc
+    });
+  }
+}
+
+export async function executeRawQuickAdjustScore(
   match: MatchItem,
   team: 'home' | 'away',
   delta: number,
@@ -850,7 +884,7 @@ export async function quickAdjustScore(
     ? `[실시간 ${meta.scoreNoun}] ${teamName} ${deltaStr} 기록`
     : `[점수 정정] ${teamName} ${deltaStr} 차감/정정`;
 
-  await updateScoreWithAudit(
+  await executeRawScoreUpdateWithAudit(
     match,
     newHome,
     newAway,
@@ -860,7 +894,43 @@ export async function quickAdjustScore(
   );
 }
 
-export async function recordMatchGoalWithScorer(
+/**
+ * Quick score step adjustment (+1, -1, +2, +3) with instant audit log
+ */
+export async function quickAdjustScore(
+  match: MatchItem,
+  team: 'home' | 'away',
+  delta: number,
+  operator: { id: string; name: string; role: string },
+  customReason?: string
+): Promise<void> {
+  const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+  if (isOffline) {
+    offlineScoreQueue.enqueueAction('QUICK_ADJUST', {
+      match,
+      team,
+      delta,
+      operator,
+      customReason
+    });
+    return;
+  }
+
+  try {
+    await executeRawQuickAdjustScore(match, team, delta, operator, customReason);
+  } catch (err) {
+    console.warn('[Firebase Matches] quickAdjustScore network error. Queueing offline:', err);
+    offlineScoreQueue.enqueueAction('QUICK_ADJUST', {
+      match,
+      team,
+      delta,
+      operator,
+      customReason
+    });
+  }
+}
+
+export async function executeRawRecordMatchGoalWithScorer(
   match: MatchItem,
   team: 'home' | 'away',
   scorerName: string,
@@ -892,7 +962,7 @@ export async function recordMatchGoalWithScorer(
 
   const updatedEvents = [...(match.events || []), newEvent];
 
-  await updateScoreWithAudit(
+  await executeRawScoreUpdateWithAudit(
     { ...match, events: updatedEvents },
     newHome,
     newAway,
@@ -902,7 +972,58 @@ export async function recordMatchGoalWithScorer(
   );
 }
 
-export async function removeMatchEventWithAudit(
+export async function recordMatchGoalWithScorer(
+  match: MatchItem,
+  team: 'home' | 'away',
+  scorerName: string,
+  minute: number,
+  scoreType: string = '득점',
+  operator: { id: string; name: string; role: string },
+  points: number = 1,
+  eventType: TimelineEvent['type'] = 'GOAL'
+): Promise<void> {
+  const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+  if (isOffline) {
+    offlineScoreQueue.enqueueAction('RECORD_GOAL', {
+      match,
+      team,
+      scorerName,
+      minute,
+      scoreType,
+      operator,
+      points,
+      eventType
+    });
+    return;
+  }
+
+  try {
+    await executeRawRecordMatchGoalWithScorer(
+      match,
+      team,
+      scorerName,
+      minute,
+      scoreType,
+      operator,
+      points,
+      eventType
+    );
+  } catch (err) {
+    console.warn('[Firebase Matches] recordMatchGoalWithScorer network error. Queueing offline:', err);
+    offlineScoreQueue.enqueueAction('RECORD_GOAL', {
+      match,
+      team,
+      scorerName,
+      minute,
+      scoreType,
+      operator,
+      points,
+      eventType
+    });
+  }
+}
+
+export async function executeRawRemoveMatchEventWithAudit(
   match: MatchItem,
   eventId: string,
   revertScore: boolean,
@@ -940,7 +1061,7 @@ export async function removeMatchEventWithAudit(
     ? `[이벤트 삭제] ${targetEvent.minute}분 ${targetEvent.player || ''} ${targetEvent.description}${revertScore && pointsToRevert > 0 ? ` (스코어 ${pointsToRevert}${meta.scoreUnit} 차감 환원)` : ''}`
     : `[이벤트 삭제] ID ${eventId}`;
 
-  await updateScoreWithAudit(
+  await executeRawScoreUpdateWithAudit(
     { ...match, events: updatedEvents },
     newHome,
     newAway,
@@ -948,6 +1069,36 @@ export async function removeMatchEventWithAudit(
     operator,
     desc
   );
+}
+
+export async function removeMatchEventWithAudit(
+  match: MatchItem,
+  eventId: string,
+  revertScore: boolean,
+  operator: { id: string; name: string; role: string }
+): Promise<void> {
+  const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+  if (isOffline) {
+    offlineScoreQueue.enqueueAction('REMOVE_EVENT', {
+      match,
+      eventId,
+      revertScore,
+      operator
+    });
+    return;
+  }
+
+  try {
+    await executeRawRemoveMatchEventWithAudit(match, eventId, revertScore, operator);
+  } catch (err) {
+    console.warn('[Firebase Matches] removeMatchEventWithAudit network error. Queueing offline:', err);
+    offlineScoreQueue.enqueueAction('REMOVE_EVENT', {
+      match,
+      eventId,
+      revertScore,
+      operator
+    });
+  }
 }
 
 // -------------------------------------------------------------
@@ -1050,22 +1201,80 @@ export function listenScoreApprovals(callback: (requests: any[]) => void): () =>
   }
 }
 
+export async function executeRawSubmitScoreApprovalRequest(req: any): Promise<void> {
+  await ensureFirebaseAuth();
+  const id = req.id || `req-${Date.now()}`;
+  const docRef = doc(db, 'score_approvals', id);
+  await setDoc(docRef, sanitizeFirestorePayload({
+    ...req,
+    id,
+    status: req.status || 'PENDING',
+    createdAt: req.createdAt || new Date().toISOString()
+  }), { merge: true });
+}
+
 export async function submitScoreApprovalRequest(req: any): Promise<void> {
+  const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+  if (isOffline) {
+    offlineScoreQueue.enqueueAction('SUBMIT_SCORE_APPROVAL', { req });
+    return;
+  }
+
   try {
-    await ensureFirebaseAuth();
-    const id = req.id || `req-${Date.now()}`;
-    const docRef = doc(db, 'score_approvals', id);
-    await setDoc(docRef, sanitizeFirestorePayload({
-      ...req,
-      id,
-      status: req.status || 'PENDING',
-      createdAt: req.createdAt || new Date().toISOString()
-    }), { merge: true });
+    await executeRawSubmitScoreApprovalRequest(req);
   } catch (e) {
-    console.error('[Firebase] submitScoreApprovalRequest error:', e);
-    throw e;
+    console.error('[Firebase] submitScoreApprovalRequest error. Queueing offline:', e);
+    offlineScoreQueue.enqueueAction('SUBMIT_SCORE_APPROVAL', { req });
   }
 }
+
+// Bind offline score queue executor to raw score functions
+offlineScoreQueue.setExecutor(async (action: QueuedScoreAction) => {
+  switch (action.type) {
+    case 'SCORE_UPDATE':
+      await executeRawScoreUpdateWithAudit(
+        action.payload.match,
+        action.payload.newHomeScore,
+        action.payload.newAwayScore,
+        action.payload.reason,
+        action.payload.operator,
+        action.payload.newEventDesc
+      );
+      break;
+    case 'QUICK_ADJUST':
+      await executeRawQuickAdjustScore(
+        action.payload.match,
+        action.payload.team,
+        action.payload.delta,
+        action.payload.operator,
+        action.payload.customReason
+      );
+      break;
+    case 'RECORD_GOAL':
+      await executeRawRecordMatchGoalWithScorer(
+        action.payload.match,
+        action.payload.team,
+        action.payload.scorerName,
+        action.payload.minute,
+        action.payload.scoreType,
+        action.payload.operator,
+        action.payload.points,
+        action.payload.eventType
+      );
+      break;
+    case 'REMOVE_EVENT':
+      await executeRawRemoveMatchEventWithAudit(
+        action.payload.match,
+        action.payload.eventId,
+        action.payload.revertScore,
+        action.payload.operator
+      );
+      break;
+    case 'SUBMIT_SCORE_APPROVAL':
+      await executeRawSubmitScoreApprovalRequest(action.payload.req);
+      break;
+  }
+});
 
 export async function approveScoreRequest(
   requestId: string,
