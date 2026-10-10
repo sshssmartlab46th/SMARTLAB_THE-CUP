@@ -83,8 +83,8 @@ export function getMatchSummaryDetails(match: MatchItem): MatchSummaryDetails {
   const mvpWinner = match.mvpWinner
     ? match.mvpWinner
     : match.mvpCandidateIds && match.mvpCandidateIds.length > 0
-    ? match.mvpCandidateIds[0]
-    : '선정 완료';
+    ? '투표 진행 중'
+    : '미정';
 
   let dateText = '상산제 체육대회';
   if (match.updatedAt || match.startTime) {
@@ -269,67 +269,65 @@ export function drawMatchResultCardOnCanvas(canvas: HTMLCanvasElement, match: Ma
   }
 
   // Scorers Section
-  const scY = sbY + sbH + 30;
+  const scY = sbY + sbH + 25;
 
-  // Home Team Scorers
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'top';
-  ctx.fillStyle = '#cbd5e1';
-  ctx.font = 'bold 18px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-  ctx.fillText('⚽ 득점:', sbX + 20, scY);
+  // Helper to render team scorers cleanly
+  const renderTeamScorers = (
+    label: string,
+    scorers: TeamScorerInfo[],
+    xPos: number,
+    maxWidth: number
+  ) => {
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = '#cbd5e1';
+    ctx.font = 'bold 17px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillText(label, xPos, scY);
 
-  ctx.font = '16px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-  if (summary.homeScorers.length > 0) {
-    const homeScorerText = summary.homeScorers
-      .map((s) => `${s.player} ${s.details.join(' ')}`)
-      .join(', ');
-    ctx.fillStyle = '#f8fafc';
-    ctx.fillText(homeScorerText, sbX + 90, scY, sbW * 0.4);
-  } else {
-    ctx.fillStyle = '#64748b';
-    ctx.fillText('득점 기록 없음', sbX + 90, scY);
-  }
+    ctx.font = '15px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    if (scorers.length > 0) {
+      ctx.fillStyle = '#f8fafc';
+      let currentY = scY + 26;
+      scorers.slice(0, 3).forEach((s) => {
+        const text = `• ${s.player} (${s.details.join(', ')})`;
+        ctx.fillText(text, xPos, currentY, maxWidth);
+        currentY += 22;
+      });
+      if (scorers.length > 3) {
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText(`외 ${scorers.length - 3}명`, xPos, currentY, maxWidth);
+      }
+    } else {
+      ctx.fillStyle = '#64748b';
+      ctx.fillText('득점 기록 없음', xPos, scY + 26);
+    }
+  };
 
-  // Away Team Scorers
-  ctx.textAlign = 'left';
-  ctx.fillStyle = '#cbd5e1';
-  ctx.font = 'bold 18px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-  ctx.fillText('⚽ 득점:', sbX + sbW * 0.5 + 20, scY);
-
-  ctx.font = '16px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-  if (summary.awayScorers.length > 0) {
-    const awayScorerText = summary.awayScorers
-      .map((s) => `${s.player} ${s.details.join(' ')}`)
-      .join(', ');
-    ctx.fillStyle = '#f8fafc';
-    ctx.fillText(awayScorerText, sbX + sbW * 0.5 + 90, scY, sbW * 0.4);
-  } else {
-    ctx.fillStyle = '#64748b';
-    ctx.fillText('득점 기록 없음', sbX + sbW * 0.5 + 90, scY);
-  }
+  renderTeamScorers('⚽ 홈팀 득점', summary.homeScorers, sbX + 20, sbW * 0.45);
+  renderTeamScorers('⚽ 원정팀 득점', summary.awayScorers, sbX + sbW * 0.5 + 20, sbW * 0.45);
 
   // MVP Section Banner (Bottom Left/Center)
-  const mvpY = scY + 60;
+  const mvpY = sbY + sbH + 140;
   ctx.fillStyle = 'rgba(245, 158, 11, 0.15)';
   ctx.strokeStyle = 'rgba(245, 158, 11, 0.4)';
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.roundRect(sbX, mvpY, sbW * 0.6, 50, 12);
+  ctx.roundRect(sbX, mvpY, sbW * 0.58, 48, 12);
   ctx.fill();
   ctx.stroke();
 
   ctx.fillStyle = '#fbbf24';
-  ctx.font = 'bold 18px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+  ctx.font = 'bold 17px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
-  ctx.fillText(`🌟 경기 MVP: ${summary.mvpWinner}`, sbX + 20, mvpY + 25);
+  ctx.fillText(`🌟 경기 MVP: ${summary.mvpWinner}`, sbX + 20, mvpY + 24);
 
   // Footer Credit Banner (Bottom Right - MANDATORY RULE: made by SMARTLAB)
   ctx.fillStyle = '#94a3b8';
   ctx.font = 'bold 16px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'middle';
-  ctx.fillText(`made by SMARTLAB`, sbX + sbW, mvpY + 25);
+  ctx.fillText(`made by SMARTLAB`, sbX + sbW, mvpY + 24);
 }
 
 /**

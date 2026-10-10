@@ -107,6 +107,22 @@ describe('matchResultCardGenerator Utility', () => {
     expect(details.sportName).toBe('축구');
   });
 
+  it('handles MVP status correctly when voting is in progress or undecided', () => {
+    const votingMatch: MatchItem = {
+      ...sampleMatch,
+      mvpWinner: undefined,
+      mvpCandidateIds: ['cand-1', 'cand-2']
+    };
+    expect(getMatchSummaryDetails(votingMatch).mvpWinner).toBe('투표 진행 중');
+
+    const undecidedMatch: MatchItem = {
+      ...sampleMatch,
+      mvpWinner: undefined,
+      mvpCandidateIds: []
+    };
+    expect(getMatchSummaryDetails(undecidedMatch).mvpWinner).toBe('미정');
+  });
+
   it('formats match summary text correctly including made by SMARTLAB branding', () => {
     const formattedText = formatMatchSummaryText(sampleMatch);
 
