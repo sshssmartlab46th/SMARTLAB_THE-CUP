@@ -592,6 +592,15 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({
 
               <button
                 type="button"
+                onClick={() => handleTabClick('board')}
+                className="p-2.5 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 hover:bg-red-100 text-red-600 dark:text-red-400 font-bold flex items-center gap-2 transition cursor-pointer"
+              >
+                <Award className="w-3.5 h-3.5 text-red-500" />
+                <span>전광판 화면 (/board)</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={() => handleTabClick('rules')}
                 className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold flex items-center gap-2 transition cursor-pointer"
               >

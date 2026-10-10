@@ -48,8 +48,20 @@ export function useAppData() {
   const [isSessionRestored, setIsSessionRestored] = useState<boolean>(false);
   const [currentRole, setCurrentRole] = useState<UserRole>('student');
 
+  // Initial URL Path / Hash Check
+  const getInitialTabFromLocation = (): MainNavTab => {
+    if (typeof window !== 'undefined') {
+      const path = window.location.pathname;
+      const hash = window.location.hash;
+      if (path === '/board' || hash === '#board') {
+        return 'board';
+      }
+    }
+    return 'login';
+  };
+
   // Active Tab Navigation
-  const [activeTab, setActiveTabState] = useState<MainNavTab>('login');
+  const [activeTab, setActiveTabState] = useState<MainNavTab>(getInitialTabFromLocation);
 
   const protectedTabs = useMemo<Set<MainNavTab>>(() => new Set([
     'schedule',
@@ -69,8 +81,30 @@ export function useAppData() {
       setActiveTabState('login');
       return;
     }
+    if (typeof window !== 'undefined') {
+      if (tab === 'board') {
+        window.history.pushState({ tab: 'board' }, '', '/board');
+      } else if (window.location.pathname === '/board') {
+        window.history.pushState({ tab }, '', '/');
+      }
+    }
     setActiveTabState(tab);
   };
+
+  // Listen to popstate for browser URL navigation (/board)
+  useEffect(() => {
+    const handlePopState = () => {
+      if (typeof window !== 'undefined') {
+        const path = window.location.pathname;
+        const hash = window.location.hash;
+        if (path === '/board' || hash === '#board') {
+          setActiveTabState('board');
+        }
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   // Dark Mode Theme State
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {

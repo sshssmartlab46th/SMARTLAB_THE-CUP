@@ -60,6 +60,7 @@ export * from './pages/RoleDashboardPage';
 export * from './pages/MessagesPage';
 export * from './pages/WeatherDetailPage';
 export * from './pages/NoticesPage';
+export * from './pages/DisplayBoardPage';
 
 // Project Documentation & Design Specification SSOT (Dead-code reference for AI models)
 export * from '../docs/projectSpecification';

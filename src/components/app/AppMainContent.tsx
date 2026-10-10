@@ -19,6 +19,7 @@ import {
   LiveMatchStatusView,
   StandingsView,
   WeatherDetailPage,
+  DisplayBoardPage,
   WeatherWidget,
   SafetyGuideCard,
   TodayScheduleCard,
@@ -232,6 +233,16 @@ export const AppMainContent: React.FC<AppMainContentProps> = ({ appData }) => {
       {/* STANDINGS VIEW */}
       {activeTab === 'standings' && (
         <StandingsView standings={calculatedStandings as any} />
+      )}
+
+      {/* STADIUM DISPLAY BOARD VIEW (/board) */}
+      {activeTab === 'board' && (
+        <DisplayBoardPage
+          matches={matches}
+          standings={calculatedStandings as any}
+          cheersFeed={cheersFeed}
+          onBack={() => navigateTo('home')}
+        />
       )}
 
       {/* DEDICATED WEATHER DETAILS PAGE */}
