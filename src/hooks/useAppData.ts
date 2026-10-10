@@ -33,6 +33,7 @@ import {
 import { MainNavTab } from '../components/common/Navbar';
 import { filterProfanity } from '../utils/profanityFilter';
 import { verifySavedSession, createSignedSession } from '../utils/sessionToken';
+import { calculateClassStandings } from '../utils/standingsCalculator';
 import { useOpenMeteoWeather } from './useOpenMeteoWeather';
 import { registerServiceWorker, checkAndTrigger15MinMatchNotifications } from '../services/notificationService';
 import { useOfflineFallback } from './useOfflineFallback';
@@ -389,120 +390,9 @@ export function useAppData() {
     }
   };
 
-  // Calculated Standings (36 classes: 12 classes * 3 grades)
+  // Calculated Standings (36 classes: 12 classes * 3 grades) automatically aggregated
   const calculatedStandings = useMemo<ClassStandingItem[]>(() => {
-    if (matches.length === 0) {
-      return [];
-    }
-
-    const classMap: Record<string, { totalPoints: number; wins: number; draws: number; losses: number; gold: number; silver: number }> = {};
-
-    for (let g = 1; g <= 3; g++) {
-      for (let c = 1; c <= 12; c++) {
-        const classCode = `${g}${String(c).padStart(2, '0')}`;
-        classMap[classCode] = { totalPoints: 0, wins: 0, draws: 0, losses: 0, gold: 0, silver: 0 };
-      }
-    }
-
-    let pointsConfigMap: Record<string, { champion: number; runnerUp: number; winPerMatch: number; drawPerMatch: number; participation: number }> = {};
-    try {
-      const savedConfig = localStorage.getItem('sangsan_sport_points_config');
-      if (savedConfig) {
-        const parsedList = JSON.parse(savedConfig);
-        parsedList.forEach((cfg: any) => {
-          pointsConfigMap[cfg.sport] = cfg;
-        });
-      }
-    } catch {
-      // fallback
-    }
-
-    matches.forEach(m => {
-      const sportCfg = pointsConfigMap[m.sport] || {
-        champion: 500,
-        runnerUp: 300,
-        winPerMatch: 100,
-        drawPerMatch: 50,
-        participation: 50
-      };
-
-      if (m.homeClass && classMap[m.homeClass]) {
-        classMap[m.homeClass].totalPoints += sportCfg.participation || 0;
-      }
-      if (m.awayClass && classMap[m.awayClass]) {
-        classMap[m.awayClass].totalPoints += sportCfg.participation || 0;
-      }
-
-      if (m.status === 'FINISHED') {
-        const isFinal = m.round?.includes('결승') || m.title?.includes('결승');
-        if (m.homeScore > m.awayScore) {
-          if (m.homeClass && classMap[m.homeClass]) {
-            classMap[m.homeClass].wins += 1;
-            classMap[m.homeClass].totalPoints += isFinal ? sportCfg.champion : sportCfg.winPerMatch;
-            if (isFinal) classMap[m.homeClass].gold += 1;
-          }
-          if (m.awayClass && classMap[m.awayClass]) {
-            classMap[m.awayClass].losses += 1;
-            if (isFinal) {
-              classMap[m.awayClass].totalPoints += sportCfg.runnerUp;
-              classMap[m.awayClass].silver += 1;
-            }
-          }
-        } else if (m.awayScore > m.homeScore) {
-          if (m.awayClass && classMap[m.awayClass]) {
-            classMap[m.awayClass].wins += 1;
-            classMap[m.awayClass].totalPoints += isFinal ? sportCfg.champion : sportCfg.winPerMatch;
-            if (isFinal) classMap[m.awayClass].gold += 1;
-          }
-          if (m.homeClass && classMap[m.homeClass]) {
-            classMap[m.homeClass].losses += 1;
-            if (isFinal) {
-              classMap[m.homeClass].totalPoints += sportCfg.runnerUp;
-              classMap[m.homeClass].silver += 1;
-            }
-          }
-        } else {
-          if (m.homeClass && classMap[m.homeClass]) {
-            classMap[m.homeClass].draws += 1;
-            classMap[m.homeClass].totalPoints += sportCfg.drawPerMatch;
-          }
-          if (m.awayClass && classMap[m.awayClass]) {
-            classMap[m.awayClass].draws += 1;
-            classMap[m.awayClass].totalPoints += sportCfg.drawPerMatch;
-          }
-        }
-      }
-    });
-
-    const items = Object.entries(classMap).map(([cId, stats]) => {
-      const grade = cId.charAt(0);
-      const classNum = cId.slice(1);
-      const parsedNum = parseInt(classNum, 10);
-      return {
-        id: cId,
-        classId: cId,
-        className: `${grade}-${parsedNum}반`,
-        classLabel: `${grade}-${parsedNum}반`,
-        grade,
-        classNum: String(parsedNum),
-        rank: 1,
-        points: stats.totalPoints,
-        totalPoints: stats.totalPoints,
-        wins: stats.wins,
-        draws: stats.draws,
-        losses: stats.losses,
-        goldCount: stats.gold,
-        silverCount: stats.silver,
-        bronzeCount: 0
-      } as unknown as ClassStandingItem;
-    });
-
-    items.sort((a, b) => b.points - a.points);
-    items.forEach((it, idx) => {
-      it.rank = idx + 1;
-    });
-
-    return items;
+    return calculateClassStandings(matches);
   }, [matches]);
 
   // Offline Fallback State Hook
