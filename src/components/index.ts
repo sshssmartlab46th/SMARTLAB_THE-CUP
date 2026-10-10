@@ -35,6 +35,7 @@ export * from './injury/InjuryEncyclopediaModal';
 export * from './editor/GoogleDocsEditor';
 export * from './lineup/SoccerFormationBuilder';
 export * from './matches/MVPVotingModal';
+export * from './matches/MatchResultCardModal';
 export * from './matches/TournamentBracketView';
 export * from './matches/LiveMatchStatusView';
 export * from './matches/StandingsView';
