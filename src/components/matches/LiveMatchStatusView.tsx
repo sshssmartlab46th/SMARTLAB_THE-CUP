@@ -17,6 +17,7 @@ import {
 import { MVPVotingModal } from './MVPVotingModal';
 import { GoalScorerModal } from './GoalScorerModal';
 import { PenaltyShootoutBoard } from './PenaltyShootoutBoard';
+import { MatchResultCardModal } from './MatchResultCardModal';
 import { STTCommentatorBroadcaster } from '../commentary/STTCommentatorBroadcaster';
 import { LiveCommentaryFeed } from '../commentary/LiveCommentaryFeed';
 import { OfflineScoreQueueBanner } from '../common/OfflineScoreQueueBanner';
@@ -39,7 +40,8 @@ import {
   Play,
   Pause,
   Square,
-  Trash2
+  Trash2,
+  Share2
 } from 'lucide-react';
 
 interface LiveMatchStatusViewProps {
@@ -57,6 +59,7 @@ export const LiveMatchStatusView: React.FC<LiveMatchStatusViewProps> = ({
   const [cheerCounts, setCheerCounts] = useState<{ home: number; away: number }>({ home: 0, away: 0 });
   const [lineups, setLineups] = useState<ClassLineup[]>([]);
   const [showMvpModal, setShowMvpModal] = useState(false);
+  const [showResultCardModal, setShowResultCardModal] = useState(false);
   const [showScoreEditor, setShowScoreEditor] = useState(false);
   const [showGoalModal, setShowGoalModal] = useState(false);
   const [goalModalTeam, setGoalModalTeam] = useState<'home' | 'away'>('home');
@@ -636,14 +639,24 @@ export const LiveMatchStatusView: React.FC<LiveMatchStatusViewProps> = ({
           )}
 
           {match.status === 'FINISHED' && (
-            <button
-              type="button"
-              onClick={() => setShowMvpModal(true)}
-              className="px-4 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white flex items-center gap-1.5 transition shadow-xs ml-auto cursor-pointer"
-            >
-              <Trophy className="w-4 h-4" />
-              <span>{match.mvpWinner ? `MVP: ${match.mvpWinner}` : '실시간 MVP 투표 참여'}</span>
-            </button>
+            <div className="flex items-center gap-2 ml-auto">
+              <button
+                type="button"
+                onClick={() => setShowResultCardModal(true)}
+                className="px-3.5 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-1.5 transition shadow-xs cursor-pointer"
+              >
+                <Share2 className="w-3.5 h-3.5" />
+                <span>결과 카드 저장/공유</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowMvpModal(true)}
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white flex items-center gap-1.5 transition shadow-xs cursor-pointer"
+              >
+                <Trophy className="w-4 h-4" />
+                <span>{match.mvpWinner ? `MVP: ${match.mvpWinner}` : '실시간 MVP 투표 참여'}</span>
+              </button>
+            </div>
           )}
         </div>
 
@@ -996,6 +1009,15 @@ export const LiveMatchStatusView: React.FC<LiveMatchStatusViewProps> = ({
           </div>
         )}
       </div>
+
+      {/* Result Card Modal */}
+      {showResultCardModal && (
+        <MatchResultCardModal
+          isOpen={showResultCardModal}
+          onClose={() => setShowResultCardModal(false)}
+          match={match}
+        />
+      )}
 
       {/* MVP Modal */}
       {showMvpModal && (
