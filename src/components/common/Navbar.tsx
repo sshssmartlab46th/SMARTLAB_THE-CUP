@@ -22,6 +22,7 @@ export type MainNavTab =
   | 'live' 
   | 'standings' 
   | 'schedule' 
+  | 'board'
   | 'login' 
   | 'privacy' 
   | 'rules' 
@@ -114,7 +115,8 @@ export const Navbar: React.FC<NavbarProps> = ({
               { tab: 'notices', label: '공지사항' },
               { tab: 'schedule', label: '경기 일정' },
               { tab: 'live', label: '실시간 현황' },
-              { tab: 'standings', label: '학급 순위' }
+              { tab: 'standings', label: '학급 순위' },
+              { tab: 'board', label: '전광판' }
             ].map(t => {
               const isTabActive = activeTab === t.tab || (t.tab === 'schedule' && activeTab === 'bracket');
               return (
