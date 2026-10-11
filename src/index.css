@@ -103,13 +103,27 @@ html.font-scale-xlarge {
   color: #94a3b8 !important;
 }
 
+.dark .text-slate-600 {
+  color: #e2e8f0 !important;
+}
+
 .dark .border-slate-800 {
   border-color: #334155 !important; /* Clearer borders */
 }
 
+.dark .border-slate-700 {
+  border-color: #475569 !important;
+}
+
+/* Global Focus Outline for Keyboard Navigation Accessibility */
+:focus-visible {
+  outline: 2px solid #10b981 !important;
+  outline-offset: 2px !important;
+}
+
 /* Accessibility: Colorblind Friendly Palettes & High Contrast Overrides */
 
-/* Protanopia / Deuteranopia (Red-Green Colorblind Support) */
+/* Protanopia (Red-Blind Support) */
 html.cb-protanopia .bg-red-600,
 html.cb-protanopia .bg-red-500 {
   background-color: #2563eb !important; /* Replace ambiguous red with high-contrast royal blue */
@@ -131,6 +145,30 @@ html.cb-protanopia .bg-green-500 {
 html.cb-protanopia .text-emerald-600,
 html.cb-protanopia .text-emerald-500 {
   color: #b45309 !important;
+}
+
+/* Deuteranopia (Green-Blind Support) */
+html.cb-deuteranopia .bg-red-600,
+html.cb-deuteranopia .bg-red-500 {
+  background-color: #1d4ed8 !important; /* Deep sapphire blue */
+  color: #ffffff !important;
+}
+
+html.cb-deuteranopia .text-red-600,
+html.cb-deuteranopia .text-red-500 {
+  color: #2563eb !important;
+}
+
+html.cb-deuteranopia .bg-emerald-500,
+html.cb-deuteranopia .bg-emerald-600,
+html.cb-deuteranopia .bg-green-500 {
+  background-color: #ea580c !important; /* High-contrast orange-red */
+  color: #ffffff !important;
+}
+
+html.cb-deuteranopia .text-emerald-600,
+html.cb-deuteranopia .text-emerald-500 {
+  color: #c2410c !important;
 }
 
 /* Tritanopia (Blue-Yellow Colorblind Support) */
