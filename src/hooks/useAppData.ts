@@ -37,8 +37,11 @@ import { calculateClassStandings } from '../utils/standingsCalculator';
 import { useOpenMeteoWeather } from './useOpenMeteoWeather';
 import { registerServiceWorker, checkAndTrigger15MinMatchNotifications } from '../services/notificationService';
 import { useOfflineFallback } from './useOfflineFallback';
+import { useAccessibility } from './useAccessibility';
 
 export function useAppData() {
+  // Accessibility Hook (Font Scaling, Colorblind Mode)
+  const accessibility = useAccessibility();
   // Real-time Weather & Atmospheric Visual Effects
   const { weather, refreshing: weatherRefreshing, refetch: refetchWeather } = useOpenMeteoWeather({
     refreshIntervalMs: 60000
@@ -71,7 +74,6 @@ export function useAppData() {
     'messages',
     'suggestions',
     'injury',
-    'settings',
     'contact',
     'admin',
     'formation'
@@ -464,7 +466,8 @@ export function useAppData() {
     calculatedStandings,
     currentLiveMatch,
     activeNotice,
-    offlineFallback
+    offlineFallback,
+    accessibility
   };
 }
 

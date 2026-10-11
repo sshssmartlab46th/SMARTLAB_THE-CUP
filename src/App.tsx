@@ -41,6 +41,7 @@ export default function App() {
     { label: '공지사항 전체보기', onClick: () => navigateTo('notices') },
     { label: '개인정보처리방침', onClick: () => navigateTo('privacy') },
     { label: '체육대회 규정집', onClick: () => navigateTo('rules') },
+    { label: '환경설정 및 접근성', onClick: () => navigateTo('settings') },
     { label: '스마트랩 소개', onClick: () => navigateTo('smartlab') },
     { label: '문의하기', onClick: () => navigateTo('contact') }
   ];

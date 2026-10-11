@@ -162,6 +162,7 @@ export const AppMainContent: React.FC<AppMainContentProps> = ({ appData }) => {
           onRoleChange={setCurrentRole}
           isDarkMode={isDarkMode}
           onToggleDarkMode={() => setIsDarkMode(!isDarkMode)}
+          accessibility={appData.accessibility}
         />
       )}
 
