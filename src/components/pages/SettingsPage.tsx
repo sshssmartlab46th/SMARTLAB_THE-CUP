@@ -229,13 +229,14 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                   <Palette className="w-3.5 h-3.5 text-purple-500" />
                   색약 대응 색상 및 고대비 모드
                 </p>
-                <p className="text-[11px] text-slate-400">적록·황청 색약 시인성 보정 및 고대비 시각 테마 설정</p>
+                <p className="text-[11px] text-slate-400">적색약·녹색약·황청색약 시인성 보정 및 고대비 시각 테마 설정</p>
               </div>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-1">
               {[
                 { mode: 'off', label: '기본 색상' },
-                { mode: 'protanopia', label: '적록색약 보정' },
+                { mode: 'protanopia', label: '적색약 보정' },
+                { mode: 'deuteranopia', label: '녹색약 보정' },
                 { mode: 'tritanopia', label: '황청색약 보정' },
                 { mode: 'high-contrast', label: '고대비 모드' }
               ].map((m) => (
@@ -243,6 +244,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                   key={m.mode}
                   type="button"
                   onClick={() => accessibility?.setColorblindMode(m.mode as any)}
+                  aria-pressed={accessibility?.colorblindMode === m.mode}
                   className={`py-2 px-2 text-xs font-bold rounded-xl border transition cursor-pointer text-center ${
                     accessibility?.colorblindMode === m.mode
                       ? 'bg-purple-600 text-white dark:bg-purple-500 dark:text-slate-950 border-purple-600 shadow-xs'

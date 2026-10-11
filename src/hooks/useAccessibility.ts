@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 
 export type FontScale = 'normal' | 'large' | 'xlarge';
-export type ColorblindMode = 'off' | 'protanopia' | 'tritanopia' | 'high-contrast';
+export type ColorblindMode = 'off' | 'protanopia' | 'deuteranopia' | 'tritanopia' | 'high-contrast';
 
 const FONT_SCALE_KEY = 'sangsan_font_scale';
 const COLORBLIND_MODE_KEY = 'sangsan_colorblind_mode';
@@ -24,7 +24,7 @@ export function useAccessibility(): UseAccessibilityReturn {
   const [colorblindMode, setColorblindModeState] = useState<ColorblindMode>(() => {
     if (typeof window === 'undefined') return 'off';
     const saved = localStorage.getItem(COLORBLIND_MODE_KEY) as ColorblindMode | null;
-    return saved === 'protanopia' || saved === 'tritanopia' || saved === 'high-contrast' ? saved : 'off';
+    return saved === 'protanopia' || saved === 'deuteranopia' || saved === 'tritanopia' || saved === 'high-contrast' ? saved : 'off';
   });
 
   // Apply changes to document element & localStorage
@@ -35,7 +35,7 @@ export function useAccessibility(): UseAccessibilityReturn {
 
     // Remove existing font scale & colorblind classes
     root.classList.remove('font-scale-normal', 'font-scale-large', 'font-scale-xlarge');
-    root.classList.remove('cb-off', 'cb-protanopia', 'cb-tritanopia', 'cb-high-contrast');
+    root.classList.remove('cb-off', 'cb-protanopia', 'cb-deuteranopia', 'cb-tritanopia', 'cb-high-contrast');
 
     // Add new classes
     root.classList.add(`font-scale-${fontScale}`);
@@ -43,9 +43,9 @@ export function useAccessibility(): UseAccessibilityReturn {
 
     // Update style root variables if needed
     if (fontScale === 'large') {
-      root.style.fontSize = '17px';
+      root.style.fontSize = '17.5px';
     } else if (fontScale === 'xlarge') {
-      root.style.fontSize = '18.5px';
+      root.style.fontSize = '19px';
     } else {
       root.style.fontSize = '';
     }

@@ -25,17 +25,17 @@ describe('useAccessibility hook', () => {
     expect(document.documentElement.classList.contains('cb-off')).toBe(true);
   });
 
-  it('should restore saved values from localStorage on mount', () => {
+  it('should restore saved values from localStorage on mount including deuteranopia', () => {
     localStorage.setItem('sangsan_font_scale', 'large');
-    localStorage.setItem('sangsan_colorblind_mode', 'protanopia');
+    localStorage.setItem('sangsan_colorblind_mode', 'deuteranopia');
 
     const { result } = renderHook(() => useAccessibility());
 
     expect(result.current.fontScale).toBe('large');
-    expect(result.current.colorblindMode).toBe('protanopia');
+    expect(result.current.colorblindMode).toBe('deuteranopia');
     expect(document.documentElement.classList.contains('font-scale-large')).toBe(true);
-    expect(document.documentElement.classList.contains('cb-protanopia')).toBe(true);
-    expect(document.documentElement.style.fontSize).toBe('17px');
+    expect(document.documentElement.classList.contains('cb-deuteranopia')).toBe(true);
+    expect(document.documentElement.style.fontSize).toBe('17.5px');
   });
 
   it('should update font scale and document root classes/styles when setFontScale is called', () => {
@@ -48,7 +48,7 @@ describe('useAccessibility hook', () => {
     expect(result.current.fontScale).toBe('xlarge');
     expect(localStorage.getItem('sangsan_font_scale')).toBe('xlarge');
     expect(document.documentElement.classList.contains('font-scale-xlarge')).toBe(true);
-    expect(document.documentElement.style.fontSize).toBe('18.5px');
+    expect(document.documentElement.style.fontSize).toBe('19px');
 
     act(() => {
       result.current.setFontScale('normal');
@@ -61,6 +61,14 @@ describe('useAccessibility hook', () => {
 
   it('should update colorblind mode and document root classes when setColorblindMode is called', () => {
     const { result } = renderHook(() => useAccessibility());
+
+    act(() => {
+      result.current.setColorblindMode('deuteranopia');
+    });
+
+    expect(result.current.colorblindMode).toBe('deuteranopia');
+    expect(localStorage.getItem('sangsan_colorblind_mode')).toBe('deuteranopia');
+    expect(document.documentElement.classList.contains('cb-deuteranopia')).toBe(true);
 
     act(() => {
       result.current.setColorblindMode('tritanopia');
