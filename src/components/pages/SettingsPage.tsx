@@ -346,40 +346,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             </div>
           </div>
         </div>
-
-        {/* Role Switcher (Simulator / Tester) */}
-        <div className="p-5 rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs space-y-3">
-          <h3 className="font-bold text-sm text-slate-900 dark:text-white">
-            역할 뷰 신속 전환 (시뮬레이션)
-          </h3>
-          <p className="text-[11px] text-slate-400">
-            실시간 관제 및 대시보드 기능을 다양한 권한 관점에서 테스트할 수 있습니다.
-          </p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1">
-            {[
-              { role: 'student', label: '일반 학생 (홈 피드)' },
-              { role: 'class_president', label: '학급 반장 (라인업/포메이션)' },
-              { role: 'student_council', label: '학생회 / 체육부 (경기지원)' },
-              { role: 'teacher', label: '선생님 (지도교사 · 교원)' },
-              { role: 'referee', label: '공식 심판/기록원 (스코어보드 +1/-1)' },
-              { role: 'health_officer', label: '보건의무본부 (트리아지)' },
-              { role: 'admin', label: '총괄 관리자 (어드민 콘솔)' }
-            ].map(r => (
-              <button
-                key={r.role}
-                type="button"
-                onClick={() => onRoleChange(r.role as UserRole)}
-                className={`py-2 px-2 text-xs font-bold rounded-xl border transition cursor-pointer text-center ${
-                  currentRole === r.role
-                    ? 'bg-red-600 text-white dark:bg-emerald-500 dark:text-slate-950 shadow-xs'
-                    : 'border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300'
-                }`}
-              >
-                {r.label}
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
     </div>
   );

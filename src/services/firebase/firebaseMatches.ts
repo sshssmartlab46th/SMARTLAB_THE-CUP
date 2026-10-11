@@ -150,10 +150,6 @@ export async function createMatch(matchData: Partial<MatchItem>): Promise<string
 
 export async function updateMatch(matchId: string, partial: Partial<MatchItem>): Promise<void> {
   if (!matchId) return;
-  // Skip Firestore network calls for local rehearsal simulation matches
-  if (matchId.startsWith('rehearsal-sim-')) {
-    return;
-  }
   try {
     ensureFirebaseAuth().catch(() => {});
     const docRef = doc(db, 'matches', matchId);

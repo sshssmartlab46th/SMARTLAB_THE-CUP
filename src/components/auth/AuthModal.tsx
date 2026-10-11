@@ -5,7 +5,7 @@ import { checkStudentIdExists, createAccount, getUserProfile, syncUserProfile } 
 import { verifyAdminCredentials } from '../../services/adminAuthService';
 import { createSignedSession } from '../../utils/sessionToken';
 import { SangsanLogo } from '../common/SangsanLogo';
-import { Shield, CheckCircle, AlertTriangle, LogIn, UserCheck, Key, HelpCircle } from 'lucide-react';
+import { Shield, CheckCircle, AlertTriangle, LogIn, UserCheck, Key, HelpCircle, Eye, EyeOff } from 'lucide-react';
 import { LoginProblemModal } from './LoginProblemModal';
 
 interface AuthModalProps {
@@ -24,6 +24,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess, isOpen = true }
   // Admin login fields
   const [adminId, setAdminId] = useState('');
   const [adminPw, setAdminPw] = useState('');
+  const [showAdminId, setShowAdminId] = useState(false);
+  const [showAdminPw, setShowAdminPw] = useState(false);
 
   // UI state
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -289,28 +291,51 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess, isOpen = true }
                 <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                   관리자 아이디
                 </label>
-                <input
-                  type="text"
-                  value={adminId}
-                  onChange={(e) => setAdminId(e.target.value)}
-                  placeholder="sshsgym"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800/80 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-red-500 focus:outline-hidden"
-                  required
-                />
+                <div className="relative">
+                  <input
+                    type={showAdminId ? 'text' : 'password'}
+                    value={adminId}
+                    onChange={(e) => setAdminId(e.target.value)}
+                    placeholder="아이디 입력"
+                    autoComplete="off"
+                    spellCheck={false}
+                    className="w-full pl-3.5 pr-10 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800/80 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-red-500 focus:outline-hidden"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowAdminId(!showAdminId)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition cursor-pointer"
+                    title={showAdminId ? '아이디 숨기기' : '아이디 표시'}
+                  >
+                    {showAdminId ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
 
               <div>
                 <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                   비밀번호
                 </label>
-                <input
-                  type="password"
-                  value={adminPw}
-                  onChange={(e) => setAdminPw(e.target.value)}
-                  placeholder="비밀번호 입력"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800/80 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-red-500 focus:outline-hidden"
-                  required
-                />
+                <div className="relative">
+                  <input
+                    type={showAdminPw ? 'text' : 'password'}
+                    value={adminPw}
+                    onChange={(e) => setAdminPw(e.target.value)}
+                    placeholder="비밀번호 입력"
+                    autoComplete="off"
+                    className="w-full pl-3.5 pr-10 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800/80 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-red-500 focus:outline-hidden"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowAdminPw(!showAdminPw)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition cursor-pointer"
+                    title={showAdminPw ? '비밀번호 숨기기' : '비밀번호 표시'}
+                  >
+                    {showAdminPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
 
               <div className="pt-2">

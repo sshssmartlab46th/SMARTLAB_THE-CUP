@@ -4,7 +4,8 @@ import {
   MatchItem, 
   NoticeItem, 
   AuditLogEntry, 
-  ClassLineup 
+  ClassLineup,
+  hasUserRole 
 } from '../../types';
 import { 
   Users, 
@@ -61,13 +62,28 @@ export const RoleDashboardPage: React.FC<RoleDashboardPageProps> = ({
   onBackToHome,
   onNavigateToTab
 }) => {
-  // Determine default tab based on user's current role
-  // Referee is merged into student_council as requested
+  // Check permissions for role tabs based on real assigned roles
+  const isAdmin = currentUser?.role === 'admin' || hasUserRole(currentUser, 'admin');
+  const canAccessClassPresident = isAdmin || hasUserRole(currentUser, 'class_president');
+  const canAccessStudentCouncil = isAdmin || hasUserRole(currentUser, 'student_council') || hasUserRole(currentUser, 'referee');
+  const canAccessTeacher = isAdmin || Boolean(currentUser?.isTeacher) || hasUserRole(currentUser, 'teacher');
+  const canAccessHealth = isAdmin || hasUserRole(currentUser, 'health_officer');
+
+  const allRoleTabs = [
+    { key: 'class_president' as const, label: '반장 / 학급대표', icon: Users, desc: '접속 현황 & 라인업 제출', allowed: canAccessClassPresident },
+    { key: 'student_council' as const, label: '학생회 / 체육진행부', icon: ShieldCheck, desc: '스코어 제어 & 강퇴 관리', allowed: canAccessStudentCouncil },
+    { key: 'teacher' as const, label: '선생님 / 담임교사', icon: GraduationCap, desc: '학급 공지 & 경기 참관', allowed: canAccessTeacher },
+    { key: 'health_officer' as const, label: '보건 담당', icon: Stethoscope, desc: '부상 지식백과 관리', allowed: canAccessHealth }
+  ];
+
+  const accessibleRoleTabs = allRoleTabs.filter(t => t.allowed);
+
   const getInitialRole = (): 'class_president' | 'student_council' | 'teacher' | 'health_officer' => {
-    if (currentUser?.role === 'student_council' || currentUser?.role === 'referee') return 'student_council';
-    if (currentUser?.isTeacher || currentUser?.role === 'teacher') return 'teacher';
-    if (currentUser?.role === 'health_officer') return 'health_officer';
-    return 'class_president';
+    if (canAccessStudentCouncil && (currentUser?.role === 'student_council' || currentUser?.role === 'referee')) return 'student_council';
+    if (canAccessTeacher && (currentUser?.isTeacher || currentUser?.role === 'teacher')) return 'teacher';
+    if (canAccessHealth && currentUser?.role === 'health_officer') return 'health_officer';
+    if (canAccessClassPresident) return 'class_president';
+    return accessibleRoleTabs[0]?.key || 'class_president';
   };
 
   const [activeRoleTab, setActiveRoleTab] = useState<'class_president' | 'student_council' | 'teacher' | 'health_officer'>(getInitialRole());
@@ -403,43 +419,61 @@ export const RoleDashboardPage: React.FC<RoleDashboardPageProps> = ({
         </div>
       </div>
 
-      {/* 4 Clean Role Navigation Tabs (Referee merged into Student Council) */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
-        {[
-          { key: 'class_president', label: '반장 / 학급대표', icon: Users, desc: '접속 현황 & 라인업 제출' },
-          { key: 'student_council', label: '학생회 / 체육진행부', icon: ShieldCheck, desc: '스코어 제어 & 강퇴 관리' },
-          { key: 'teacher', label: '선생님 / 담임교사', icon: GraduationCap, desc: '학급 공지 & 경기 참관' },
-          { key: 'health_officer', label: '보건 담당', icon: Stethoscope, desc: '부상 지식백과 관리' }
-        ].map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeRoleTab === tab.key;
-          return (
+      {/* Role Navigation: Only display officially assigned roles */}
+      {accessibleRoleTabs.length === 0 ? (
+        <div className="p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center space-y-3">
+          <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 mx-auto flex items-center justify-center">
+            <AlertTriangle className="w-6 h-6" />
+          </div>
+          <h2 className="text-base font-bold text-slate-900 dark:text-white">직무 전용 대시보드 접근 권한 안내</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto leading-relaxed">
+            본 대시보드는 학급 반장, 학생회 체육부, 공식 심판진, 지도교사, 보건의무 담당 등 공식 직무를 부여받은 학생 및 교직원 전용 관제 화면입니다. 일반 학생은 경기 관람 및 응원 피드를 이용해 주세요.
+          </p>
+          {onBackToHome && (
             <button
-              key={tab.key}
               type="button"
-              onClick={() => setActiveRoleTab(tab.key as any)}
-              className={`p-3.5 rounded-2xl font-bold text-xs transition cursor-pointer border text-left flex items-start gap-2.5 ${
-                isActive
-                  ? 'bg-red-600 text-white border-red-600 shadow-sm'
-                  : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
-              }`}
+              onClick={onBackToHome}
+              className="px-4 py-2 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-950 text-xs font-bold rounded-xl transition cursor-pointer"
             >
-              <Icon className="w-4 h-4 shrink-0 mt-0.5" />
-              <div>
-                <div className="font-black">{tab.label}</div>
-                <div className={`text-[10px] font-normal mt-0.5 ${isActive ? 'text-red-100' : 'text-slate-400'}`}>
-                  {tab.desc}
-                </div>
-              </div>
+              종합 홈으로 돌아가기
             </button>
-          );
-        })}
-      </div>
+          )}
+        </div>
+      ) : (
+        accessibleRoleTabs.length > 1 && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+            {accessibleRoleTabs.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeRoleTab === tab.key;
+              return (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setActiveRoleTab(tab.key)}
+                  className={`p-3.5 rounded-2xl font-bold text-xs transition cursor-pointer border text-left flex items-start gap-2.5 ${
+                    isActive
+                      ? 'bg-red-600 text-white border-red-600 shadow-sm'
+                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  <Icon className="w-4 h-4 shrink-0 mt-0.5" />
+                  <div>
+                    <div className="font-black">{tab.label}</div>
+                    <div className={`text-[10px] font-normal mt-0.5 ${isActive ? 'text-red-100' : 'text-slate-400'}`}>
+                      {tab.desc}
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )
+      )}
 
       {/* ========================================================= */}
       {/* 1. CLASS PRESIDENT (반장 / 학급대표)                      */}
       {/* ========================================================= */}
-      {activeRoleTab === 'class_president' && (
+      {accessibleRoleTabs.some(t => t.key === 'class_president') && activeRoleTab === 'class_president' && (
         <div className="space-y-6">
           {/* Quick Action Cards Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -628,7 +662,7 @@ export const RoleDashboardPage: React.FC<RoleDashboardPageProps> = ({
       {/* ========================================================= */}
       {/* 2. STUDENT COUNCIL (학생회 / 체육진행부 & 심판)           */}
       {/* ========================================================= */}
-      {activeRoleTab === 'student_council' && (
+      {accessibleRoleTabs.some(t => t.key === 'student_council') && activeRoleTab === 'student_council' && (
         <div className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
             {/* Left: Live Match Scoreboard & Controller */}
@@ -1002,7 +1036,7 @@ export const RoleDashboardPage: React.FC<RoleDashboardPageProps> = ({
       {/* ========================================================= */}
       {/* 3. TEACHER (선생님 / 학급담임)                            */}
       {/* ========================================================= */}
-      {activeRoleTab === 'teacher' && (
+      {accessibleRoleTabs.some(t => t.key === 'teacher') && activeRoleTab === 'teacher' && (
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
             {/* Class Notice Form (스펙 3.B.4 핵심 요건) */}
@@ -1128,7 +1162,7 @@ export const RoleDashboardPage: React.FC<RoleDashboardPageProps> = ({
       {/* ========================================================= */}
       {/* 4. HEALTH OFFICER (보건 담당)                             */}
       {/* ========================================================= */}
-      {activeRoleTab === 'health_officer' && (
+      {accessibleRoleTabs.some(t => t.key === 'health_officer') && activeRoleTab === 'health_officer' && (
         <div className="space-y-6">
           {/* Official Injury Encyclopedia Management Hub (스펙 3.B.6 전담 권한) */}
           <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-xs space-y-4">

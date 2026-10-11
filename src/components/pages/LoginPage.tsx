@@ -16,8 +16,9 @@ import {
   ArrowLeft, 
   User, 
   HelpCircle,
-  Sparkles,
-  Users
+  Users,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { LoginProblemModal } from '../auth/LoginProblemModal';
 
@@ -36,6 +37,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onCancel }) => 
   // Admin login fields
   const [adminId, setAdminId] = useState('');
   const [adminPw, setAdminPw] = useState('');
+  const [showAdminId, setShowAdminId] = useState(false);
+  const [showAdminPw, setShowAdminPw] = useState(false);
 
   // UI status
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -43,151 +46,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onCancel }) => 
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showProblemModal, setShowProblemModal] = useState(false);
   const [pendingProfile, setPendingProfile] = useState<UserProfile | null>(null);
-
-  // Fast demo role logins for instant testing
-  const fastLoginProfiles: { label: string; desc: string; profile: UserProfile }[] = [
-    {
-      label: '👑 총괄 관리자',
-      desc: '총괄본부 · 시스템 전권 및 어드민 콘솔',
-      profile: {
-        uid: 'admin_sshsgym',
-        studentId: 'sshsgym',
-        name: '총괄 관리자',
-        role: 'admin',
-        roles: ['admin', 'student'],
-        grade: '본부',
-        classNum: '00',
-        studentNum: '00',
-        gender: 'other',
-        isTeacher: false,
-        canAnswerSuggestion: true,
-        createdAt: new Date().toISOString(),
-        lastLogin: new Date().toISOString()
-      }
-    },
-    {
-      label: '🔵 학생회 체육부',
-      desc: '2학년 1반 · 스코어보드 조작 및 진행',
-      profile: {
-        uid: 'user_20101',
-        studentId: '20101',
-        name: '김체육',
-        role: 'student_council',
-        roles: ['student', 'student_council'],
-        grade: '2',
-        classNum: '01',
-        studentNum: '01',
-        gender: 'male',
-        isTeacher: false,
-        createdAt: new Date().toISOString(),
-        lastLogin: new Date().toISOString()
-      }
-    },
-    {
-      label: '🟢 학급 반장',
-      desc: '3학년 2반 · 축구/농구 라인업 명단 제출',
-      profile: {
-        uid: 'user_30201',
-        studentId: '30201',
-        name: '이반장',
-        role: 'class_president',
-        roles: ['student', 'class_president'],
-        grade: '3',
-        classNum: '02',
-        studentNum: '01',
-        gender: 'male',
-        isTeacher: false,
-        createdAt: new Date().toISOString(),
-        lastLogin: new Date().toISOString()
-      }
-    },
-    {
-      label: '🟡 공식 심판진',
-      desc: '2학년 4반 · 실시간 경기 판정 및 기록',
-      profile: {
-        uid: 'user_20401',
-        studentId: '20401',
-        name: '박심판',
-        role: 'referee',
-        roles: ['student', 'referee'],
-        grade: '2',
-        classNum: '04',
-        studentNum: '01',
-        gender: 'male',
-        isTeacher: false,
-        createdAt: new Date().toISOString(),
-        lastLogin: new Date().toISOString()
-      }
-    },
-    {
-      label: '🔴 보건 담당',
-      desc: '1학년 6반 · 의무실 환자 접수 및 부상 관리',
-      profile: {
-        uid: 'user_10601',
-        studentId: '10601',
-        name: '최보건',
-        role: 'health_officer',
-        roles: ['student', 'health_officer'],
-        grade: '1',
-        classNum: '06',
-        studentNum: '01',
-        gender: 'female',
-        isTeacher: false,
-        createdAt: new Date().toISOString(),
-        lastLogin: new Date().toISOString()
-      }
-    },
-    {
-      label: '🟣 지도교사 (선생님)',
-      desc: '1학년 1반 담임 선생님 · 학급 참관',
-      profile: {
-        uid: 'user_10100',
-        studentId: '10100',
-        name: '정선생',
-        role: 'teacher',
-        roles: ['teacher'],
-        grade: '교사',
-        classNum: '01',
-        studentNum: '00',
-        gender: 'other',
-        isTeacher: true,
-        createdAt: new Date().toISOString(),
-        lastLogin: new Date().toISOString()
-      }
-    },
-    {
-      label: '⚪ 일반 학생',
-      desc: '3학년 2반 · 경기 관람 및 실시간 응원',
-      profile: {
-        uid: 'user_30215',
-        studentId: '30215',
-        name: '강상산',
-        role: 'student',
-        roles: ['student'],
-        grade: '3',
-        classNum: '02',
-        studentNum: '15',
-        gender: 'male',
-        isTeacher: false,
-        createdAt: new Date().toISOString(),
-        lastLogin: new Date().toISOString()
-      }
-    }
-  ];
-
-  const handleFastLogin = async (profile: UserProfile) => {
-    setIsSubmitting(true);
-    setErrorMessage(null);
-    try {
-      await syncUserProfile(profile);
-    } catch (e) {
-      console.warn('Sync profile fallback:', e);
-    }
-    const signedSession = await createSignedSession(profile);
-    localStorage.setItem('sangsan_current_user', JSON.stringify(signedSession));
-    setIsSubmitting(false);
-    onSuccess(profile);
-  };
 
   // Student Auth
   const handleStudentSubmit = async (e: React.FormEvent) => {
@@ -205,8 +63,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onCancel }) => 
     // Direct admin login via student input if someone typed sshsgym
     if (trimmedId.toLowerCase() === 'sshsgym') {
       setTab('admin');
-      setAdminId('sshsgym');
-      setErrorMessage('총괄 관리자 계정입니다. 비밀번호를 입력해주세요.');
+      setAdminId('');
+      setErrorMessage('관리자 로그인 화면으로 이동했습니다. 아이디와 보안 비밀번호를 입력해주세요.');
       return;
     }
 
@@ -566,26 +424,49 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onCancel }) => 
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
                   관리자 계정 ID
                 </label>
-                <input
-                  type="text"
-                  value={adminId}
-                  onChange={(e) => setAdminId(e.target.value)}
-                  placeholder="sshsgym"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-mono focus:outline-hidden focus:border-red-500 transition"
-                />
+                <div className="relative">
+                  <input
+                    type={showAdminId ? 'text' : 'password'}
+                    value={adminId}
+                    onChange={(e) => setAdminId(e.target.value)}
+                    placeholder="아이디 입력"
+                    autoComplete="off"
+                    spellCheck={false}
+                    className="w-full pl-3.5 pr-10 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-mono focus:outline-hidden focus:border-red-500 transition"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowAdminId(!showAdminId)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition cursor-pointer"
+                    title={showAdminId ? '아이디 숨기기' : '아이디 표시'}
+                  >
+                    {showAdminId ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
               </div>
 
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
                   보안 패스워드
                 </label>
-                <input
-                  type="password"
-                  value={adminPw}
-                  onChange={(e) => setAdminPw(e.target.value)}
-                  placeholder="비밀번호 입력"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-mono focus:outline-hidden focus:border-red-500 transition"
-                />
+                <div className="relative">
+                  <input
+                    type={showAdminPw ? 'text' : 'password'}
+                    value={adminPw}
+                    onChange={(e) => setAdminPw(e.target.value)}
+                    placeholder="비밀번호 입력"
+                    autoComplete="off"
+                    className="w-full pl-3.5 pr-10 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-mono focus:outline-hidden focus:border-red-500 transition"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowAdminPw(!showAdminPw)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition cursor-pointer"
+                    title={showAdminPw ? '비밀번호 숨기기' : '비밀번호 표시'}
+                  >
+                    {showAdminPw ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
               </div>
 
               <div className="p-3 rounded-xl bg-red-50/70 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 text-[11px] text-red-700 dark:text-red-300 space-y-1">
@@ -608,31 +489,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onCancel }) => 
               </button>
             </form>
           )}
-
-          {/* Fast Demo Accounts Picker (Quick Testing) */}
-          <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-2">
-            <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 dark:text-slate-400">
-              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-              <span>직무별 1초 빠른 로그인 (체험 및 테스트용)</span>
-            </div>
-            <div className="grid grid-cols-2 gap-1.5">
-              {fastLoginProfiles.map((p) => (
-                <button
-                  key={p.profile.studentId}
-                  type="button"
-                  onClick={() => handleFastLogin(p.profile)}
-                  className="p-2 rounded-xl text-left border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 hover:border-red-400 dark:hover:border-red-500 transition cursor-pointer"
-                >
-                  <div className="text-[11px] font-bold text-slate-800 dark:text-slate-200 truncate">
-                    {p.label}
-                  </div>
-                  <div className="text-[9px] text-slate-400 truncate">
-                    {p.profile.name} ({p.profile.studentId})
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
       </div>
 
