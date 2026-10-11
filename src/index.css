@@ -78,3 +78,103 @@ html, body, #root {
   color: #2563eb;
   text-decoration: underline;
 }
+
+/* Accessibility: Font Scaling System */
+html.font-scale-normal {
+  font-size: 16px;
+}
+html.font-scale-large {
+  font-size: 17.5px;
+}
+html.font-scale-xlarge {
+  font-size: 19px;
+}
+
+/* Accessibility: Dark Mode Text Contrast Optimization (WCAG AA standards) */
+.dark {
+  color-scheme: dark;
+}
+
+.dark .text-slate-400 {
+  color: #cbd5e1 !important; /* Enhanced readability on dark background */
+}
+
+.dark .text-slate-500 {
+  color: #94a3b8 !important;
+}
+
+.dark .border-slate-800 {
+  border-color: #334155 !important; /* Clearer borders */
+}
+
+/* Accessibility: Colorblind Friendly Palettes & High Contrast Overrides */
+
+/* Protanopia / Deuteranopia (Red-Green Colorblind Support) */
+html.cb-protanopia .bg-red-600,
+html.cb-protanopia .bg-red-500 {
+  background-color: #2563eb !important; /* Replace ambiguous red with high-contrast royal blue */
+  color: #ffffff !important;
+}
+
+html.cb-protanopia .text-red-600,
+html.cb-protanopia .text-red-500 {
+  color: #1d4ed8 !important;
+}
+
+html.cb-protanopia .bg-emerald-500,
+html.cb-protanopia .bg-emerald-600,
+html.cb-protanopia .bg-green-500 {
+  background-color: #d97706 !important; /* Replace green with amber/orange */
+  color: #ffffff !important;
+}
+
+html.cb-protanopia .text-emerald-600,
+html.cb-protanopia .text-emerald-500 {
+  color: #b45309 !important;
+}
+
+/* Tritanopia (Blue-Yellow Colorblind Support) */
+html.cb-tritanopia .bg-blue-600,
+html.cb-tritanopia .bg-blue-500 {
+  background-color: #0d9488 !important; /* Replace blue with teal */
+  color: #ffffff !important;
+}
+
+html.cb-tritanopia .text-blue-600 {
+  color: #0f766e !important;
+}
+
+html.cb-tritanopia .bg-amber-500,
+html.cb-tritanopia .bg-yellow-500 {
+  background-color: #dc2626 !important; /* Replace yellow with sharp crimson */
+  color: #ffffff !important;
+}
+
+/* High Contrast Mode (Maximum Visual Clarity & Border Visibility) */
+html.cb-high-contrast {
+  font-weight: 500;
+}
+
+html.cb-high-contrast button,
+html.cb-high-contrast a,
+html.cb-high-contrast input,
+html.cb-high-contrast select {
+  outline: 2px solid currentColor !important;
+  outline-offset: 1px;
+}
+
+html.cb-high-contrast .border,
+html.cb-high-contrast [class*="border-"] {
+  border-width: 2px !important;
+}
+
+html.cb-high-contrast.dark {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+html.cb-high-contrast.dark .bg-slate-900,
+html.cb-high-contrast.dark .bg-slate-800 {
+  background-color: #0f172a !important;
+  border-color: #f8fafc !important;
+}
