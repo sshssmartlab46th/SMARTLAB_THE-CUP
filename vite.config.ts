@@ -4,6 +4,49 @@ import path from 'path';
 import {defineConfig} from 'vite';
 import {createGroqResponse} from './server/groqHandler';
 import {handleAdminLogin} from './server/adminAuthHandler';
+import {handleMvpVote} from './server/mvpHandler';
+
+const healthApiPlugin = () => ({
+  name: 'sangsan-health-api',
+  configureServer(server: any) {
+    server.middlewares.use('/api/health', (_req: any, res: any) => {
+      res.statusCode = 200;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({ status: 'ok', timestamp: new Date().toISOString() }));
+    });
+  }
+});
+
+const mvpVoteApiPlugin = () => ({
+  name: 'sangsan-mvp-vote-api',
+  configureServer(server: any) {
+    server.middlewares.use('/api/mvp-vote', async (req: any, res: any) => {
+      if (req.method !== 'POST') {
+        res.statusCode = 405;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ success: false, message: 'Method not allowed.' }));
+        return;
+      }
+
+      try {
+        const chunks: Buffer[] = [];
+        for await (const chunk of req) {
+          chunks.push(Buffer.from(chunk));
+        }
+        const input = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}');
+        const result = await handleMvpVote(input);
+        res.statusCode = result.status;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify(result.body));
+      } catch (error) {
+        console.error('[MVPVote] dev request failed:', error);
+        res.statusCode = 500;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ success: false, message: 'Internal server error.' }));
+      }
+    });
+  }
+});
 
 const adminAuthApiPlugin = () => ({
   name: 'sangsan-admin-auth-api',
@@ -79,7 +122,7 @@ const groqApiPlugin = () => ({
 
 export default defineConfig(() => {
   return {
-    plugins: [react(), tailwindcss(), groqApiPlugin(), adminAuthApiPlugin()],
+    plugins: [react(), tailwindcss(), groqApiPlugin(), adminAuthApiPlugin(), healthApiPlugin(), mvpVoteApiPlugin()],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
