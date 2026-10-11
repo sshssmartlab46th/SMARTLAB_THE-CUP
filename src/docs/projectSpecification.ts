@@ -22,7 +22,8 @@ export const SANGSAN_DOMAIN_SPECIFICATION = {
     cheerMessageCooldownMinutes: 5,
     matchTimerEngine: 'Net in-play clock (pause/resume without drift)',
     scoreAuditEngine: 'Immutable log with mandatory rollback reason (offside, foul, mis-input)',
-    medicalPrivacyMandate: 'Zero-byte image overwriting immediately after inference; RICE emergency guideline'
+    medicalPrivacyMandate: 'Zero-byte image overwriting immediately after inference; RICE emergency guideline',
+    dataRetentionAndBackup: 'Full Firestore collections JSON backup export and post-tournament student PII (student ID, name) scrubbing/anonymization.'
   },
   roles: {
     admin: 'SYSTEM ADMINISTRATOR (총괄 관리자) - 전교 시스템 제어 & 전교 데이터',

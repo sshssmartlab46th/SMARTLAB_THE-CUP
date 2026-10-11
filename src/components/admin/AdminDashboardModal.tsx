@@ -10,7 +10,8 @@ import {
 } from '../../services/firebaseService';
 import { getRoleBadgeInfo } from '../../utils/studentIdParser';
 import { formatKSTDateTime } from '../../utils/kstTime';
-import { Shield, Users, FileText, ToggleLeft, ToggleRight, Trash2, Check, X, Search, ShieldAlert, HelpCircle, BookOpen, PlayCircle } from 'lucide-react';
+import { exportFirestoreDataJSON, downloadBackupJSON, scrubPersonalData } from '../../utils/backupService';
+import { Shield, Users, FileText, ToggleLeft, ToggleRight, Trash2, Check, X, Search, ShieldAlert, HelpCircle, BookOpen, PlayCircle, Download, UserX } from 'lucide-react';
 import { AdminLoginInquiriesTab } from './AdminLoginInquiriesTab';
 import { AdminDocumentManagerTab } from './AdminDocumentManagerTab';
 import { AdminRehearsalTab } from './AdminRehearsalTab';
@@ -36,6 +37,8 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
   const [festivalConfig, setFestivalConfig] = useState<FestivalConfig | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isScrubbing, setIsScrubbing] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -78,6 +81,37 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
   const handleToggleSuggestionAnswer = async (studentId: string, currentVal: boolean) => {
     await updateUserRole(studentId, 'student_council', !currentVal);
     showNotice(`${studentId} 건의함 답변 권한이 [${!currentVal ? '허용' : '차단'}]되었습니다.`);
+  };
+
+  const handleExportBackup = async () => {
+    try {
+      setIsExporting(true);
+      const data = await exportFirestoreDataJSON();
+      downloadBackupJSON(data);
+      showNotice('Firestore 전체 데이터 내보내기가 완료되었습니다.');
+    } catch (err) {
+      console.error(err);
+      alert('백업 데이터 내보내기 중 오류가 발생했습니다.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleScrubPersonalData = async () => {
+    if (!window.confirm('⚠️ [경고] 대회 종료 후 개인정보(학번, 이름) 파기 절차를 수행하시겠습니까?\n\n총괄 관리자를 제외한 일반 학생 계정의 실명과 학번이 익명 처리됩니다. 이 작업은 되돌릴 수 없습니다.')) {
+      return;
+    }
+
+    try {
+      setIsScrubbing(true);
+      const result = await scrubPersonalData();
+      showNotice(`총 ${result.scrubbedCount}명의 개인정보가 익명화 파기 처리되었습니다.`);
+    } catch (err) {
+      console.error(err);
+      alert('개인정보 파기 처리 중 오류가 발생했습니다.');
+    } finally {
+      setIsScrubbing(false);
+    }
   };
 
   const showNotice = (msg: string) => {
@@ -243,6 +277,38 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                   <p>• 행사명: <strong>{festivalConfig?.name || '2026 상산고등학교 체육대회'}</strong></p>
                   <p>• 시스템 개발/저작권: <strong>made by SMARTLAB</strong></p>
                   <p>• 계정 규정: 5자리 고유 학번 자동 파싱, 실명제, 비번 없는 세션 유지</p>
+                </div>
+              </div>
+
+              {/* Data Backup & PII Destruction */}
+              <div className="p-4 rounded-xl border border-amber-200 dark:border-amber-900/50 bg-amber-50/30 dark:bg-amber-950/20 space-y-3">
+                <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                  <ShieldAlert className="w-4 h-4 text-amber-500" />
+                  대회 종료 후 데이터 관리 & 개인정보 파기
+                </h3>
+                <p className="text-xs text-slate-600 dark:text-slate-400">
+                  체육대회 종료 후 데이터 보존을 위한 Firestore 백업 다운로드 및 학생 개인정보(학번, 이름) 파기를 진행할 수 있습니다.
+                </p>
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={handleExportBackup}
+                    disabled={isExporting}
+                    className="px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-white transition flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    {isExporting ? '백업 생성 중...' : 'Firestore 전체 백업 JSON 다운로드'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleScrubPersonalData}
+                    disabled={isScrubbing}
+                    className="px-3.5 py-2 rounded-xl text-xs font-bold bg-red-600 text-white hover:bg-red-700 transition flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    <UserX className="w-3.5 h-3.5" />
+                    {isScrubbing ? '파기 처리 중...' : '개인정보 파기 (학생 익명화)'}
+                  </button>
                 </div>
               </div>
             </div>
